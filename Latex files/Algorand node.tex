@@ -1,0 +1,171 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
+\usepackage[spanish]{babel} % para que comandos como \today den el resultado en castellano
+\usepackage{a4wide} % márgenes un poco más anchos que lo usual
+\usepackage{caratula}
+% \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
+
+% Comandos para simbolos matematicos.
+\usepackage{amsmath, amssymb, tabularx}
+
+% Comandos para referencias
+\usepackage{natbib}
+
+% Comandos para Figuras, Graficos, Tikz etc.
+\usepackage{tikz}
+\usepackage{epsfig}
+\usepackage{pgfplots}
+\usepackage{graphicx}
+\usepackage{epsfig}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{svg}
+\setsvg{inkscape=inkscape -z -D}
+
+% Comandos para teoremas etc.
+\usepackage{amsthm}
+\newtheorem{theorem}{Teorema}
+\newtheorem{lemma}[theorem]{Lema}
+\newtheorem{proposition}[theorem]{Proposición}
+\newtheorem{remark}{Observación}
+\newtheorem{corollary}{Corolario}
+% \newproof{proof}{Demostración}
+
+% Comandos para algoritmos.
+\usepackage[noend]{algpseudocode}
+\usepackage{algorithm}
+\algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
+    \State \algorithmicif\ #1\ 
+    \algorithmicthen\ #2\ 
+    \algorithmicelse\ #3}
+\algnewcommand{\IfThen}[2]{% \IfThenElse{<if>}{<then>}
+    \State \algorithmicif\ #1\ \algorithmicthen\ #2}
+\pgfplotsset{compat=1.18}
+
+\begin{document}
+
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$BlockCreation()$}{}
+    
+    \State $TODO$
+    
+    \EndFunction
+    \end{algorithmic}
+    \caption{Block creation}
+    \label{alg:fuerza_bruta}
+\end{algorithm}
+
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
+        \For{$a \in A$}
+            \State $<sorthash, \pi, j>\gets Sortition(a.sk, seed, t, role, a.w[], W)$
+            \If{$j > 0$}
+                \State $priority \gets Min_{n \in [1,j]}{Hash(sorthash || n)}$
+                %es block proposer
+                %VER exactamente todo lo pertinente al mensaje
+                \State $GOSSIP\_MESSAGE(priority, SIGNED_{a.sk}(<sorthash, \pi>))$
+            \EndIf
+        \EndFor
+
+        \State $msgs \gets incomingMsgs[round, step=0].iterator()$
+
+        \While{$elapsed time < proposal time$}
+            \State $m \gets msgs.next()$
+            \State $VerifySortition(m.sorthash, m.pi, m.pk)$
+            \If {$m.priority < minSeenPriority$}
+                \State $minSeenPriority = m.priority$
+            \EndIf
+        \EndWhile
+
+
+
+        \While{$elapsed time < fullblock time$}
+            \State $m \gets msgs.next()$
+            \State $<priority, sorthash, \pi> \gets m$
+        \EndWhile
+            
+    
+    
+    \EndFunction
+    \end{algorithmic}
+    \caption{Block proposal}
+    \label{alg:fuerza_bruta}
+\end{algorithm}
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$SoftVote$}{}
+    
+    \State $CommitteeVote(ctx, round, REDUCTION\_ONE, tstep, hblock)$
+    \State $hblock \gets CountVotes(ctx, round, REDUCTION\_ONE, Tstep, tstep, lblock+lstep)$
+
+    \State $empty\_hash \gets H(Empty(round, H(ctx.last\_block)))$
+    \IfThenElse{$hblock = TIMEOUT$}
+        {\State $CommitteeVote(ctx, round, REDUCTION\_TWO, tstep, empty\_hash)$}
+        {\State $CommitteeVote(ctx, round, REDUCTION\_TWO, tstep, hblock1)$}
+    \EndIfThenElse
+
+    \State $hblock \gets CountVotes(ctx, round, REDUCTION\_TWO, Tstep, tstep, lblock+lstep)$ 
+
+    \IfThenElse{$hblock = TIMEOUT$}{$\Return$ $empty\_hash$}{$\Return$ $hblock$}}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{Soft Vote}
+\end{algorithm}
+
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$CertifyVote$}{$hblock$}
+
+    \While{$step < 256$}
+    {
+        \\
+        \State $<hblock, bConfirmed> \gets BLOCK\_STEP(hblock, step)$
+        \If{$bConfirmed$}{ $\Return$ $hblock$}
+        \EndIf
+        \State $step++$\\
+   
+        \State $<hblock, bConfirmed> \gets EMPTY\_STEP(hblock,step)$
+        \If{$bConfirmed$}{ $\Return$ $hblock$}
+        \EndIf
+        \State $step++$\\
+
+        \State $CommonCoinFlipVote(hblock, step)$
+        \State $step++$
+    }
+    \EndWhile
+
+    \State $HangForever()$
+    
+    \EndFunction
+    \end{algorithmic}
+    \caption{CertifyVote}
+\end{algorithm}
+
+
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$BlockConfirmation$}{$hblock$}
+
+    \State $r \gets CountVotes(ctx, round, FINAL, Tfinal, tfinal, lstep)$
+    \IfThenElse{$r = hblock$}
+    {
+        \State \Return $<FINAL, BlockOfHash(hblock)>$ 
+    }
+    {
+        \State \Return $<TENTATIVE, BlockOfHash(hblock)>$
+    }
+        
+    \EndFunction
+    \end{algorithmic}
+    \caption{BlockConfirmation}
+\end{algorithm}
+
+
+\end{document}
