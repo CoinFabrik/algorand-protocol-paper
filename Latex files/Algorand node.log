@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  6 DEC 2022 13:55
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  6 DEC 2022 13:57
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -714,41 +714,56 @@ A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:186: Missing \endcsname inserted.
+
+Underfull \hbox (badness 10000) in paragraph at lines 175--185
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 175--185
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 175--185
+
+ []
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:188: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.186     \Function
+l.188     \Function
                    {$BlockConfirmation$}{$hblock$}
 The control sequence marked <to be read again> should
 not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:186: Extra \endcsname.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:188: Extra \endcsname.
 \ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
                                                   \relax \def \ALG@thisblock...
-l.186     \Function
+l.188     \Function
                    {$BlockConfirmation$}{$hblock$}
 I'm ignoring this, since I wasn't doing a \csname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@0 
-l.198     \end{algorithmic}
+l.200     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing = inserted for \ifnum.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing = inserted for \ifnum.
 <to be read again> 
                    \ALG@currentblock@0 
-l.198     \end{algorithmic}
+l.200     \end{algorithmic}
                            
 I was expecting to see `<', `=', or `>'. Didn't.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@0 
-l.198     \end{algorithmic}
+l.200     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
@@ -771,7 +786,7 @@ Here is how much of TeX's memory you used:
  1141 hyphenation exceptions out of 8191
  94i,8n,92p,824b,609s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
-Output written on "Algorand node.pdf" (3 pages, 112492 bytes).
+Output written on "Algorand node.pdf" (3 pages, 112456 bytes).
 PDF statistics:
  57 PDF objects out of 1000 (max. 8388607)
  35 compressed objects within 1 object stream
