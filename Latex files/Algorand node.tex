@@ -106,9 +106,7 @@ Block metadata is well documented, but is added into it later in the block propo
     \label{alg:fuerza_bruta}
 \end{algorithm}
 
-PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
-PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
-PLACEHOLDER TEXTPLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
+%The block proposal stage (step 0 on specs) is the first stage of the consensus algorithm per se. Nodes loop through all their accounts, 
 
 \begin{algorithm}
     \begin{algorithmic}[1]
@@ -137,13 +135,14 @@ In the first sub-step, each commitee member gossips the proposed block, and then
 In the second sub-step, committee members vote for the hash that received at least the ammount of votes set by the threshold for this step, or the hash of the default empty block if no hash was observed to receive enough votes.
 It relies heavily on the assumption that, if the block proposer was honest, most users will get to the soft vote stage with the same hblock parameter.
 However if the proposer was dishonest, then no single hblock may be popular enough to cross the threshold (and therefore this stage will return an empty\_hash).
-Therefore, there will be at most one non-empty block that can be returned by soft vote for all honest users.
+Therefore, there will at most be one non-empty block that can be returned by soft vote for all honest users.
 
 
 \begin{algorithm}
     \begin{algorithmic}[1]
     \Function{$CertifyVote$}{$hblock$}
 
+    \State $step \gets 2$
     \While{$step < 256$}
     {
         \\
@@ -170,10 +169,13 @@ Therefore, there will be at most one non-empty block that can be returned by sof
 \end{algorithm}
 
 The certify vote stage (which potentially encompasses steps 2 through 255) is the core of the BA* algorithm.
-PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
-PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
-PLACEHOLDER TEXTPLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT PLACEHOLDER TEXT
-
+The main loop executes a maximum of 254 times (from step 2 to step 255, labeled \"cert\" and \"down\" respectively on the specs).
+This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a small chance to force consensus on their desired block with each iteration.
+The main algorithm is comprised of three important procedures: the block step, where, if selected as a committee member, votes for the block selected in the soft voting stage and then attempts to confirm it by listening to other cast votes until a threshold is met.
+If this step times out and no consensus is reached, it moves on to the empty step. Very similar in nature to the previous one, in this procedure a vote is cast for the value in hblock and then it attempts to confirm an empty block.
+Finally, if no consensus is reached on the empty block, it arrives to the common coin procedure, where it attempts another vote and vote count for the empty block. If here, no consensus is reached, it uses the pseudo-randomness of the VRF hash output to "flip a coin" by looking at the last bit of the lowest sortition hash owned by observed committee members.
+This makes it so even tho the coin flip is random, most users will observe the same outcome and will in turn set their hblock values according to the observed bit. In turn, this prevents an adversary from being able to easily predict beforehand what the next vote of a user would be if they were a committee user, and therefore the attacker can't force consensus 
+sending their vote messages to targeted users in a scenario where the voting is split pretty evenly but no block has quite enough votes to push the threshold.
 
 \begin{algorithm}
     \begin{algorithmic}[1]
