@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  6 DEC 2022 13:14
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  6 DEC 2022 13:55
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -614,8 +614,8 @@ Overfull \hbox (170.97188pt too wide) in paragraph at lines 89--90
 [] $\OML/cmm/m/it/10 lowestHashMsg \OMS/cmsy/m/n/10   \OML/cmm/m/it/10 m \OMS/cmsy/m/n/10 j \OML/cmm/m/it/10 m:priority \OT1/cmr/m/n/10 = \OML/cmm/m/it/10 Min[][]$ 
  []
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:122: Undefined control sequence.
-l.122     \EndIfThenElse
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:126: Undefined control sequence.
+l.126     \EndIfThenElse
                         
 The control sequence at the end of the top line
 of your error message was never \def'ed. If you have
@@ -623,132 +623,132 @@ misspelled it (e.g., `\hobx'), type `I' and the correct
 spelling (e.g., `I\hbox'). Otherwise just continue,
 and I'll forget about whatever was undefined.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:162: Missing \endcsname inserted.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.162     \EndWhile
-                   
-The control sequence marked <to be read again> should
-not appear between \csname and \endcsname.
+[1
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:162: Extra \endcsname.
-\ALG@makenobeginrepeat ...LG@thisblock \endcsname 
-                                                  \relax \def \ALG@thisblock...
-l.162     \EndWhile
-                   
-I'm ignoring this, since I wasn't doing a \csname.
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:162: Missing number, treated as zero.
-<to be read again> 
-                   \ALG@b@2@EndWhile@0 
-l.162     \EndWhile
-                   
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:164: Missing \endcsname inserted.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.164     \State
-                 $HangForever()$
-The control sequence marked <to be read again> should
-not appear between \csname and \endcsname.
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:164: Extra \endcsname.
-\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
-                                                  \relax \def \ALG@thisblock...
-l.164     \State
-                 $HangForever()$
-I'm ignoring this, since I wasn't doing a \csname.
-
+{c:/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
 c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@3 
-l.166     \EndFunction
-                      
+l.166     \EndWhile
+                   
 The control sequence marked <to be read again> should
 not appear between \csname and \endcsname.
 
 c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Extra \endcsname.
 \ALG@makenobeginrepeat ...LG@thisblock \endcsname 
                                                   \relax \def \ALG@thisblock...
-l.166     \EndFunction
-                      
+l.166     \EndWhile
+                   
 I'm ignoring this, since I wasn't doing a \csname.
 
 c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Missing number, treated as zero.
 <to be read again> 
+                   \ALG@b@2@EndWhile@0 
+l.166     \EndWhile
+                   
+A number should have been here; I inserted `0'.
+(If you can't figure out why I needed to see a number,
+look up `weird error' in the index to The TeXbook.)
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:168: Missing \endcsname inserted.
+<to be read again> 
+                   \ALG@currentblock@3 
+l.168     \State
+                 $HangForever()$
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:168: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.168     \State
+                 $HangForever()$
+I'm ignoring this, since I wasn't doing a \csname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Missing \endcsname inserted.
+<to be read again> 
+                   \ALG@currentblock@3 
+l.170     \EndFunction
+                      
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Extra \endcsname.
+\ALG@makenobeginrepeat ...LG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.170     \EndFunction
+                      
+I'm ignoring this, since I wasn't doing a \csname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Missing number, treated as zero.
+<to be read again> 
                    \ALG@b@2@EndFunction@0 
-l.166     \EndFunction
+l.170     \EndFunction
                       
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:167: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@3 
-l.167     \end{algorithmic}
+l.171     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:167: Missing = inserted for \ifnum.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing = inserted for \ifnum.
 <to be read again> 
                    \ALG@currentblock@3 
-l.167     \end{algorithmic}
+l.171     \end{algorithmic}
                            
 I was expecting to see `<', `=', or `>'. Didn't.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:167: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@3 
-l.167     \end{algorithmic}
+l.171     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-[1
-
-{c:/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:182: Missing \endcsname inserted.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:186: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.182     \Function
+l.186     \Function
                    {$BlockConfirmation$}{$hblock$}
 The control sequence marked <to be read again> should
 not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:182: Extra \endcsname.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:186: Extra \endcsname.
 \ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
                                                   \relax \def \ALG@thisblock...
-l.182     \Function
+l.186     \Function
                    {$BlockConfirmation$}{$hblock$}
 I'm ignoring this, since I wasn't doing a \csname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:194: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@0 
-l.194     \end{algorithmic}
+l.198     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:194: Missing = inserted for \ifnum.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing = inserted for \ifnum.
 <to be read again> 
                    \ALG@currentblock@0 
-l.194     \end{algorithmic}
+l.198     \end{algorithmic}
                            
 I was expecting to see `<', `=', or `>'. Didn't.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:194: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:198: Missing number, treated as zero.
 <to be read again> 
                    \ALG@currentblock@0 
-l.194     \end{algorithmic}
+l.198     \end{algorithmic}
                            
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
@@ -765,13 +765,13 @@ LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 Here is how much of TeX's memory you used:
  28576 strings out of 474968
  702638 string characters out of 5780081
- 1158970 words of memory out of 5000000
+ 1153970 words of memory out of 5000000
  49610 multiletter control sequences out of 15000+600000
  472485 words of font info for 41 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  94i,8n,92p,824b,609s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
-Output written on "Algorand node.pdf" (3 pages, 111483 bytes).
+Output written on "Algorand node.pdf" (3 pages, 112492 bytes).
 PDF statistics:
  57 PDF objects out of 1000 (max. 8388607)
  35 compressed objects within 1 object stream

@@ -103,10 +103,14 @@ Block metadata is well documented, but is added into it later in the block propo
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block proposal}}
-    \label{alg:fuerza_bruta}
 \end{algorithm}
 
-%The block proposal stage (step 0 on specs) is the first stage of the consensus algorithm per se. Nodes loop through all their accounts, 
+The block proposal stage (step 0 on specs) is the first stage of the consensus algorithm per se. Nodes loop through all their online accounts, running sortition to determine which accounts will be proposing the assembled block (if any).
+It then proceeds to gossip the priority, sortition hash and proof of the designated accounts (signed with their leaf ephemeral keys according to the signature scheme described on specs).
+Afterwards, it waits for a designated time to receive other block proposals, validates them and keeps the one with the lowest observed hash (maximum priority).
+Once the time is reached, if the selected proposal came from this node, the seed is computed and added into the finished block's metadata. Then, the complete block is gossipped to the network.
+In the most common case where the proposal is not the one selected locally by the node, it waits for another pre-designated time to receive the full block from the network.
+In case of timeout in this last stage, it falls back to the empty block.
 
 \begin{algorithm}
     \begin{algorithmic}[1]
