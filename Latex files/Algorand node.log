@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  6 DEC 2022 13:57
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  16 DEC 2022 12:04
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -541,22 +541,22 @@ File: l3backend-pdftex.def 2022-10-26 L3 backend support: PDF output (pdfTeX)
 ) (./Algorand node.aux)
 \openout1 = `"Algorand node.aux"'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 45.
-LaTeX Font Info:    ... okay on input line 45.
-LaTeX Info: Redefining \. on input line 45.
-LaTeX Info: Redefining \% on input line 45.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 49.
+LaTeX Font Info:    ... okay on input line 49.
+LaTeX Info: Redefining \. on input line 49.
+LaTeX Info: Redefining \% on input line 49.
  (c:/texlive/2022/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
 \scratchcounter=\count326
@@ -576,200 +576,643 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 48
  (c:/texlive/2022/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package pgfplots notification 'compat/show suggested version=true': document has been generated with the most recent feature set (\pgfplotsset{compat=1.18}).
+Package pgfplots notification 'compat/show suggested version=true': you might benefit from \pgfplotsset{compat=1.18} (current compat level: 1.16).
 
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: float package is loaded.
 Package caption Info: End \AtBeginDocument code.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 50.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 62.
 (c:/texlive/2022/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 50.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 62.
  (c:/texlive/2022/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-)
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:68: Undefined control sequence.
-<recently read> \lowestPriorityUser 
-                                    
-l.68         \State $\lowestPriorityUser
-                                        , lowestPriority$
-The control sequence at the end of the top line
-of your error message was never \def'ed. If you have
-misspelled it (e.g., `\hobx'), type `I' and the correct
-spelling (e.g., `I\hbox'). Otherwise just continue,
-and I'll forget about whatever was undefined.
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:89: Extra }, or forgotten $.
-l.89 ...sorthash, m.pi, m.pk)\ \& ValidateMsg(m)}}
-                                                  $
-I've deleted a group-closing symbol because it seems to be
-spurious, as in `$x}$'. But perhaps the } is legitimate and
-you forgot something else, as in `\hbox{$x}'. In such cases
-the way to recover is to insert both the forgotten and the
-deleted material, e.g., by typing `I$}'.
-
-
-Overfull \hbox (170.97188pt too wide) in paragraph at lines 89--90
-[] $\OML/cmm/m/it/10 lowestHashMsg \OMS/cmsy/m/n/10   \OML/cmm/m/it/10 m \OMS/cmsy/m/n/10 j \OML/cmm/m/it/10 m:priority \OT1/cmr/m/n/10 = \OML/cmm/m/it/10 Min[][]$ 
- []
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:126: Undefined control sequence.
-l.126     \EndIfThenElse
-                        
-The control sequence at the end of the top line
-of your error message was never \def'ed. If you have
-misspelled it (e.g., `\hobx'), type `I' and the correct
-spelling (e.g., `I\hbox'). Otherwise just continue,
-and I'll forget about whatever was undefined.
-
-[1
+) [1
 
 {c:/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Missing \endcsname inserted.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.166     \EndWhile
-                   
-The control sequence marked <to be read again> should
-not appear between \csname and \endcsname.
+Underfull \hbox (badness 10000) in paragraph at lines 198--208
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Extra \endcsname.
-\ALG@makenobeginrepeat ...LG@thisblock \endcsname 
-                                                  \relax \def \ALG@thisblock...
-l.166     \EndWhile
-                   
-I'm ignoring this, since I wasn't doing a \csname.
+ []
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:166: Missing number, treated as zero.
+
+Underfull \hbox (badness 10000) in paragraph at lines 198--208
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 198--208
+
+ []
+
+[2]
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:266: Missing number, treated as zero.
 <to be read again> 
                    \ALG@b@2@EndWhile@0 
-l.166     \EndWhile
+l.266     \EndWhile
                    
 A number should have been here; I inserted `0'.
 (If you can't figure out why I needed to see a number,
 look up `weird error' in the index to The TeXbook.)
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:168: Missing \endcsname inserted.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:268: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.268     \end{algorithmic}
+                           
+This error message was generated by an \errmessage
+command, so I can't give any explicit help.
+Pretend that you're Hercule Poirot: Examine all clues,
+and deduce the truth by order and method.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:279: Missing \endcsname inserted.
 <to be read again> 
-                   \ALG@currentblock@3 
-l.168     \State
-                 $HangForever()$
+                   \ALG@currentblock@0 
+l.279     \Function
+                   {$CommitteeVote$}{$ctx, round, FINAL, Tfinal, tfinal, lst...
 The control sequence marked <to be read again> should
 not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:168: Extra \endcsname.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:279: Extra \endcsname.
 \ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
                                                   \relax \def \ALG@thisblock...
-l.168     \State
-                 $HangForever()$
+l.279     \Function
+                   {$CommitteeVote$}{$ctx, round, FINAL, Tfinal, tfinal, lst...
 I'm ignoring this, since I wasn't doing a \csname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Missing \endcsname inserted.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.170     \EndFunction
-                      
-The control sequence marked <to be read again> should
-not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Extra \endcsname.
-\ALG@makenobeginrepeat ...LG@thisblock \endcsname 
-                                                  \relax \def \ALG@thisblock...
-l.170     \EndFunction
-                      
-I'm ignoring this, since I wasn't doing a \csname.
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:170: Missing number, treated as zero.
-<to be read again> 
-                   \ALG@b@2@EndFunction@0 
-l.170     \EndFunction
-                      
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing number, treated as zero.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.171     \end{algorithmic}
-                           
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing = inserted for \ifnum.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.171     \end{algorithmic}
-                           
-I was expecting to see `<', `=', or `>'. Didn't.
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:171: Missing number, treated as zero.
-<to be read again> 
-                   \ALG@currentblock@3 
-l.171     \end{algorithmic}
-                           
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
+LaTeX Warning: Command \textlangle invalid in math mode on input line 282.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 175--185
+LaTeX Warning: Command \textlangle invalid in math mode on input line 282.
 
+
+LaTeX Warning: Command \textquotedblleft invalid in math mode on input line 282.
+
+
+LaTeX Warning: Command \textquotedblright invalid in math mode on input line 282.
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 282.
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 282.
+
+
+LaTeX Warning: Command \textlangle invalid in math mode on input line 283.
+
+
+LaTeX Warning: Command \textlangle invalid in math mode on input line 283.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:283: LaTeX Error: Unicode character π (U+03C0)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.283     \State $⟨sorthash,π
+                                ,j⟩ \gets Sortition(user.sk,ctx.seed,τ ,r...
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 283.
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 283.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:283: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.283 ...,j⟩ \gets Sortition(user.sk,ctx.seed,τ
+                                                   ,role,ctx.weight[user.pk]...
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+Overfull \hbox (12.50475pt too wide) in paragraph at lines 286--287
+[] $\OML/cmm/m/it/10 GOSSIP[]MSG\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 user:pk; Signed[]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 round; step; sorthash; ^^Y; H\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 ctx:last[]lock\OT1/cmr/m/n/10 )\OML/cmm/m/it/10 ; value\OT1/cmr/m/n/10 ))$ 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 175--185
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:289: Package algorithmicx Error: Some blocks are not closed!!!.
 
- []
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.289     \end{algorithmic}
+                           
+(That was another \errmessage.)
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 175--185
-
- []
-
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:188: Missing \endcsname inserted.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:298: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.188     \Function
-                   {$BlockConfirmation$}{$hblock$}
+l.298     \Function
+                   {$ComputeSeed$}{$ctx, round, B$}
 The control sequence marked <to be read again> should
 not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:188: Extra \endcsname.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:298: Extra \endcsname.
 \ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
                                                   \relax \def \ALG@thisblock...
-l.188     \Function
-                   {$BlockConfirmation$}{$hblock$}
+l.298     \Function
+                   {$ComputeSeed$}{$ctx, round, B$}
 I'm ignoring this, since I wasn't doing a \csname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing number, treated as zero.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:304: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.304     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+[3] [4]
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:317: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.200     \end{algorithmic}
-                           
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
+l.317     \Function
+                   {$Sortition$}{$sk, seed, \tau, role, w, W$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing = inserted for \ifnum.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:317: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.317     \Function
+                   {$Sortition$}{$sk, seed, \tau, role, w, W$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:321: Missing $ inserted.
+<inserted text> 
+                $
+l.321 ...j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+                                                  
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:321: Missing $ inserted.
+<inserted text> 
+                $
+l.321 ...j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+                                                  
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:326: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.326     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:342: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.200     \end{algorithmic}
-                           
-I was expecting to see `<', `=', or `>'. Didn't.
+l.342     \Function
+                   {$VerifySortition$}{$pk, seed, \tau, role, w, W$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
 
-c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:200: Missing number, treated as zero.
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:342: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.342     \Function
+                   {$VerifySortition$}{$pk, seed, \tau, role, w, W$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:346: Missing $ inserted.
+<inserted text> 
+                $
+l.346 ...j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+                                                  
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:346: Missing $ inserted.
+<inserted text> 
+                $
+l.346 ...j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+                                                  
+I've inserted a begin-math/end-math symbol since I think
+you left one out. Proceed, with fingers crossed.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:350: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.350     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:361: Missing \endcsname inserted.
 <to be read again> 
                    \ALG@currentblock@0 
-l.200     \end{algorithmic}
-                           
-A number should have been here; I inserted `0'.
-(If you can't figure out why I needed to see a number,
-look up `weird error' in the index to The TeXbook.)
+l.361     \Function
+                   {$BLOCK\_STEP$}{$hblock, step, blockHash$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
 
-[2] [3] (./Algorand node.aux
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:361: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.361     \Function
+                   {$BLOCK\_STEP$}{$hblock, step, blockHash$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:366: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.366 ... \gets CountVotes(ctx,round,step,Tstep,τ
+                                                  step,λstep)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:366: LaTeX Error: Unicode character λ (U+03BB)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.366 ...CountVotes(ctx,round,step,Tstep,τstep,λ
+                                                  step)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:370: Undefined control sequence.
+<argument> $step < s^{\�
+                        ��} \leq step+3$
+l.370 ...      \For{$step < s^{\′} \leq step+3$}
+                                                  
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:370: LaTeX Error: Invalid UTF-8 byte "80.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.370 ...      \For{$step < s^{\′} \leq step+3$}
+                                                  
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:370: LaTeX Error: Invalid UTF-8 byte "B2.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.370 ...      \For{$step < s^{\′} \leq step+3$}
+                                                  
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:371: Undefined control sequence.
+l.371 ...  \State $CommitteeVote(ctx, round, s^{\�
+                                                  ��}, τstep, r)$
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:371: LaTeX Error: Invalid UTF-8 byte "80.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.371 ... \State $CommitteeVote(ctx, round, s^{\�
+                                                  �}, τstep, r)$
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:371: LaTeX Error: Invalid UTF-8 byte "B2.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.371 ...\State $CommitteeVote(ctx, round, s^{\′
+                                                  }, τstep, r)$
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:371: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.371 ...e $CommitteeVote(ctx, round, s^{\′}, τ
+                                                  step, r)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:379: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.379     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+
+Overfull \hbox (8.6923pt too wide) in paragraph at lines 383--389
+\OT1/cmr/m/n/10 a vo-te on the ob-ser-ved hblock va-lue (pos-sibly co-ming off of a coin toss vo-te -see commonCoinFlipVote-
+ []
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:393: Missing \endcsname inserted.
+<to be read again> 
+                   \ALG@currentblock@0 
+l.393     \Function
+                   {$EMPTY\_STEP$}{$hblock, step$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:393: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.393     \Function
+                   {$EMPTY\_STEP$}{$hblock, step$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:398: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.398 ... \gets CountVotes(ctx,round,step,Tstep,τ
+                                                  step,λstep)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:398: LaTeX Error: Unicode character λ (U+03BB)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.398 ...CountVotes(ctx,round,step,Tstep,τstep,λ
+                                                  step)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:402: Undefined control sequence.
+<argument> $step < s^{\�
+                        ��} \leq step+3$
+l.402         \For{$step < s^{\′} \leq step+3$}
+                                                 
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:402: LaTeX Error: Invalid UTF-8 byte "80.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.402         \For{$step < s^{\′} \leq step+3$}
+                                                 
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:402: LaTeX Error: Invalid UTF-8 byte "B2.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.402         \For{$step < s^{\′} \leq step+3$}
+                                                 
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:403: Undefined control sequence.
+l.403 ...  \State $CommitteeVote(ctx, round, s^{\�
+                                                  ��}, τstep, r)$
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+spelling (e.g., `I\hbox'). Otherwise just continue,
+and I'll forget about whatever was undefined.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:403: LaTeX Error: Invalid UTF-8 byte "80.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.403 ... \State $CommitteeVote(ctx, round, s^{\�
+                                                  �}, τstep, r)$
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:403: LaTeX Error: Invalid UTF-8 byte "B2.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.403 ...\State $CommitteeVote(ctx, round, s^{\′
+                                                  }, τstep, r)$
+The document does not appear to be in UTF-8 encoding.
+Try adding \UseRawInputEncoding as the first line of the file
+or specify an encoding such as \usepackage [latin1]{inputenc}
+in the document preamble.
+Alternatively, save the file in UTF-8 using your editor or another tool
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:403: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.403 ...e $CommitteeVote(ctx, round, s^{\′}, τ
+                                                  step, r)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:408: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.408     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:418: Missing \endcsname inserted.
+<to be read again> 
+                   \ALG@currentblock@0 
+l.418     \Function
+                   {$CommonCoinFlipVote$}{$hblock, step, blockHash$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:418: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.418     \Function
+                   {$CommonCoinFlipVote$}{$hblock, step, blockHash$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:422: LaTeX Error: Unicode character τ (U+03C4)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.422 ... \gets CountVotes(ctx,round,step,Tstep,τ
+                                                  step,λstep)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:422: LaTeX Error: Unicode character λ (U+03BB)
+               not set up for use with LaTeX.
+
+See the LaTeX manual or LaTeX Companion for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.422 ...CountVotes(ctx,round,step,Tstep,τstep,λ
+                                                  step)$
+You may provide a definition with
+\DeclareUnicodeCharacter 
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:431: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.431     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:442: Missing \endcsname inserted.
+<to be read again> 
+                   \ALG@currentblock@0 
+l.442     \Function
+                   {$CommonCoin$}{$ctx, round, step, \tau$}
+The control sequence marked <to be read again> should
+not appear between \csname and \endcsname.
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:442: Extra \endcsname.
+\ALG@makebeginrepeat ...\ALG@thisblock \endcsname 
+                                                  \relax \def \ALG@thisblock...
+l.442     \Function
+                   {$CommonCoin$}{$ctx, round, step, \tau$}
+I'm ignoring this, since I wasn't doing a \csname.
+
+
+LaTeX Warning: Command \textlangle invalid in math mode on input line 446.
+
+
+LaTeX Warning: Command \textlangle invalid in math mode on input line 446.
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 446.
+
+
+LaTeX Warning: Command \textrangle invalid in math mode on input line 446.
+
+
+c:/Users/argic/Desktop/ALGORAND NODE PSEUDOCODE/algorand-protocol-node-overview/Latex files/Algorand node.tex:454: Package algorithmicx Error: Some blocks are not closed!!!.
+
+See the algorithmicx package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.454     \end{algorithmic}
+                           
+(That was another \errmessage.)
+
+[5] [6] [7] (./Algorand node.aux
 LaTeX Info: Redefining \. on input line 9.
 LaTeX Info: Redefining \% on input line 9.
 )
@@ -778,18 +1221,18 @@ LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
  ) 
 Here is how much of TeX's memory you used:
- 28576 strings out of 474968
- 702638 string characters out of 5780081
- 1153970 words of memory out of 5000000
- 49610 multiletter control sequences out of 15000+600000
- 472485 words of font info for 41 fonts, out of 8000000 for 9000
+ 28612 strings out of 474968
+ 703094 string characters out of 5780081
+ 1161970 words of memory out of 5000000
+ 49643 multiletter control sequences out of 15000+600000
+ 474027 words of font info for 46 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 94i,8n,92p,824b,609s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
-Output written on "Algorand node.pdf" (3 pages, 112456 bytes).
+ 94i,10n,92p,824b,609s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
+Output written on "Algorand node.pdf" (7 pages, 159168 bytes).
 PDF statistics:
- 57 PDF objects out of 1000 (max. 8388607)
- 35 compressed objects within 1 object stream
+ 86 PDF objects out of 1000 (max. 8388607)
+ 54 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 
