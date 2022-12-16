@@ -44,18 +44,18 @@
 
 
 
-
-
 \begin{document}
 
 \section{Introduction}
-
-In the following document we present a detailed pseudocode interpretation of the program run by an Algorand node with at least one online (aka. participating)
-account. We attempt to explain the 5 main stages of the code supporting the protocol in a clear and concise way.
-This work aims to provide a basis for an Algorand blockchain simulator currently in development.
+In the following document we present a detailed pseudocode interpretation 
+of the program run by an Algorand node with at least one online (aka. 
+participating)
+account. We attempt to explain the 5 main stages of the code supporting 
+the protocol in a clear and concise way.
+This work aims to provide a basis for an Algorand blockchain simulator 
+currently in development.
 
 \section{Main algorithm}
-
 
 \begin{algorithm}
     \begin{algorithmic}[1]
@@ -74,65 +74,75 @@ In fact, they don't force transactions to be added at all, being entirely possib
 More research is needed on how block data is put together.
 Block metadata is well documented, but is added into it later in the block proposal stage.
 
-\begin{algorithm}
-    \begin{algorithmic}[H]
-    \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
-        \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
+% \begin{algorithm}
+%     \begin{algorithmic}[H]
+%     \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
+%         \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
 
-        \For{$a \in A$}
-            \State $<sorthash, \pi, j>\gets Sortition(a.sk, getSortitionSeed(round), t, role, $ \newline
-            $sortition_w(a, round), sortitionW(round))$
-            \If{$j > 0$}
-                \State $priority \gets Min_{n \in [1,j]}{Hash(sorthash || n)}$
-                \State $UserPriorityHashTable[a] = priority$
+%         \For{$a \in A$}
+%             \State $<sorthash, \pi, j>\gets Sortition(a.sk, getSortitionSeed(round), t, role, $ \newline
+%             $sortition_w(a, round), sortitionW(round))$
+%             \If{$j > 0$}
+%                 \State $priority \gets \min_{n \in [1,j]}{Hash(sorthash || n)}$
+%                 \State $UserPriorityHashTable[a] = priority$
 
-                \State $msg \gets MSG(a.pk, Signed{a.sk}(priority, <sorthash, \pi>))$
-                \State $ProposalMsgsSent \cup= msg$
-                \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(priority, <sorthash, \pi>))$
-            \EndIf
-        \EndFor\
+%                 \State $msg \gets MSG(a.pk, Signed_{a.sk}(priority, <sorthash, \pi>))$
+%                 \State $ProposalMsgsSent \cup= msg$
+%                 \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(priority, <sorthash, \pi>))$
+%             \EndIf
+%         \EndFor\
+
+%         \While{$elapsed$ $time$ $< proposal$ $time$}
+%             \State $incomingMsgs.push(listen())$
+%         \EndWhile\
+
+%         \State $msgs \gets incomingMsgs[round, step=0]$
 
 
-        \While{$elapsed$ $time$ $< proposal$ $time$}
-            \State $incomingMsgs.push(listen())$
-        \EndWhile\
+%         \State $lowestHashMsg \gets m\ |\ m.priority = \min_{m.priority\ \in\ incomingMsgs}$ \newline
+%         ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
 
-        \State $msgs \gets incomingMsgs[round, step=0]$
+%         \State $FullBlockToPropose \gets empty\_block(round)$
 
+%         \If{$lowestHashMsg \in msgsSent$}
+%             \State $FullBlockToPropose \gets B$
+%             \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
+%             \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, <sorthash, \pi>))$
+%         \Else
+%         {
+%             \While{$elapsed$ $time < fullblock$ $time$}
+%                 \State $incomingMsgs.push(listen())$
+%                 \State $m \gets incomingMsgs.back()$
+%                 \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash$ $=$ $H(m.FullBlock)$}
+%                     \State $FullBlockToPropose \gets m.FullBlock$
+%                 \EndIf
+%             \EndWhile
+%         }
+%         \EndIf
 
-        \State $lowestHashMsg \gets m\ |\ m.priority = Min_{m.priority\ \in\ incomingMsgs}$ \newline
-        ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
+%         \Return $H(FullBlockToPropose)$
 
-        \State $FullBlockToPropose \gets empty\_block(round)$
+%     \EndFunction
+%     \end{algorithmic}
+%     \caption{\underline{Block proposal}}
+% \end{algorithm}
 
-        \If{$lowestHashMsg \in msgsSent$}
-            \State $FullBlockToPropose \gets B$
-            \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
-            \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, <sorthash, \pi>))$
-        \Else
-        {
-            \While{$elapsed$ $time < fullblock$ $time$}
-                \State $incomingMsgs.push(listen())$
-                \State $m \gets incomingMsgs.back()$
-                \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash$ $=$ $H(m.FullBlock)$}
-                    \State $FullBlockToPropose \gets m.FullBlock$
-                \EndIf
-            \EndWhile
-        }
-        \EndIf
-
-        \Return $H(FullBlockToPropose)$
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{Block proposal}}
-\end{algorithm}
-
-The block proposal stage (step 0 on specs) is the first stage of the consensus algorithm per se. Nodes loop through all their online accounts, running sortition to determine which accounts will be proposing the assembled block (if any).
-It then proceeds to gossip the priority, sortition hash and proof of the designated accounts (signed with their leaf ephemeral keys according to the signature scheme described on specs).
-Afterwards, it waits for a designated time to receive other block proposals, validates them and keeps the one with the lowest observed hash (maximum priority).
-Once the time is reached, if the selected proposal came from this node, the seed is computed and added into the finished block's metadata. Then, the complete block is gossipped to the network.
-In the most common case where the proposal is not the one selected locally by the node, it waits for another pre-designated time to receive the full block from the network.
+The block proposal stage (step 0 on specs) is the first stage of the 
+consensus algorithm per se. Nodes loop through all their online accounts, 
+running sortition to determine which accounts will be proposing the 
+assembled block (if any).
+It then proceeds to gossip the priority, sortition hash and proof of 
+the designated accounts (signed with their leaf ephemeral keys according 
+to the signature scheme described on specs).
+Afterwards, it waits for a designated time to receive other block proposals, 
+validates them and keeps the one with the lowest observed hash (maximum 
+priority).
+Once the time is reached, if the selected proposal came from this node, 
+the seed is computed and added into the finished block's metadata. 
+Then, the complete block is gossipped to the network.
+In the most common case where the proposal is not the one selected 
+locally by the node, it waits for another pre-designated time to 
+receive the full block from the network.
 In case of timeout in this last stage, it falls back to the empty block.
 
 \begin{algorithm}
@@ -187,24 +197,20 @@ Therefore, there will at most be one non-empty block that can be returned by sof
         \State $CommonCoinFlipVote(hblock, step)$
         \State $step++$
     \EndWhile
-
-\State $HangForever()$
-    
+    \State $HangForever()$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{CertifyVote}}
 \end{algorithm}
 
 The certify vote stage (which potentially encompasses steps 2 through 255) is the core of the BA* algorithm.
-The main loop executes a maximum of 254 times (from step 2 to step 255, labeled \"cert\" and \"down\" respectively on the specs).
+The main loop executes a maximum of 254 times (from step 2 to step 255, labeled ``cert'' and ``down'' respectively on the specs).
 This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a small chance to force consensus on their desired block with each iteration.
 The main algorithm is comprised of three important procedures: the block step, where, if selected as a committee member, votes for the block selected in the soft voting stage and then attempts to confirm it by listening to other cast votes until a threshold is met.
 If this step times out and no consensus is reached, it moves on to the empty step. Very similar in nature to the previous one, in this procedure a vote is cast for the value in hblock and then it attempts to confirm an empty block.
 Finally, if no consensus is reached on the empty block, it arrives to the common coin procedure, where it attempts another vote and vote count for the empty block. If here, no consensus is reached, it uses the pseudo-randomness of the VRF hash output to "flip a coin" by looking at the last bit of the lowest sortition hash owned by observed committee members.
 This makes it so even tho the coin flip is random, most users will observe the same outcome and will in turn set their hblock values according to the observed bit. In turn, this prevents an adversary from being able to easily predict beforehand what the next vote of a user would be if they were a committee user, and therefore the attacker can't force consensus 
 sending their vote messages to targeted users in a scenario where the voting is split pretty evenly but no block has quite enough votes to push the threshold.\\
-\\
-\\
 
 \begin{algorithm}
     \begin{algorithmic}[H]
@@ -212,59 +218,62 @@ sending their vote messages to targeted users in a scenario where the voting is 
 
     \State $r \gets CountVotes(ctx, round, FINAL, Tfinal, tfinal, lstep)$
     \If{$r = hblock$}
-        \State \Return $<FINAL, BlockOfHash(hblock)>$ 
+        \State \Return $\langle FINAL, BlockOfHash(hblock)\rangle$ 
     \Else
     {
-        \State \Return $<TENTATIVE, BlockOfHash(hblock)>$
+        \State \Return $\langle TENTATIVE, BlockOfHash(hblock)\rangle $
     }
     \EndIf
-        
     \EndFunction
     \end{algorithmic}
     \caption{\underline{BlockConfirmation}}
 \end{algorithm}
 
-
-
-Finally, the proposed block (be it an empty block or a specific one proposed by a designated user) is confirmed and added to the ledger.
+Finally, the proposed block (be it an empty block or a specific one 
+proposed by a designated user) is confirmed and added to the ledger.
 We introduce the notions of FINAL and TENTATIVE consensus.
-Specifically, if a block is confirmed in the very first step of the certify vote stage, its vote is cast as FINAL.
-If enough users reproduce this behavior, the vote count on line 2 for votes cast in this fashion is over the required threshold, and the consensus is labeled as FINAL.
-This means that the block is simultaneously added to the ledger and confirmed, as well as immediately confirming any prior blocks that could have been labeled TENTATIVE.
-If this node is not able to ensure that enough users considered the block represented by hblock as FINAL, the consensus is labeled as TENTATIVE, and it may be confirmed by a later FINAL block.
-The BlockOfHash() function outputs the full block for the provided hash, either by returning a locally available copy or by requesting it from other users.\
-
-
+Specifically, if a block is confirmed in the very first step of the 
+certify vote stage, its vote is cast as FINAL.
+If enough users reproduce this behavior, the vote count on line 2 for 
+votes cast in this fashion is over the required threshold, and the 
+consensus is labeled as FINAL.
+This means that the block is simultaneously added to the ledger and 
+confirmed, as well as immediately confirming any prior blocks that 
+could have been labeled TENTATIVE.
+If this node is not able to ensure that enough users considered the 
+block represented by hblock as FINAL, the consensus is labeled as 
+TENTATIVE, and it may be confirmed by a later FINAL block.
+The BlockOfHash() function outputs the full block for the provided 
+hash, either by returning a locally available copy or by requesting 
+it from other users.
 
 \section{Subroutines}
-
 
 \begin{algorithm}
     \begin{algorithmic}[H]
     \Function{$CountVotes$}{$ctx, round, FINAL, Tfinal, tfinal, lstep$}
 
-    \State $counts \gets \{\}$ // hash table, new keys mapped to 0
-    \State $voters \gets \{\}$
-    \State $msgs \gets incomingMsgs[round,step]$
+    % \State $counts \gets \{\}$ // hash table, new keys mapped to 0
+    % \State $voters \gets \{\}$
+    % \State $msgs \gets incomingMsgs[round,step]$
 
-    \While{$TRUE$}
-        \State $m \gets msgs.next()$
-        \If{$m = \bot$}
-            \If{$ElapsedTime > startTime + lambda$}
-                \State $\Return$ $TIMEOUT$
-            \EndIf
-        \Else
-        {
-            \State $<votes, value, sorthash> \gets ProcessMsg(ctx, t, m)$
-            \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
-            \State $voters$ $\cup=$ ${m.pk}$
-            \State $counts[value] += votes$
-            \IfThen {$counts[value] \geq T * \tau$}{$\Return$ $value$}
-        }
-        \EndIf
-
-    \EndWhile
-
+    % \While{$TRUE$}
+    %     \State $m \gets msgs.next()$
+    %     \If{$m = \bot$}
+    %         \If{$ElapsedTime > startTime + lambda$}
+    %             \State $\Return$ $TIMEOUT$
+    %         \EndIf
+    %     \Else
+    %     {
+    %         \State $<votes, value, sorthash> \gets ProcessMsg(ctx, t, m)$
+    %         \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
+    %         \State $voters$ $\cup=$ $\{m.pk\}$
+    %         \State $counts[value] += votes$
+    %         \IfThen {$counts[value] \geq T * \tau$}{$\Return$ $value$}
+    %     }
+    %     \EndIf
+    % \EndWhile
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{CountVotes}}
 \end{algorithm}
@@ -277,15 +286,13 @@ It's important to notice that every committee user's vote is processed at most o
 \begin{algorithm}
     \begin{algorithmic}[H]
     \Function{$CommitteeVote$}{$ctx, round, FINAL, Tfinal, tfinal, lstep$}
-    
-    
-    \State $role \gets ⟨“committee”,round,step⟩$
-    \State $⟨sorthash,π,j⟩ \gets Sortition(user.sk,ctx.seed,τ ,role,ctx.weight[user.pk],ctx.W)$
+    \State $role \gets \langle {committee},round,step\rangle$
+    \State $\langle sorthash,\pi,j\rangle \gets Sortition(user.sk,ctx.seed,\tau ,role,ctx.weight[user.pk],ctx.W)$
     // only committee members originate a message
     \If{$j > 0$}
         \State $GOSSIP\_MSG(user.pk, Signed_{user.sk} (round,step,sorthash,\pi,H(ctx.last_block),value))$
     \EndIf
-    
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{CommitteeVote}}
 \end{algorithm}
@@ -301,6 +308,7 @@ and in that case casts a vote for the block passed as argument.
         \Else
             \State $\Return$ $H(ctx.LastBlock.seed||r)$
         \EndIf
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{ComputeSeed}}
 \end{algorithm}
@@ -318,11 +326,11 @@ and $b$ is the upper bound for the loss of strong synchrony (according to the we
         \State $<hash, \pi> \gets VRF(seed||role)$
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
-        \While{$\frac{hash}{2^{hashlen}}$ \notin $[ \sum{}_{k=0}^{j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^jB(k;w,p), \sum_{k=0}^{j+1}B(k;w,p))$}
             \State $j++$
         \EndWhile
         \Return $<hash,\pi,j>$
-
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{Sortition}}
 \end{algorithm}
@@ -343,10 +351,11 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
         \IfThen{$\neg VerifyVRF_{pk}(hash, \pi, seed||role)$}{$\Return 0$}
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
-        \While{$\frac{hash}{2^{hashlen}}$ \notin $[ \sum{}_{k=0}^{j}B(k;w,p), \sum{}_{k=0}^{j+1}B(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^jB(k;w,p), \sum_{k=0}^{j+1}B(k;w,p))$}
             \State $j++$
         \EndWhile
         \Return $j$
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{VerifySortition}}
 \end{algorithm}
@@ -363,12 +372,12 @@ according to their respective observed stake.
         \State $r \gets hblock$
 
         \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-        \State $r \gets CountVotes(ctx,round,step,Tstep,τstep,λstep)$
+        \State $r \gets CountVotes(ctx,round,step,Tstep,\tau step,\lambda step)$
         \If{$r = TIMEOUT$}
             \State $r \gets blockHash$
         \ElsIf{$r \neq emptyHash$}
-            \For{$step < s^{\′} \leq step+3$}
-                \State $CommitteeVote(ctx, round, s^{\′}, τstep, r)$
+            \For{$step < s\tilde\leq step + 3$}
+                \State $CommitteeVote(ctx, round, s\tilde, \tau step, r)$
             \EndFor
             \If {$step = 1$}
                 \State $CommitteeVote(ctx, round, FINAL, \tau_{final}, r)$
@@ -376,6 +385,7 @@ according to their respective observed stake.
             \State $bConfirmed \gets TRUE$
         \EndIf
         $\Return$ $<r, bConfirmed>$
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{BLOCK\_STEP}}
 \end{algorithm}
@@ -395,16 +405,17 @@ Finally, the procedure returns the selected block amd a flag to either continue 
         \State $r \gets hblock$
 
     \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-    \State $r \gets CountVotes(ctx,round,step,Tstep,τstep,λstep)$
+    \State $r \gets CountVotes(ctx,round,step,Tstep,\tau step,\lambda step)$
     \If{$r = TIMEOUT$}
         \State $r \gets emptyHash$
     \ElsIf{$r = emptyHash$}
-        \For{$step < s^{\′} \leq step+3$}
-            \State $CommitteeVote(ctx, round, s^{\′}, τstep, r)$
+        \For{$step < s\tilde \leq step+3$}
+            \State $CommitteeVote(ctx, round, s\tilde, \tau step, r)$
         \EndFor
         \State $bConfirmed \gets TRUE$
     \EndIf
     $\Return$ $<r, bConfirmed>$
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{EMPTY\_STEP}}
 \end{algorithm}
@@ -419,7 +430,7 @@ the block to attempt to confirm is the empty block, and there is no final consen
         \State $r \gets hblock$
     
         \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-        \State $r \gets CountVotes(ctx,round,step,Tstep,τstep,λstep)$
+        \State $r \gets CountVotes(ctx,round,step,Tstep,\tau step,\lambda step)$
         \If{$r = TIMEOUT$}
             \If{$CommonCoin(ctx,round,step,Tstep,\tau_{step},lambdaStep) = 0$}
                 \State $r \gets blockHash$
@@ -427,7 +438,7 @@ the block to attempt to confirm is the empty block, and there is no final consen
                 \State $r \gets emptyHash$
             \EndIf
         \EndIf
-
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{CommonCoinFlipVote}}
 \end{algorithm}
@@ -443,14 +454,14 @@ next vote will be for a given user, and introduces a tool to facilitate reaching
 
     \State $minhash \gets 2^{hashlen}$
     \For{$m \in incomingMsgs[round, step]$}
-        \State $⟨votes,value,sorthash⟩ \gets ProcessMsg(ctx,\tau,m)$
+        \State $\langle votes,value,sorthash\rangle \gets ProcessMsg(ctx,\tau,m)$
         \For{$1 \leq j < votes$}
                 \State $h \gets H(sorthash||j)$
                 \IfThen{$h < minhash$}{$minhash \gets h$}
         \EndFor
     \EndFor
     $\Return$ $minhash$ $mod$ $2$
-
+    \EndFunction
     \end{algorithmic}
     \caption{\underline{CommonCoin}}
 \end{algorithm}
