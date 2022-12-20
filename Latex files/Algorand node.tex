@@ -5,6 +5,8 @@
 \usepackage{caratula}
 % \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
 
+\usepackage{float}
+
 % Comandos para simbolos matematicos.
 \usepackage{amsmath, amssymb, tabularx}
 
@@ -80,7 +82,7 @@ currently in development. \newline
 \section{Main algorithm}
 
 \begin{algorithm}
-    \begin{algorithmic}[1]
+    \begin{algorithmic}[H]
     \Function{$BlockCreation()$}{$transactionPool$}
     
     \State $Pick$ $transactions$ $from$ $transactionPool$
@@ -91,18 +93,19 @@ currently in development. \newline
     \label{alg:fuerza_bruta}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
-    \item The local pending transaction pool, which should be accesible to the node
+    \item The local pending transaction pool, which should be accesible to the node\\
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
+\\
 The algorand protocol specs don't ensure a specific way or internal order in which transactions are added to the block.
 In fact, they don't force transactions to be added at all, being entirely possible for a node to propose an empty block.
 More research is needed on how block data is put together.
 Block metadata is well documented, but is added into it later in the block proposal stage.\\
 
-\textbf{Returns:} a full block, consisting of a variable number of transactions, and the following metadata:
+\noindent \textbf{Returns:} A full block, consisting of a variable number of transactions, and the following metadata:
 \begin{itemize}
     \item round
     \item genesis identifier
@@ -121,7 +124,7 @@ Block metadata is well documented, but is added into it later in the block propo
     \begin{algorithmic}[H]
     \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
         %\State $P = {}$ //Set of all proposals observed and accepted by this node
-        \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
+        \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node\\
 
         \For{$a \in A$}
             \State $\langle sorthash, \pi, j \rangle \gets Sortition(a.sk, getSortitionSeed(round), t, role, $ \newline
@@ -130,15 +133,15 @@ Block metadata is well documented, but is added into it later in the block propo
                 \State $priority \gets \min_{n \in [1,j]}{Hash(sorthash || n)}$
                 \State $UserPriorityHashTable[a] = priority$
 
-                \State $msg \gets MSG(a.pk, Signed_{a.sk}(priority, <sorthash, \pi>))$
-                \State $ProposalMsgsSent \cup= msg$
-                \State $GOSSIP\_MSG(a.pk, Signed_{a.sk}(priority, <sorthash, \pi>))$
+                \State $msg \gets MSG(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi \rangle))$
+                \State $ProposalMsgsSent$ $\cup=$ $msg$
+                \State $GOSSIP\_MSG(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi \rangle))$
             \EndIf
-        \EndFor\
+        \EndFor\\
 
         \While{$elapsed$ $time$ $< \lambda_{proposal}$}
             \State $incomingMsgs.push(listen())$
-        \EndWhile\
+        \EndWhile\\
 
         \State $msgs \gets incomingMsgs[round, step=0]$
 
@@ -146,12 +149,12 @@ Block metadata is well documented, but is added into it later in the block propo
         \State $lowestHashMsg \gets m\ |\ m.priority = \min_{m.priority\ \in\ incomingMsgs}$ \newline
         ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
 
-        \State $FullBlockToPropose \gets empty\_block(round)$
+        \State $FullBlockToPropose \gets empty\_block(round)$\\
 
         \If{$lowestHashMsg \in msgsSent$}
             \State $FullBlockToPropose \gets B$
             \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
-            \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, <sorthash, \pi>))$
+            \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, \langle sorthash, \pi \rangle))$
         \Else
         {
             \While{$elapsed$ $time < \lambda_{block}$}
@@ -171,13 +174,13 @@ Block metadata is well documented, but is added into it later in the block propo
     \caption{\underline{Block proposal}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block $B$ received from the previous stage
     \item A list of online accounts associated with this node, $A$ (exposed to the node)
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 The block proposal stage (step 0 on specs) is the first stage of the 
 consensus algorithm per se. Nodes loop through all their online accounts, 
 running sortition to determine which accounts will be proposing the 
@@ -194,9 +197,9 @@ Then, the complete block is gossipped to the network.
 In the most common case where the proposal is not the one selected 
 locally by the node, it waits for another pre-designated time to 
 receive the full block from the network.
-In case of timeout in this last stage, it falls back to the empty block.
+In case of timeout in this last stage, it falls back to the empty block.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item The hash of a full block, whether a block proposed by a user (including users whose accounts are 
     linked to this node) or an empty block in any of the special cases mentioned above
@@ -225,20 +228,20 @@ In case of timeout in this last stage, it falls back to the empty block.
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$ received from the previous stage (block proposal)
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce any ammount of potentially conflicting proposed blocks in the stage prior into a binary choice, either a block proposed by a user or an empty one.
 In the first sub-step, each commitee member gossips the proposed block, and then does a preliminary vote count while it waits for other nodes to catch up.
 In the second sub-step, committee members vote for the hash that received at least the ammount of votes set by the threshold for this step, or the hash of the default empty block if no hash was observed to receive enough votes.
 It relies heavily on the assumption that, if the block proposer was honest, most users will get to the soft vote stage with the same hblock parameter.
 However if the proposer was dishonest, then no single hblock may be popular enough to cross the threshold (and therefore this stage will return an empty\_hash).
-Therefore, there will at most be one non-empty block that can be returned by soft vote for all honest users.
+Therefore, there will at most be one non-empty block that can be returned by soft vote for all honest users.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item A block hash, chosen by a majority of users in the soft vote / reduction stage 
     (could be the empty block hash)
@@ -252,12 +255,12 @@ Therefore, there will at most be one non-empty block that can be returned by sof
     \State $step \gets 2$
     \While{$step < 256$}
         \\
-        \State $<hblock, bConfirmed> \gets BLOCK\_STEP(hblock, localBlockHash, step)$
+        \State $\langle hblock, bConfirmed \rangle \gets BLOCK\_STEP(hblock, localBlockHash, step)$
         \If{$bConfirmed$}{ $\Return$ $hblock$}
         \EndIf
         \State $step++$\\
    
-        \State $<hblock, bConfirmed> \gets EMPTY\_STEP(hblock,step)$
+        \State $ \langle hblock, bConfirmed \rangle \gets EMPTY\_STEP(hblock,step)$
         \If{$bConfirmed$}{ $\Return$ $hblock$}
         \EndIf
         \State $step++$\\
@@ -271,12 +274,12 @@ Therefore, there will at most be one non-empty block that can be returned by sof
     \caption{\underline{CertifyVote}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$ received from the previous stage (soft vote)
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 The certify vote stage (which potentially encompasses steps 2 through 255) is the core of the BA* algorithm.
 The main loop executes a maximum of 254 times (from step 2 to step 255, labeled ``cert'' and ``down'' respectively on the specs).
 This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a small chance to force consensus on their desired block with each iteration.
@@ -286,7 +289,7 @@ Finally, if no consensus is reached on the empty block, it arrives to the common
 This makes it so even tho the coin flip is random, most users will observe the same outcome and will in turn set their hblock values according to the observed bit. In turn, this prevents an adversary from being able to easily predict beforehand what the next vote of a user would be if they were a committee user, and therefore the attacker can't force consensus 
 sending their vote messages to targeted users in a scenario where the voting is split pretty evenly but no block has quite enough votes to push the threshold.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item A block hash certified by a majority of users, to be confirmed and added to the ledger in the next stage as TENTATIVE or FINAL depending
     on the observed voting share
@@ -309,12 +312,12 @@ sending their vote messages to targeted users in a scenario where the voting is 
     \caption{\underline{BlockConfirmation}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$ received from the previous stage (certify vote)
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 Finally, the proposed block (be it an empty block or a specific one 
 proposed by a designated user) is confirmed and added to the ledger.
 We introduce the notions of FINAL and TENTATIVE consensus.
@@ -331,9 +334,9 @@ block represented by hblock as FINAL, the consensus is labeled as
 TENTATIVE, and it may be confirmed by a later FINAL block.
 The BlockOfHash() function outputs the full block for the provided 
 hash, either by returning a locally available copy or by requesting 
-it from other users.
+it from other users.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item A full block to be added to the ledger, along with a flag indicating if
     the consensus achieved is TENTATIVE or FINAL in nature
@@ -358,7 +361,7 @@ it from other users.
                 \State $\Return$ $TIMEOUT$
             \EndIf
         \Else
-            \State $<votes, value, sorthash> \gets ProcessMsg(ctx, \tau, m)$
+            \State $ \langle votes, value, sorthash \rangle \gets ProcessMsg(ctx, \tau, m)$
             \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
             \State $voters$ $\cup=$ $\{m.pk\}$
             \State $counts[value] += votes$
@@ -370,7 +373,7 @@ it from other users.
     \caption{\underline{CountVotes}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
     \item $round$ = current round number
@@ -380,13 +383,13 @@ it from other users.
     \item $\lambda$ = maximum time to keep running the vote count and awaiting for network messages
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 This subroutine counts the votes for any observed block hash value, for a given round and step numbers.
 It returns as soon as it finds a value exceeding the specified threshold (which will also vary according to round and step).
 If no value is observed to have the required ammount of votes in the predetermined temporal window, it finishes with a TIMEOUT.
-It's important to notice that every committee user's vote is processed at most once for the given context.
+It's important to notice that every committee user's vote is processed at most once for the given context.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item the first block hash value observed to achieve the required threshold, or a TIMEOUT constant if none was found in the
     required time window
@@ -406,7 +409,7 @@ It's important to notice that every committee user's vote is processed at most o
     \caption{\underline{CommitteeVote}}
 \end{algorithm}
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
     \item $round$ = current round number
@@ -416,11 +419,11 @@ It's important to notice that every committee user's vote is processed at most o
     \item $\lambda$ = maximum time to keep running the vote count and awaiting for network messages
   \end{itemize}
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 This subroutine verifies that the caller is a member of the specified committee (for a given round and step number), 
 and in that case casts a vote for the block passed as argument.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}\\
 Has no return value, only gossips the specified vote if the caller is a committee member
 
 
@@ -438,7 +441,7 @@ Has no return value, only gossips the specified vote if the caller is a committe
 \end{algorithm}
 
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
     \item $round$ = current round number
@@ -446,7 +449,7 @@ Has no return value, only gossips the specified vote if the caller is a committe
   \end{itemize}
 
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 This subroutine computes the required sortition seed for the given round number, which goes in the proposed block's metadata.
 If the block is empty, the seed is a hash of the previous block's seed.
 The $get_{SKu}(ctx, round)$ helper function gets the relevant user's secret key (according to the signing scheme described in specs).
@@ -455,7 +458,7 @@ and $b$ is the upper bound for the loss of strong synchrony (according to the we
 
 TODO: reescribir detallando mejor el proceso de selección de la seed
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item the computed seed for the given block, ledger context and round
   \end{itemize}
@@ -463,20 +466,20 @@ TODO: reescribir detallando mejor el proceso de selección de la seed
 \begin{algorithm}
     \begin{algorithmic}[H]
     \Function{$Sortition$}{$sk, seed, \tau, role, w, W$}
-        \State $<hash, \pi> \gets VRF(seed||role)$
+        \State $ \langle hash, \pi \rangle \gets VRF(seed||role)$
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
         \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^jB(k;w,p), \sum_{k=0}^{j+1}B(k;w,p))$}
             \State $j++$
         \EndWhile
-        \Return $<hash,\pi,j>$
+        \Return $ \langle hash,\pi,j \rangle$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Sortition}}
 \end{algorithm}
 
 
-\textbf{Arguments:}
+\noindent \textbf{Arguments:}
 \begin{itemize}
     \item $sk$ = a user's secret key (an ephemeral key for the given round, according to key specs)
     \item $seed$ = the sortition seed to be used
@@ -487,16 +490,16 @@ TODO: reescribir detallando mejor el proceso de selección de la seed
   \end{itemize}
 
 
-\textbf{Description:}
+\noindent \textbf{Description:}\\
 The Sortition procedure is one of the most important subroutines in the main algorithm, as it's used in multiple stages and contexts.
 Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random Function) select a user with probability proportional
 to their weight (aka. stake) by returning a j parameter, which indicates the number of times that specific user was chosen.
 Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one of them is selected with probability $p = \frac{\tau}{W}$,
 where $\tau$ is the expected ammount of users to be selected for the given role.
 The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
-belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.
+belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.\\
 
-\textbf{Returns:}
+\noindent \textbf{Returns:}
 \begin{itemize}
     \item an integer $j$ that will be positive (larger than 0) if the user has been selected, and it's size corresponds to the ammount
     of sub-users for a given committee member

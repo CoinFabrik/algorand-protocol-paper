@@ -149,6 +149,17 @@ INPUT c:/texlive/2022/texmf-dist/tex/latex/graphics-def/pdftex.def
 INPUT c:/texlive/2022/texmf-dist/tex/latex/graphics-def/pdftex.def
 INPUT c:/texlive/2022/texmf-dist/tex/latex/graphics-def/pdftex.def
 INPUT c:/texlive/2022/texmf-dist/tex/latex/graphics-def/pdftex.def
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
+INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/amsmath/amsmath.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/amsmath/amsmath.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/amsmath/amsmath.sty
@@ -813,16 +824,6 @@ INPUT c:/texlive/2022/texmf-dist/tex/latex/algorithms/algorithm.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/algorithms/algorithm.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/algorithms/algorithm.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
-INPUT c:/texlive/2022/texmf-dist/tex/latex/float/float.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/base/ifthen.sty
 INPUT c:/texlive/2022/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 INPUT c:/texlive/2022/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
@@ -878,7 +879,6 @@ INPUT c:/texlive/2022/texmf-dist/tex/latex/amsfonts/umsb.fd
 INPUT c:/texlive/2022/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT c:/texlive/2022/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT c:/texlive/2022/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
-INPUT c:/texlive/2022/texmf-dist/fonts/tfm/public/cm/cmr8.tfm
 INPUT c:/texlive/2022/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 OUTPUT Algorand node.pdf
 INPUT c:/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map
@@ -895,6 +895,5 @@ INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb
 INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb
 INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb
-INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb
 INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb
 INPUT c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb
