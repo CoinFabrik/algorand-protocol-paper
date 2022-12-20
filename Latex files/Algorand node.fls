@@ -13,8 +13,8 @@ INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/base/inputenc.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/babel.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/babel.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/switch.def
-INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel-spanish/spanish.ldf
-INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel-spanish/spanish.ldf
+INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/nil.ldf
+INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/nil.ldf
 INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/babel.def
 INPUT /usr/local/texlive/2018/texmf-dist/tex/generic/babel/txtbabel.def
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/a4wide/a4wide.sty
@@ -248,6 +248,8 @@ INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/algorithms/algorithm.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/algorithms/algorithm.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/float/float.sty
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/float/float.sty
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/marginnote/marginnote.sty
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/marginnote/marginnote.sty
 INPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.aux
 INPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.aux
 OUTPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.aux
@@ -270,9 +272,6 @@ INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/map/fontname/texfonts.map
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmr12.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmbx12.tfm
-INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmr8.tfm
-INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmbx10.tfm
-INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -285,12 +284,22 @@ INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/amsfonts/umsb.fd
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm10.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm7.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/amsfonts/symbols/msbm5.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/base/omscmr.fd
+INPUT /usr/local/texlive/2018/texmf-dist/tex/latex/base/omscmr.fd
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmr8.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmbx10.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmss10.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmss8.tfm
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmss8.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmbx7.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmbx5.tfm
 OUTPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.pdf
 INPUT /usr/local/texlive/2018/texmf-var/fonts/map/pdftex/updmap/pdftex.map
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/tfm/public/cm/cmcsc10.tfm
+INPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.bbl
+INPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.bbl
 INPUT /home/ariel/Documents/jobs/coinfarbik/mega-ace/simulator-proj/algorand-protocol-node-overview/Latex files/Algorand node.aux
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
@@ -301,4 +310,6 @@ INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pf
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmss10.pfb
 INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb
+INPUT /usr/local/texlive/2018/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb

@@ -1,6 +1,6 @@
 \documentclass[10pt,a4paper]{article}
 \usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
-\usepackage[spanish]{babel} % para que comandos como \today den el resultado en castellano
+\usepackage{babel} % para que comandos como \today den el resultado en Ingles
 \usepackage{a4wide} % márgenes un poco más anchos que lo usual
 \usepackage{caratula}
 % \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
@@ -24,11 +24,11 @@
 
 % Comandos para teoremas etc.
 \usepackage{amsthm}
-\newtheorem{theorem}{Teorema}
-\newtheorem{lemma}[theorem]{Lema}
-\newtheorem{proposition}[theorem]{Proposición}
-\newtheorem{remark}{Observación}
-\newtheorem{corollary}{Corolario}
+% \newtheorem{theorem}{Teorema}
+% \newtheorem{lemma}[theorem]{Lema}
+% \newtheorem{proposition}[theorem]{Proposición}
+% \newtheorem{remark}{Observación}
+% \newtheorem{corollary}{Corolario}
 % \newproof{proof}{Demostración}
 
 % Comandos para algoritmos.
@@ -43,6 +43,7 @@
 \pgfplotsset{compat=1.16}
 
 
+\usepackage{marginnote}
 
 \begin{document}
 
@@ -57,87 +58,119 @@ currently in development.
 
 \section{Main algorithm}
 
+Assume right now that a given node is fixed, we are at round $r$,
+this node has access to a set of accounts $a\in A$. Moreover,
+the account owner has computed for each round a round 
+leaf ephemeral key $a_{sk}$.
+The main algoritm goes over the following steps on every round.
+\begin{itemize}
+    \item block creation: each node may assemble a block, which includes 
+transactions and metadata.
+    \item block proposal: each block is going to run the VRF algorithm
+    to decide whether it should participate in the next stage. If it
+    gets selected, then it is going to assemble and then send the block 
+    proposal to the other nodes.
+\end{itemize}
+
+
 \begin{algorithm}
     \begin{algorithmic}[1]
-    \Function{$BlockCreation()$}{}
+    \Function{$\mathsf{BlockCreation}()$}{}
     
     \State $Pick$ $transactions$ $from$ $transactionPool$
-    
+    \State \Return $\mathrm{Block}$    
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block creation}}
     \label{alg:fuerza_bruta}
 \end{algorithm}
 
-The algorand protocol specs don't ensure a specific way or internal order in which transactions are added to the block.
-In fact, they don't force transactions to be added at all, being entirely possible for a node to propose an empty block.
+The Algorand protocol specs (\cite{algorand}) do not ensure a specific way 
+or internal order in which transactions are added to the block.
+%In fact, they don't force transactions to be added at all, being entirely possible 
+%for a node to propose an empty block.
 More research is needed on how block data is put together.
-Block metadata is well documented, but is added into it later in the block proposal stage.
+Block metadata is added later (see below \ref{sect:metadata} for more 
+details).
 
-% \begin{algorithm}
-%     \begin{algorithmic}[H]
-%     \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
-%         \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
+\begin{algorithm}
+    \begin{algorithmic}[1]
+    \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
+        \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
 
-%         \For{$a \in A$}
-%             \State $<sorthash, \pi, j>\gets Sortition(a.sk, getSortitionSeed(round), t, role, $ \newline
-%             $sortition_w(a, round), sortitionW(round))$
-%             \If{$j > 0$}
-%                 \State $priority \gets \min_{n \in [1,j]}{Hash(sorthash || n)}$
-%                 \State $UserPriorityHashTable[a] = priority$
+        \For{$a \in A$}
+            \State $\langle sorthash, \pi, j\rangle\gets 
+            \mathsf{Sortition}(
+                a_{sk}, 
+                \mathsf{getSortitionSeed}(round), 
+                t, 
+                role, $ \newline
+                ${}$ ${\hskip 5.2cm}\mathsf{sortition}_w(a, round), 
+                \mathsf{sortitionW}(round)
+            )$
+            \If{$j > 0$}
+                \State $priority \gets \min\{\mathsf{Hash}(sorthash || n):1\le n\le j\}$
+                \State $UserPriorityHashTable[a] = priority$
 
-%                 \State $msg \gets MSG(a.pk, Signed_{a.sk}(priority, <sorthash, \pi>))$
-%                 \State $ProposalMsgsSent \cup= msg$
-%                 \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(priority, <sorthash, \pi>))$
-%             \EndIf
-%         \EndFor\
+                \State $msg \gets \mathsf{MSG}(a.pk, \mathsf{Signed}_{a.sk}(priority, \langle sorthash, \pi\rangle))$
+                \State $ProposalMsgsSent \cup= msg$
+                \State $\mathsf{GOSSIP\_MSG}(a.pk, Signed{a.sk}(priority, \langle sorthash, \pi\rangle))$
+            \EndIf
+        \EndFor\
 
-%         \While{$elapsed$ $time$ $< proposal$ $time$}
-%             \State $incomingMsgs.push(listen())$
-%         \EndWhile\
+        \While{$elapsed$ $time$ $< proposal$ $time$}
+            \State $incomingMsgs.push(listen())$
+        \EndWhile\
 
-%         \State $msgs \gets incomingMsgs[round, step=0]$
+        \State $msgs \gets incomingMsgs[round, step=0]$
 
+        \State $lowestHashMsg \gets m\ |\ m.priority = \min_{m.priority\ \in\ incomingMsgs}$ \newline
+        ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
 
-%         \State $lowestHashMsg \gets m\ |\ m.priority = \min_{m.priority\ \in\ incomingMsgs}$ \newline
-%         ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
+        \State $FullBlockToPropose \gets empty\_block(round)$
 
-%         \State $FullBlockToPropose \gets empty\_block(round)$
+        \If{$lowestHashMsg \in msgsSent$}
+            \State $FullBlockToPropose \gets B$
+            \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
+            \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, <sorthash, \pi>))$
+        \Else
+            \While{$elapsed$ $time < fullblock$ $time$}
+                \State $incomingMsgs.push(listen())$
+                \State $m \gets incomingMsgs.back()$
+                \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash$ $=$ $H(m.FullBlock)$}
+                    \State $FullBlockToPropose \gets m.FullBlock$
+                \EndIf
+            \EndWhile
+        \EndIf
+        \Return $H(FullBlockToPropose)$
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{Block proposal}}
+\end{algorithm}
 
-%         \If{$lowestHashMsg \in msgsSent$}
-%             \State $FullBlockToPropose \gets B$
-%             \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
-%             \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, <sorthash, \pi>))$
-%         \Else
-%         {
-%             \While{$elapsed$ $time < fullblock$ $time$}
-%                 \State $incomingMsgs.push(listen())$
-%                 \State $m \gets incomingMsgs.back()$
-%                 \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash$ $=$ $H(m.FullBlock)$}
-%                     \State $FullBlockToPropose \gets m.FullBlock$
-%                 \EndIf
-%             \EndWhile
-%         }
-%         \EndIf
+The {\bf block proposal} stage (step 0 on specs) is the first stage of the 
+consensus algorithm. 
+First, the node loops through all their online accounts ($a\in A$), 
+running the sortition subroutine ($\mathsf{sortition}()$).
+The sortition subroutine determines if an account $a$ is selected to 
+propose the assembled block $B$, it returns the sortition hash 
+${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
+that is used to prioritize votes.
 
-%         \Return $H(FullBlockToPropose)$
-
-%     \EndFunction
-%     \end{algorithmic}
-%     \caption{\underline{Block proposal}}
-% \end{algorithm}
-
-The block proposal stage (step 0 on specs) is the first stage of the 
-consensus algorithm per se. Nodes loop through all their online accounts, 
-running sortition to determine which accounts will be proposing the 
-assembled block (if any).
-It then proceeds to gossip the priority, sortition hash and proof of 
+If $j>0$ then the address $a$ gets to vote and proceeds as follows.
+For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
+it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
+and keeps the minimum (line 6), which we set as the $priority$ of this
+account for this round. 
+It then proceeds to gossip the priority, sortition hash and proof of \marginpar[Que es la UserPriorityHashTable??]{Que es la UserPriorityHashTable??}
 the designated accounts (signed with their leaf ephemeral keys according 
 to the signature scheme described on specs).
-Afterwards, it waits for a designated time to receive other block proposals, 
-validates them and keeps the one with the lowest observed hash (maximum 
-priority).
-Once the time is reached, if the selected proposal came from this node, 
+
+In the next step, the algorithm waits until $proposal time$ while it receives 
+block proposals, \marginpar{De donde sale proposal time?}
+keeps the one with the lowest observed hash (maximum priority) always
+validating before accepting it as a possible proposal.\marginpar{Que quiere decir validar?}
+Once the elapsed time is reached, if the selected proposal came from this node, 
 the seed is computed and added into the finished block's metadata. 
 Then, the complete block is gossipped to the network.
 In the most common case where the proposal is not the one selected 
@@ -168,12 +201,20 @@ In case of timeout in this last stage, it falls back to the empty block.
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
-The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce any ammount of potentially conflicting proposed blocks in the stage prior into a binary choice, either a block proposed by a user or an empty one.
-In the first sub-step, each commitee member gossips the proposed block, and then does a preliminary vote count while it waits for other nodes to catch up.
-In the second sub-step, committee members vote for the hash that received at least the ammount of votes set by the threshold for this step, or the hash of the default empty block if no hash was observed to receive enough votes.
-It relies heavily on the assumption that, if the block proposer was honest, most users will get to the soft vote stage with the same hblock parameter.
-However if the proposer was dishonest, then no single hblock may be popular enough to cross the threshold (and therefore this stage will return an empty\_hash).
-Therefore, there will at most be one non-empty block that can be returned by soft vote for all honest users.
+The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce 
+any ammount of potentially conflicting proposed blocks in the stage prior into a binary 
+choice, either a block proposed by a user or an empty one.
+In the first sub-step, each commitee member gossips the proposed block, and then does a 
+preliminary vote count while it waits for other nodes to catch up.
+In the second sub-step, committee members vote for the hash that received at least the 
+amount of votes set by the threshold for this step, or the hash of the default empty 
+block if no hash was observed to receive enough votes.
+It relies heavily on the assumption that, if the block proposer was honest, most users 
+will get to the soft vote stage with the same hblock parameter.
+However if the proposer was dishonest, then no single hblock may be popular enough to 
+cross the threshold (and therefore this stage will return an empty\_hash).
+Therefore, there will at most be one non-empty block that can be returned by soft vote 
+for all honest users.
 
 
 \begin{algorithm}
@@ -253,26 +294,25 @@ it from other users.
     \begin{algorithmic}[H]
     \Function{$CountVotes$}{$ctx, round, FINAL, Tfinal, tfinal, lstep$}
 
-    % \State $counts \gets \{\}$ // hash table, new keys mapped to 0
-    % \State $voters \gets \{\}$
-    % \State $msgs \gets incomingMsgs[round,step]$
+    \State $counts \gets \{\}$ // hash table, new keys mapped to 0
+    \State $voters \gets \{\}$
+    \State $msgs \gets incomingMsgs[round,step]$
 
-    % \While{$TRUE$}
-    %     \State $m \gets msgs.next()$
-    %     \If{$m = \bot$}
-    %         \If{$ElapsedTime > startTime + lambda$}
-    %             \State $\Return$ $TIMEOUT$
-    %         \EndIf
-    %     \Else
-    %     {
-    %         \State $<votes, value, sorthash> \gets ProcessMsg(ctx, t, m)$
-    %         \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
-    %         \State $voters$ $\cup=$ $\{m.pk\}$
-    %         \State $counts[value] += votes$
-    %         \IfThen {$counts[value] \geq T * \tau$}{$\Return$ $value$}
-    %     }
-    %     \EndIf
-    % \EndWhile
+    \While{$TRUE$}
+        \State $m \gets msgs.next()$
+        \If{$m = \bot$}
+
+            \If{$ElapsedTime > startTime + lambda$}
+                \State $\Return$ $TIMEOUT$
+            \EndIf
+        \Else
+            \State $<votes, value, sorthash> \gets ProcessMsg(ctx, t, m)$
+            \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
+            \State $voters$ $\cup=$ $\{m.pk\}$
+            \State $counts[value] += votes$
+            \IfThen {$counts[value] \geq T * \tau$}{$\Return$ $value$}
+        \EndIf
+    \EndWhile
     \EndFunction
     \end{algorithmic}
     \caption{\underline{CountVotes}}
@@ -376,8 +416,8 @@ according to their respective observed stake.
         \If{$r = TIMEOUT$}
             \State $r \gets blockHash$
         \ElsIf{$r \neq emptyHash$}
-            \For{$step < s\tilde\leq step + 3$}
-                \State $CommitteeVote(ctx, round, s\tilde, \tau step, r)$
+            \For{$step < s^\prime\leq step + 3$}
+                \State $CommitteeVote(ctx, round, s^\prime, \tau step, r)$
             \EndFor
             \If {$step = 1$}
                 \State $CommitteeVote(ctx, round, FINAL, \tau_{final}, r)$
@@ -469,7 +509,14 @@ next vote will be for a given user, and introduces a tool to facilitate reaching
 The CommonCoin procedure takes advantage of the randomness of sortition hashes, and attempts to
 get a consensus random bit (a "coin toss") getting the least significant bit of the lowest hashed
 sortition hash concatenated with sub-user index, for all committee voters in the given round and step.
-Since sortition hashes are random, even if an attacker happened to be a committee member with the lowest observable hash,
-the coin value's randomness would still be preserved, and in successive steps the probability of them being chosen again and
-able to manipulate this stage would severely diminish.
+Since sortition hashes are random, even if an attacker happened to be a committee member with the 
+lowest observable hash,
+the coin value's randomness would still be preserved, and in successive steps the probability of 
+them being chosen again and able to manipulate this stage would severely diminish.
+
+
+
+\bibliography{bibliography} 
+\bibliographystyle{ieeetr}
+
 \end{document}
