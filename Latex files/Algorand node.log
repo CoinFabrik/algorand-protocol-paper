@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  20 DEC 2022 16:46
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.12.4)  20 DEC 2022 16:58
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -622,22 +622,22 @@ Underfull \hbox (badness 10000) in paragraph at lines 236--243
 
  []
 
-
+[3]
 Underfull \hbox (badness 10000) in paragraph at lines 282--291
 
  []
 
-[3] [4]
+[4]
 Underfull \hbox (badness 10000) in paragraph at lines 320--338
 
  []
 
-
+[5]
 Underfull \hbox (badness 10000) in paragraph at lines 386--391
 
  []
 
-[5]
+
 Overfull \hbox (9.13913pt too wide) in paragraph at lines 405--406
 [] $\OML/cmm/m/it/10 GOSSIP[]MSG\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 user:pk; Signed[]\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 round; step; sorthash; ^^Y; H\OT1/cmr/m/n/10 (\OML/cmm/m/it/10 ctx:last[]\OT1/cmr/m/n/10 )\OML/cmm/m/it/10 ; value\OT1/cmr/m/n/10 ))$ 
  []
@@ -647,12 +647,12 @@ Underfull \hbox (badness 10000) in paragraph at lines 422--425
 
  []
 
-
+[6]
 Underfull \hbox (badness 10000) in paragraph at lines 452--458
 
  []
 
-[6]
+
 Underfull \hbox (badness 10000) in paragraph at lines 493--501
 
  []
@@ -677,23 +677,23 @@ Underfull \hbox (badness 10000) in paragraph at lines 695--702
 
  []
 
-[10] (./Algorand node.aux
+[10] [11] (./Algorand node.aux
 LaTeX Info: Redefining \. on input line 9.
 LaTeX Info: Redefining \% on input line 9.
 ) ) 
 Here is how much of TeX's memory you used:
  28589 strings out of 474968
  702807 string characters out of 5780081
- 1156852 words of memory out of 5000000
+ 1152852 words of memory out of 5000000
  49622 multiletter control sequences out of 15000+600000
  473393 words of font info for 44 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  94i,10n,92p,824b,609s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
-Output written on "Algorand node.pdf" (10 pages, 162886 bytes).
+Output written on "Algorand node.pdf" (11 pages, 163184 bytes).
 PDF statistics:
- 90 PDF objects out of 1000 (max. 8388607)
- 57 compressed objects within 1 object stream
+ 93 PDF objects out of 1000 (max. 8388607)
+ 59 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  13 words of extra memory for PDF output out of 10000 (max. 10000000)
 

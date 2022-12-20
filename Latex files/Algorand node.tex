@@ -81,7 +81,7 @@ currently in development. \newline
 
 \section{Main algorithm}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BlockCreation()$}{$transactionPool$}
     
@@ -120,7 +120,7 @@ Block metadata is well documented, but is added into it later in the block propo
     \item newly expired participation keys
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
         %\State $P = {}$ //Set of all proposals observed and accepted by this node
@@ -205,7 +205,7 @@ In case of timeout in this last stage, it falls back to the empty block.\\
     linked to this node) or an empty block in any of the special cases mentioned above
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$SoftVote$}{$BlockHash$}
     
@@ -247,7 +247,7 @@ Therefore, there will at most be one non-empty block that can be returned by sof
     (could be the empty block hash)
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$CertifyVote$}{$hblock$}
     \State $localBlockHash \gets hblock$
@@ -295,7 +295,7 @@ sending their vote messages to targeted users in a scenario where the voting is 
     on the observed voting share
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BlockConfirmation$}{$hblock$}
 
@@ -344,7 +344,7 @@ it from other users.\\
 
 \section{Subroutines}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$CountVotes$}{$ctx, round, step, T, \tau, \lambda$}
 
@@ -395,7 +395,7 @@ It's important to notice that every committee user's vote is processed at most o
     required time window
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$CommitteeVote$}{$ctx, round, step, T, \tau, \lambda$}
     \State $role \gets \langle {committee},round,step\rangle$
@@ -427,7 +427,7 @@ and in that case casts a vote for the block passed as argument.\\
 Has no return value, only gossips the specified vote if the caller is a committee member
 
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$ComputeSeed$}{$ctx, round, B$}
         \If{$B \neq empty\_block$} 
@@ -463,7 +463,7 @@ TODO: reescribir detallando mejor el proceso de selección de la seed
     \item the computed seed for the given block, ledger context and round
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$Sortition$}{$sk, seed, \tau, role, w, W$}
         \State $ \langle hash, \pi \rangle \gets VRF(seed||role)$
@@ -505,7 +505,7 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
     of sub-users for a given committee member
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$VerifySortition$}{$pk, seed, \tau, role, w, W$}
         \IfThen{$\neg VerifyVRF_{pk}(hash, \pi, seed||role)$}{$\Return 0$}
@@ -542,7 +542,7 @@ according to their respective observed stake.\\
   \end{itemize}
 
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BLOCK\_STEP$}{$hblock, blockHash, step$}
         \State $bConfirmed \gets FALSE$
@@ -588,7 +588,7 @@ Finally, the procedure returns the selected block amd a flag to either continue 
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$EMPTY\_STEP$}{$hblock, step$}
         \State $bConfirmed \gets FALSE$
@@ -626,7 +626,7 @@ the block to attempt to confirm is the empty block, and there is no final consen
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$CommonCoinFlipVote$}{$hblock, blockHash, step$}
         \State $r \gets hblock$
@@ -665,7 +665,7 @@ next vote will be for a given user, and introduces a tool to facilitate reaching
   \end{itemize}
 
 
-\begin{algorithm}
+\begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$CommonCoin$}{$ctx, round, step, \tau$}
 
