@@ -184,7 +184,7 @@ A full block, consisting of a variable number of transactions, and the following
             \EndIf
         \EndFor\
 
-        \While{$elapsed$ $time$ $< proposal$ $time$}
+        \While{$elapsed\;time < proposal\;time$}
             \State $incomingMsgs.push(listen())$
         \EndWhile\
 
@@ -215,7 +215,7 @@ A full block, consisting of a variable number of transactions, and the following
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block proposal}}
-\end{algorithm}\marginpar{Que hace la linea 9. No entiendo}
+\end{algorithm}\marginpar{1. Que hace la linea 9. No entiendo. 2. que es ctx ?}
 
 \newpage
 \noindent{\bf Arguments:}
@@ -253,14 +253,14 @@ For each block proposal received it only keeps the one with the lowest
 priority validating the block before accepting it as a possible proposal.\marginpar{Que quiere decir validar?}
 
 Finally, in lines 16-25, the algorithm will select a block as 
-follows. 
-Assume the elapsed time has been reached. 
+follows. Assume the elapsed time has been reached. 
 If the selected proposal came from this node, the seed is computed 
-and added into the finished block's metadata. 
-Then, the complete block is gossipped to the network.
-In the most common case where the proposal is not the one selected 
-locally by the node, it waits for another pre-designated time to 
-receive the full block from the network.
+calling $\mathsf{ComputeSeed}()$ from the input block $B$, the ctx and
+the round number $r$, and the complete block is gossiped to the network.
+
+However, if the proposal did not come from this node, then the node 
+waits until $fullblocktime$ to receive the full block from other nodes
+in the network.
 In case of timeout in this last stage, it falls back to the empty block.\\
 
 \noindent \textbf{Returns:}
@@ -273,20 +273,19 @@ In case of timeout in this last stage, it falls back to the empty block.\\
     \begin{algorithmic}[H]
     \Function{$SoftVote$}{$BlockHash$}
     
-    \State $CommitteeVote(ctx, round, REDUCTION\_ONE, \tau_{step}, BlockHash)$
-    \State $hblock \gets CountVotes(ctx, round, REDUCTION\_ONE, T_{step}, \tau_{step}, \lambda_{block} + \lambda_{step})$
+    \State $\mathsf{CommitteeVote}(ctx, round, REDUCTION\_ONE, \tau_{step}, BlockHash)$
+    \State $hblock \gets \mathsf{CountVotes}(ctx, r, REDUCTION\_ONE, T_{step}, \tau_{step}, \lambda_{block} + \lambda_{step})$
 
-    \State $empty\_hash \gets H(Empty(round, H(ctx.last\_block)))$ 
+    \State $empty\_hash \gets \mathsf{Hash}(Empty(r, \mathsf{Hash}(ctx.last\_block)))$ 
     \If{$hblock = TIMEOUT$}
-        \State $CommitteeVote(ctx, round, REDUCTION\_TWO, \tau_{step}, empty\_hash)$
+        \State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, empty\_hash)$
     \Else
-        {\State $CommitteeVote(ctx, round, REDUCTION\_TWO, \tau_{step}, hblock)$}
+        {\State $$\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, hblock)$}
     \EndIf\
 
-    \State $hblock \gets CountVotes(ctx, round, REDUCTION\_TWO, T_{step}, \tau_{step}, \lambda_{step})$ 
+    \State $hblock \gets $\mathsf{CountVotes}(ctx, r, REDUCTION\_TWO, T_{step}, \tau_{step}, \lambda_{step})$ 
 
     \IfThenElse{$hblock = TIMEOUT$}{$\Return$ $empty\_hash$}{$\Return$ $hblock$}
-
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Soft Vote}}
@@ -303,12 +302,20 @@ In case of timeout in this last stage, it falls back to the empty block.\\
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce any ammount of potentially conflicting proposed blocks in the stage prior into a binary choice, either a block proposed by a user or an empty one.
-In the first sub-step, each commitee member gossips the proposed block, and then does a preliminary vote count while it waits for other nodes to catch up.
-In the second sub-step, committee members vote for the hash that received at least the ammount of votes set by the threshold for this step, or the hash of the default empty block if no hash was observed to receive enough votes.
-It relies heavily on the assumption that, if the block proposer was honest, most users will get to the soft vote stage with the same hblock parameter.
-However if the proposer was dishonest, then no single hblock may be popular enough to cross the threshold (and therefore this stage will return an empty\_hash).
-Therefore, there will at most be one non-empty block that can be returned by soft vote for all honest users.\\
+The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce 
+any amount of potentially conflicting proposed blocks in the stage prior into a binary 
+choice, either a block proposed by a user or an empty one.
+In the first sub-step, each committee member gossips the proposed block, and then does a
+ preliminary vote count while it waits for other nodes to catch up.
+In the second sub-step, committee members vote for the hash that received at least the 
+amount of votes set by the threshold for this step, or the hash of the default empty 
+block if no hash was observed to receive enough votes.
+It relies heavily on the assumption that, if the block proposer was honest, most users 
+will get to the soft vote stage with the same hblock parameter.
+However, if the proposer was dishonest, then no single hblock may be popular enough to 
+cross the threshold (and therefore this stage will return an empty\_hash).
+Therefore, there will at most be one non-empty block that can be returned by soft vote 
+for all honest users.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -414,7 +421,7 @@ but no block has quite enough votes to push the threshold.\\
 Finally, the proposed block (be it an empty block or a specific one 
 proposed by a designated user) is confirmed and added to the ledger.
 We introduce the notions of FINAL and TENTATIVE consensus.
-Specifically, if a block is confirmed in the very first step of the 
+Specifically, if a block is confirmed in the very first step of the
 certify vote stage, its vote is cast as FINAL.
 If enough users reproduce this behavior, the vote count on line 2 for 
 votes cast in this fashion is over the required threshold, and the 
@@ -427,7 +434,7 @@ block represented by hblock as FINAL, the consensus is labeled as
 TENTATIVE, and it may be confirmed by a later FINAL block.
 The BlockOfHash() function outputs the full block for the provided 
 hash, either by returning a locally available copy or by requesting 
-it from other users.\\
+it from other users.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -435,7 +442,7 @@ it from other users.\\
     the consensus achieved is TENTATIVE or FINAL in nature
   \end{itemize}
 
-
+\end{subsection}
 \end{section}
 % ------------------------------------------------------------------------------------
 \begin{section}{Subroutines}
