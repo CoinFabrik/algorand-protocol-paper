@@ -2,7 +2,7 @@
 \usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
 \usepackage{babel} % para que comandos como \today den el resultado en Ingles
 \usepackage{a4wide} % márgenes un poco más anchos que lo usual
-\usepackage{caratula}
+%\usepackage{caratula}
 % \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
 
 \usepackage{float}
@@ -50,10 +50,14 @@
 %EXPLICAR parametros globales
 %Explicar parametros de entrada de cada algoritmo y de salida
 
+\author{AdP, CoinFabrik}
+\title{Algorand Protocol Description}
 
 \begin{document}
+\maketitle
+\tableofcontents
 
-\section{Introduction}
+\begin{section}{Introduction}
 In the following document we present a detailed pseudocode interpretation 
 of the program run by an Algorand node with at least one online (aka. 
 participating)
@@ -79,14 +83,24 @@ currently in development. \newline
     If no full block is received, the node falls back to the empty block.
   \end{itemize}
 
+On top of that, each node may run in favour of different accounts. To do this,
+it needs the following parameters. 
+Let $A=\{a\}$ be a collection of accounts $a$.
+\noindent \textbf{Account parameters}:
+\begin{itemize}
+    \item A pair of public and private keys $a_{pk}, a_{sk}$ (although the secret key may be unnecessary)
+    \item ephemeral keys....
+\end{itemize}
 
-\section{Main algorithm}
+\end{section}
+% ------------------------------------------------------------------------
+\begin{section}{Main algorithm}
 
 Assume right now that a given node is fixed, we are at round $r$,
 this node has access to a set of accounts $a\in A$. Moreover,
 the account owner has computed for each round a round 
 leaf ephemeral key $a_{sk}$.
-The main algoritm goes over the following steps on every round.
+The main algorithm goes over the following steps on every round.
 \begin{itemize}
     \item block creation: each node may assemble a block, which includes 
 transactions and metadata.
@@ -96,6 +110,8 @@ transactions and metadata.
     proposal to the other nodes.
 \end{itemize}
 
+% --------------------------------------------------------------------
+\begin{subsection}{Block Creation}
 
 \begin{algorithm}
     \begin{algorithmic}[1]
@@ -109,6 +125,12 @@ transactions and metadata.
     \label{alg:fuerza_bruta}
 \end{algorithm}
 
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item The local pending transaction pool, which should be accesible to the node\\
+  \end{itemize}
+
+\noindent \textbf{Description:}\\
 The Algorand protocol specs (\cite{algorand}) do not ensure a specific way 
 or internal order in which transactions are added to the block.
 %In fact, they don't force transactions to be added at all, being entirely possible 
@@ -117,21 +139,9 @@ More research is needed on how block data is put together.
 Block metadata is added later (see below \ref{sect:metadata} for more 
 details).
 
-\noindent \textbf{Arguments:}
-\begin{itemize}
-    \item The local pending transaction pool, which should be accesible to the node\\
-  \end{itemize}
-
-\noindent \textbf{Description:}\\
-\\
-The algorand protocol specs don't ensure a specific way or internal order in which transactions are added to the block.
-In fact, they don't force transactions to be added at all, being entirely possible for a node to propose an empty block.
-More research is needed on how block data is put together.
-Block metadata is well documented, but is added into it later in the block proposal stage.\\
-
 \noindent \textbf{Returns:} A full block, consisting of a variable number of transactions, and the following metadata:
 \begin{itemize}
-    \item round
+    \item round $r$
     \item genesis identifier
     \item upgrade vote
     \item timestamp
@@ -144,9 +154,11 @@ Block metadata is well documented, but is added into it later in the block propo
     \item newly expired participation keys
   \end{itemize}
 
+\end{subsection}
+% --------------------------------------------------------------------
+\begin{subsection}{Block Gossip}
 
-
-  \begin{algorithm}
+\begin{algorithm}
     \begin{algorithmic}[1]
     \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
         \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
@@ -195,6 +207,7 @@ Block metadata is well documented, but is added into it later in the block propo
                     \State $FullBlockToPropose \gets m.FullBlock$
                 \EndIf
             \EndWhile
+        }
         \EndIf
         \Return $H(FullBlockToPropose)$
     \EndFunction
@@ -202,6 +215,15 @@ Block metadata is well documented, but is added into it later in the block propo
     \caption{\underline{Block proposal}}
 \end{algorithm}
 
+\newpage
+\noindent{\bf Arguments:}
+\begin{itemize}
+    \item A block $B$ received from the previous stage
+    \item A list of online accounts  $A=\{a\}$ associated with this node
+    \item ephemeral keys
+    \item public key associated to these accounts
+  \end{itemize}
+\noindent \textbf{Description:}\\
 The {\bf block proposal} stage (step 0 on specs) is the first stage of the 
 consensus algorithm. 
 First, the node loops through all their online accounts ($a\in A$), 
@@ -215,20 +237,12 @@ For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
 it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
 and keeps the minimum (line 6), which we set as the $priority$ of this
 account for this round. 
-It then proceeds to gossip the priority, sortition hash and proof of \marginpar[Que es la UserPriorityHashTable??]{Que es la UserPriorityHashTable??}
-
-\begin{itemize}
-    \item A block $B$ received from the previous stage
-    \item A list of online accounts associated with this node, $A$ (exposed to the node)
-  \end{itemize}
-\noindent \textbf{Description:}\\
-The block proposal stage (step 0 on specs) is the first stage of the 
-consensus algorithm per se. Nodes loop through all their online accounts, 
-running sortition to determine which accounts will be proposing the 
-assembled block (if any).
-It then proceeds to gossip the priority, sortition hash and proof of 
->>>>>>> fab2e7100a15d806ebe53fe3a02382fb42f1d6bf
-the designated accounts (signed with their leaf ephemeral keys according 
+By calling the $\mathsf{GOSSIP_MSG}()$ function, it then proceeds to gossip
+(broadcast) the priority, sortition hash and proof to other nodes.
+\marginpar[Que es la UserPriorityHashTable??]{Que es la UserPriorityHashTable??}
+It further includes the public key $a_{pk}$ for the account $a$ and the
+signature of the triplet $(priority, \langle sorthash, \pi\rangle$ with the 
+leaf ephemeral key associated with the account $a$ and the round $r$.
 
 In the next step, the algorithm waits until $proposal time$ while it receives 
 block proposals, \marginpar{De donde sale proposal time?}
@@ -270,6 +284,11 @@ In case of timeout in this last stage, it falls back to the empty block.\\
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
+
+\end{subsection}
+% --------------------------------------------------------------------
+\begin{subsection}{Soft Vote}
+
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$ received from the previous stage (block proposal)
@@ -289,33 +308,38 @@ Therefore, there will at most be one non-empty block that can be returned by sof
     (could be the empty block hash)
   \end{itemize}
 
-\begin{algorithm}[H]
-    \begin{algorithmic}[H]
-    \Function{$CertifyVote$}{$hblock$}
-    \State $localBlockHash \gets hblock$
 
-    \State $step \gets 2$
-    \While{$step < 256$}
-        \\
-        \State $\langle hblock, bConfirmed \rangle \gets BLOCK\_STEP(hblock, localBlockHash, step)$
-        \If{$bConfirmed$}{ $\Return$ $hblock$}
-        \EndIf
-        \State $step++$\\
-   
-        \State $ \langle hblock, bConfirmed \rangle \gets EMPTY\_STEP(hblock,step)$
-        \If{$bConfirmed$}{ $\Return$ $hblock$}
-        \EndIf
-        \State $step++$\\
 
-        \State $CommonCoinFlipVote(hblock, step)$
-        \State $step++$
-    \EndWhile
-    \State $HangForever()$
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{CertifyVote}}
-\end{algorithm}
-
+\end{subsection}
+% --------------------------------------------------------------------
+\begin{subsection}{Block Certification}
+    \begin{algorithm}[H]
+        \begin{algorithmic}[H]
+        \Function{$CertifyVote$}{$hblock$}
+        \State $localBlockHash \gets hblock$
+    
+        \State $step \gets 2$
+        \While{$step < 256$}
+            \\
+            \State $\langle hblock, bConfirmed \rangle \gets BLOCK\_STEP(hblock, localBlockHash, step)$
+            \If{$bConfirmed$}{ $\Return$ $hblock$}
+            \EndIf
+            \State $step++$\\
+       
+            \State $ \langle hblock, bConfirmed \rangle \gets EMPTY\_STEP(hblock,step)$
+            \If{$bConfirmed$}{ $\Return$ $hblock$}
+            \EndIf
+            \State $step++$\\
+    
+            \State $CommonCoinFlipVote(hblock, step)$
+            \State $step++$
+        \EndWhile
+        \State $HangForever()$
+        \EndFunction
+        \end{algorithmic}
+        \caption{\underline{CertifyVote}}
+    \end{algorithm}
+    
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$ received from the previous stage (soft vote)
@@ -350,6 +374,11 @@ but no block has quite enough votes to push the threshold.\\
     on the observed voting share
   \end{itemize}
 
+
+\end{subsection}
+% --------------------------------------------------------------------
+\begin{subsection}{Block Confirmation}
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BlockConfirmation$}{$hblock$}
@@ -366,6 +395,7 @@ but no block has quite enough votes to push the threshold.\\
     \end{algorithmic}
     \caption{\underline{BlockConfirmation}}
 \end{algorithm}
+
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
@@ -397,7 +427,10 @@ it from other users.\\
     the consensus achieved is TENTATIVE or FINAL in nature
   \end{itemize}
 
-\section{Subroutines}
+
+\end{section}
+% ------------------------------------------------------------------------------------
+\begin{section}{Subroutines}
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -760,4 +793,5 @@ able to manipulate this stage would severely diminish.\\
     that should be observed by a majority of users to be the same (conceptually, a consensus coin toss)
   \end{itemize}
 
+\end{section}
 \end{document}
