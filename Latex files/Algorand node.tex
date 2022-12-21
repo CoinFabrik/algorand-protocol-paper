@@ -2,30 +2,33 @@
 \usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
 \usepackage{babel} % para que comandos como \today den el resultado en Ingles
 \usepackage{a4wide} % márgenes un poco más anchos que lo usual
+
+\usepackage{hyperref}
+
 %\usepackage{caratula}
 % \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
 
 \usepackage{float}
 
 % Comandos para simbolos matematicos.
-\usepackage{amsmath, amssymb, tabularx}
+\usepackage{amsmath, amssymb}%, tabularx}
 
 % Comandos para referencias
-\usepackage{natbib}
+%\usepackage{natbib}
 
 % Comandos para Figuras, Graficos, Tikz etc.
-\usepackage{tikz}
-\usepackage{epsfig}
-\usepackage{pgfplots}
-\usepackage{graphicx}
-\usepackage{epsfig}
-\usepackage{caption}
-\usepackage{subcaption}
-\usepackage{svg}
-\setsvg{inkscape=inkscape -z -D}
+% \usepackage{tikz}
+% \usepackage{epsfig}
+% \usepackage{pgfplots}
+% \usepackage{graphicx}
+% \usepackage{epsfig}
+% \usepackage{caption}
+% \usepackage{subcaption}
+% \usepackage{svg}
+% \setsvg{inkscape=inkscape -z -D}
 
 % Comandos para teoremas etc.
-\usepackage{amsthm}
+%\usepackage{amsthm}
 % \newtheorem{theorem}{Teorema}
 % \newtheorem{lemma}[theorem]{Lema}
 % \newtheorem{proposition}[theorem]{Proposición}
@@ -42,7 +45,7 @@
     \algorithmicelse\ #3}
 \algnewcommand{\IfThen}[2]{% \IfThenElse{<if>}{<then>}
     \State \algorithmicif\ #1\ \algorithmicthen\ #2}
-\pgfplotsset{compat=1.16}
+%\pgfplotsset{compat=1.16}
 
 
 \usepackage{marginnote}
@@ -50,7 +53,7 @@
 %EXPLICAR parametros globales
 %Explicar parametros de entrada de cada algoritmo y de salida
 
-\author{AdP, CoinFabrik}
+\author{Argimiro, CoinFabrik}
 \title{Algorand Protocol Description}
 
 \begin{document}
@@ -58,13 +61,15 @@
 \tableofcontents
 
 \begin{section}{Introduction}
+We aim to describe how the Algorand protocol works. We used \cite{DBLP:conf/sosp/GiladHMVZ17},
+\cite{DBLP:journals/corr/Micali16} and \href{https://www.a.com}{the code} as our main references.
 In the following document we present a detailed pseudocode interpretation 
 of the program run by an Algorand node with at least one online (aka. 
-participating)
-account. We attempt to explain the 5 main stages of the code supporting 
+participating) account. 
+We attempt to explain the 5 main stages of the code supporting 
 the protocol in a clear and concise way.
 This work aims to provide a basis for an Algorand blockchain simulator 
-currently in development. \newline
+currently in development. 
 
 \noindent \textbf{Global parameters}:
 \begin{itemize}
@@ -111,7 +116,7 @@ transactions and metadata.
 \end{itemize}
 
 % --------------------------------------------------------------------
-\begin{subsection}{Block Creation}
+\begin{subsection}{Block Creation}\label{ssect:blockcreation}
 
 \begin{algorithm}
     \begin{algorithmic}[1]
@@ -131,7 +136,7 @@ transactions and metadata.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The Algorand protocol specs (\cite{cryptoeprint:2017/454}) do not ensure a specific way 
+The Algorand protocol specs (\cite{DBLP:conf/sosp/GiladHMVZ17}) do not ensure a specific way 
 or internal order in which transactions are added to the block.
 %In fact, they don't force transactions to be added at all, being entirely possible 
 %for a node to propose an empty block.
@@ -157,7 +162,7 @@ A full block, consisting of a variable number of transactions, and the following
 
 \end{subsection}
 % --------------------------------------------------------------------
-\begin{subsection}{Block Gossip}
+\begin{subsection}{Block Proposal}\label{ssect:blockproposal}
 
 \begin{algorithm}
     \begin{algorithmic}[1]
@@ -190,9 +195,8 @@ A full block, consisting of a variable number of transactions, and the following
 
         \State $msgs \gets incomingMsgs[round, step=0]$
 
-        \State $lowestHashMsg \gets m\ |\ m.priority = \min
-        \{\mathsf{m.priority\ \in incomingMsgs : \forall m \text{ s.t. } $\newline
-        ${ }${\hskip 3cm} $\mathsf{verifySortition}}(m.sorthash, m.pi, m.pk) \& \mathsf{ValidateMsg}(m) \}$
+        \State $lowestHashMsg \gets m \| m.priority = \min \{m.priority \in incomingMsgs : \forall m \text{ s.t. } $\newline
+        ${}$ {\hskip 3cm}  $\mathsf{verifySortition}(m.sorthash, m.pi, m.pk) \& \mathsf{ValidateMsg}(m) \}$
 
         \State $FullBlockToPropose \gets empty\_block(round)$
 
@@ -202,10 +206,10 @@ A full block, consisting of a variable number of transactions, and the following
             \State $\mathsf{GOSSIP\_MSG}(a_{pk}, \mathsf{Signed}_{a_{sk}}(B, \langle sorthash, \pi \rangle))$
         \Else
         {
-            \While{$elapsed$ $time < fullblock time$}
+            \While{$elapsed\;time < fullblock\; time$}
                 \State $incomingMsgs.push(listen())$
                 \State $m \gets incomingMsgs.back()$
-                \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash=\matshf{Hash}(m.FullBlock)$}
+                \If{$\mathsf{ValidateMsg}(m) \& lowestHashMsg.blockHash=\mathsf{Hash}(m.FullBlock)$}
                     \State $FullBlockToPropose \gets m.FullBlock$
                 \EndIf
             \EndWhile
@@ -238,9 +242,10 @@ If $j>0$ then the address $a$ gets to vote and proceeds as follows.
 For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
 it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
 and keeps the minimum (line 6), which we set as the $priority$ of this
-account for this round. 
-By calling the $\mathsf{GOSSIP\_MSG}()$ function, it proceeds to gossip
-(broadcast) the priority, sortition hash and proof to other nodes.
+account for this round. (Here $\mathsf{Hash}()$ is a cryptographic hash
+function, XX.)
+The $\mathsf{GOSSIP\_MSG}()$ call which happens next, gossips (broadcasts) 
+the priority, sortition hash and proof to other nodes.
 \marginpar{Que es la UserPriorityHashTable?? Nunca vuelve a referenciarla}
 It further includes the public key $a_{pk}$ for the account $a$ and the
 signature of the triplet $(priority, \langle sorthash, \pi\rangle$ with the 
@@ -265,48 +270,50 @@ In case of timeout in this last stage, it falls back to the empty block.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item The hash of a full block, whether a block proposed by a user (including users whose accounts are 
-    linked to this node) or an empty block in any of the special cases mentioned above
+    \item The hash of a full block, whether a block proposed by a user (including users 
+    whose accounts are linked to this node) or an empty block in any of the special 
+    cases mentioned above.
   \end{itemize}
-
+\end{subsection}
+% ---------------------------------------------------------------------------------------------------
+\begin{subsection}{Soft Vote}\label{ssect:softvote}
+The soft vote stage (step 1, labeled as reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
+any amount of potentially conflicting proposed blocks in the stage prior into a binary 
+choice, either a block proposed by a user or an empty one.\marginpar{Que es reduction one/two, $\lambda_{step}$, hblock}
+    
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$SoftVote$}{$BlockHash$}
     
-    \State $\mathsf{CommitteeVote}(ctx, round, REDUCTION\_ONE, \tau_{step}, BlockHash)$
+    \State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_ONE, \tau_{step}, BlockHash)$
     \State $hblock \gets \mathsf{CountVotes}(ctx, r, REDUCTION\_ONE, T_{step}, \tau_{step}, \lambda_{block} + \lambda_{step})$
 
     \State $empty\_hash \gets \mathsf{Hash}(Empty(r, \mathsf{Hash}(ctx.last\_block)))$ 
     \If{$hblock = TIMEOUT$}
         \State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, empty\_hash)$
     \Else
-        {\State $$\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, hblock)$}
+        {\State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, hblock)$}
     \EndIf\
 
-    \State $hblock \gets $\mathsf{CountVotes}(ctx, r, REDUCTION\_TWO, T_{step}, \tau_{step}, \lambda_{step})$ 
+    \State $hblock \gets \mathsf{CountVotes}(ctx, r, REDUCTION\_TWO, T_{step}, \tau_{step}, \lambda_{step})$ 
 
-    \IfThenElse{$hblock = TIMEOUT$}{$\Return$ $empty\_hash$}{$\Return$ $hblock$}
+    \IfThenElse{$hblock = TIMEOUT$}
+        {$\Return\; empty\_hash$}
+        {$\Return\; hblock$}
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
-
-\end{subsection}
-% --------------------------------------------------------------------
-\begin{subsection}{Soft Vote}
-
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item A block hash, $BlockHash$ received from the previous stage (block proposal)
+    \item A block hash, $BlockHash$, received from the previous stage (Sect \ref{ssect:blockproposal}).
+    \marginpar{Entonces especifiquemoslo arria. Porque no aparece}
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The soft vote stage (step 1, or labeled as reduction in the ASBAC paper) aims to reduce 
-any amount of potentially conflicting proposed blocks in the stage prior into a binary 
-choice, either a block proposed by a user or an empty one.
 In the first sub-step, each committee member gossips the proposed block, and then does a
- preliminary vote count while it waits for other nodes to catch up.
+preliminary vote count while it waits for other nodes to catch up.
 In the second sub-step, committee members vote for the hash that received at least the 
 amount of votes set by the threshold for this step, or the hash of the default empty 
 block if no hash was observed to receive enough votes.
@@ -321,13 +328,13 @@ for all honest users.\\
 \begin{itemize}
     \item A block hash, chosen by a majority of users in the soft vote / reduction stage 
     (could be the empty block hash)
-  \end{itemize}
+\end{itemize}
 
 
 
 \end{subsection}
 % --------------------------------------------------------------------
-\begin{subsection}{Block Certification}
+\begin{subsection}{Vote Certification}
     \begin{algorithm}[H]
         \begin{algorithmic}[H]
         \Function{$CertifyVote$}{$hblock$}
@@ -809,4 +816,10 @@ able to manipulate this stage would severely diminish.\\
   \end{itemize}
 
 \end{section}
+
+
+\bibliographystyle{alpha}
+\bibliography{bibliography}
+
+
 \end{document}
