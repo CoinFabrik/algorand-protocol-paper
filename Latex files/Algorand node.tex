@@ -219,7 +219,8 @@ A full block, consisting of a variable number of transactions, and the following
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block proposal}}
-\end{algorithm}\marginpar{1. Que hace la linea 9. No entiendo. 2. que es ctx ?}
+\end{algorithm}\marginpar{1. Que hace la linea 9. No entiendo. 2. que es ctx ? 3. Cual es 
+la estructura del FullBlockToPropose, e.g, (B, seed,...)}
 
 \newpage
 \noindent{\bf Arguments:}
@@ -234,6 +235,8 @@ The {\bf block proposal} stage (step 0 on specs) is the first stage of the
 consensus algorithm. 
 First, the node loops through all their online accounts ($a\in A$), 
 running the sortition subroutine ($\mathsf{sortition}()$).
+Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition}_w()$ and
+$\mathsf{sortitionW}()$ described in Section \ref{sect:soubroutines}).\marginpar{Ojo, no todos estan. Revisar!} 
 The sortition subroutine determines if an account $a$ is selected to 
 ${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
 that is used to prioritize votes.
@@ -452,7 +455,7 @@ it from other users.
 \end{subsection}
 \end{section}
 % ------------------------------------------------------------------------------------
-\begin{section}{Subroutines}
+\begin{section}{Subroutines}\label{sect:soubroutines}
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
