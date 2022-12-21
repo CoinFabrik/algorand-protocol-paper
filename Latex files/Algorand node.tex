@@ -131,7 +131,7 @@ transactions and metadata.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The Algorand protocol specs (\cite{algorand}) do not ensure a specific way 
+The Algorand protocol specs (\cite{cryptoeprint:2017/454}) do not ensure a specific way 
 or internal order in which transactions are added to the block.
 %In fact, they don't force transactions to be added at all, being entirely possible 
 %for a node to propose an empty block.
@@ -139,7 +139,8 @@ More research is needed on how block data is put together.
 Block metadata is added later (see below \ref{sect:metadata} for more 
 details).
 
-\noindent \textbf{Returns:} A full block, consisting of a variable number of transactions, and the following metadata:
+\noindent \textbf{Returns:} 
+A full block, consisting of a variable number of transactions, and the following metadata:
 \begin{itemize}
     \item round $r$
     \item genesis identifier
@@ -189,21 +190,22 @@ details).
 
         \State $msgs \gets incomingMsgs[round, step=0]$
 
-        \State $lowestHashMsg \gets m\ |\ m.priority = \min_{m.priority\ \in\ incomingMsgs}$ \newline
-        ${\{verifySortition(m.sorthash, m.pi, m.pk)\ \& ValidateMsg(m)\}}$
+        \State $lowestHashMsg \gets m\ |\ m.priority = \min
+        \{\mathsf{m.priority\ \in incomingMsgs : \forall m \text{ s.t. } $\newline
+        ${ }${\hskip 3cm} $\mathsf{verifySortition}}(m.sorthash, m.pi, m.pk) \& \mathsf{ValidateMsg}(m) \}$
 
         \State $FullBlockToPropose \gets empty\_block(round)$
 
         \If{$lowestHashMsg \in msgsSent$}
             \State $FullBlockToPropose \gets B$
-            \State $FullBlockToPropose.seed \gets ComputeSeed(ctx, r, B)$
-            \State $GOSSIP\_MSG(a.pk, Signed{a.sk}(B, \langle sorthash, \pi \rangle))$
+            \State $FullBlockToPropose.seed \gets \mathsf{ComputeSeed}(ctx, r, B)$
+            \State $\mathsf{GOSSIP\_MSG}(a_{pk}, \mathsf{Signed}_{a_{sk}}(B, \langle sorthash, \pi \rangle))$
         \Else
         {
             \While{$elapsed$ $time < fullblock time$}
                 \State $incomingMsgs.push(listen())$
                 \State $m \gets incomingMsgs.back()$
-                \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash$ $=$ $H(m.FullBlock)$}
+                \If{$ValidateMsg(m)$ \& $lowestHashMsg.blockHash=\matshf{Hash}(m.FullBlock)$}
                     \State $FullBlockToPropose \gets m.FullBlock$
                 \EndIf
             \EndWhile
@@ -213,7 +215,7 @@ details).
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block proposal}}
-\end{algorithm}
+\end{algorithm}\marginpar{Que hace la linea 9. No entiendo}
 
 \newpage
 \noindent{\bf Arguments:}
@@ -237,18 +239,24 @@ For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
 it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
 and keeps the minimum (line 6), which we set as the $priority$ of this
 account for this round. 
-By calling the $\mathsf{GOSSIP_MSG}()$ function, it then proceeds to gossip
+By calling the $\mathsf{GOSSIP\_MSG}()$ function, it proceeds to gossip
 (broadcast) the priority, sortition hash and proof to other nodes.
-\marginpar[Que es la UserPriorityHashTable??]{Que es la UserPriorityHashTable??}
+\marginpar{Que es la UserPriorityHashTable?? Nunca vuelve a referenciarla}
 It further includes the public key $a_{pk}$ for the account $a$ and the
 signature of the triplet $(priority, \langle sorthash, \pi\rangle$ with the 
 leaf ephemeral key associated with the account $a$ and the round $r$.
 
-In the next step, the algorithm waits until $proposal time$ while it receives 
-block proposals, \marginpar{De donde sale proposal time?}
-validating before accepting it as a possible proposal.\marginpar{Que quiere decir validar?}
-Once the elapsed time is reached, if the selected proposal came from this node, 
-the seed is computed and added into the finished block's metadata. 
+In the lines 11 to 15, the algorithm accepts block proposals (in the same 
+format as gossiped) from other accounts until $proposal time$ is reached.
+\marginpar{De donde sale proposal time?}
+For each block proposal received it only keeps the one with the lowest 
+priority validating the block before accepting it as a possible proposal.\marginpar{Que quiere decir validar?}
+
+Finally, in lines 16-25, the algorithm will select a block as 
+follows. 
+Assume the elapsed time has been reached. 
+If the selected proposal came from this node, the seed is computed 
+and added into the finished block's metadata. 
 Then, the complete block is gossipped to the network.
 In the most common case where the proposal is not the one selected 
 locally by the node, it waits for another pre-designated time to 
