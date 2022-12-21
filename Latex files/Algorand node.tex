@@ -280,6 +280,8 @@ In case of timeout in this last stage, it falls back to the empty block.\\
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
 \begin{subsection}{Soft Vote}\label{ssect:softvote}
+This step is only undertaken by the round's committee, i.e., those accounts that have
+a $j>0$ in the previous step.
 The soft vote stage (step 1, labeled as reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
 any amount of potentially conflicting proposed blocks in the stage prior into a binary 
 choice, either a block proposed by a user or an empty one.\marginpar{Que es reduction one/two, $\lambda_{step}$, hblock}
@@ -311,21 +313,26 @@ choice, either a block proposed by a user or an empty one.\marginpar{Que es redu
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$, received from the previous stage (Sect \ref{ssect:blockproposal}).
-    \marginpar{Entonces especifiquemoslo arria. Porque no aparece}
+    \marginpar{Entonces especifiquemoslo arriba. Porque no aparece}
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-In the first sub-step, each committee member gossips the proposed block, and then does a
-preliminary vote count while it waits for other nodes to catch up.
-In the second sub-step, committee members vote for the hash that received at least the 
-amount of votes set by the threshold for this step, or the hash of the default empty 
+In the first step and with the input block $block\; hash$ as input, together
+with other parameters, the node does a\marginpar{Ven solo el hash y votan a partir del hash?}
+preliminary vote count (with $\mathsf{CommitteeVote}()$) and counts votes 
+after $\lambda$ seconds have passed using the subroutine $\mathsf{CountVotes}()$ --both 
+subroutines being described in Section \ref{sect:soubroutines} in more detail.
+
+In the second step, committee members vote for the hash that received at least the 
+amount of votes set by the threshold for this step, or the hash of the default empty\marginpar{cual threshold? que es ese if hblock=timeout?} 
 block if no hash was observed to receive enough votes.
+
 It relies heavily on the assumption that, if the block proposer was honest, most users 
 will get to the soft vote stage with the same hblock parameter.
-However, if the proposer was dishonest, then no single hblock may be popular enough to 
-cross the threshold (and therefore this stage will return an empty\_hash).
-Therefore, there will at most be one non-empty block that can be returned by soft vote 
-for all honest users.\\
+However, if some proposers were dishonest, then no single hblock may be popular enough to 
+cross the threshold (and therefore this stage will return an empty\_hash) and there 
+will at most be one non-empty block that can be returned by soft vote 
+for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `opinion' de la descrip del algoritmo}
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -333,30 +340,28 @@ for all honest users.\\
     (could be the empty block hash)
 \end{itemize}
 
-
-
 \end{subsection}
 % --------------------------------------------------------------------
-\begin{subsection}{Vote Certification}
+\begin{subsection}{Vote Certification}\label{ssect:certifyvote}
     \begin{algorithm}[H]
         \begin{algorithmic}[H]
-        \Function{$CertifyVote$}{$hblock$}
+        \Function{$\mathsf{CertifyVote}$}{$hblock$}
         \State $localBlockHash \gets hblock$
     
         \State $step \gets 2$
         \While{$step < 256$}
             \\
-            \State $\langle hblock, bConfirmed \rangle \gets BLOCK\_STEP(hblock, localBlockHash, step)$
+            \State $\langle hblock, bConfirmed \rangle \gets \mathsf{BLOCK\_STEP}(hblock, localBlockHash, step)$
             \If{$bConfirmed$}{ $\Return$ $hblock$}
             \EndIf
             \State $step++$\\
        
-            \State $ \langle hblock, bConfirmed \rangle \gets EMPTY\_STEP(hblock,step)$
+            \State $ \langle hblock, bConfirmed \rangle \gets \mathsf{EMPTY\_STEP}(hblock,step)$
             \If{$bConfirmed$}{ $\Return$ $hblock$}
             \EndIf
             \State $step++$\\
     
-            \State $CommonCoinFlipVote(hblock, step)$
+            \State $\mathsf{CommonCoinFlipVote}(hblock, step)$
             \State $step++$
         \EndWhile
         \State $HangForever()$
@@ -371,27 +376,31 @@ for all honest users.\\
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The certify vote stage (which potentially encompasses steps 2 through 255) is the core of the BA* algorithm.
+The certify vote stage is the core of the BA* algorithm.\marginpar{What is the BA* algorithm? Introduce it earlier}
 The main loop executes a maximum of 254 times (from step 2 to step 255, labeled ``cert'' and ``down'' 
-respectively on the specs).
+respectively on the specs (\cite{specs})).\marginpar{What labels?}
 This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a 
 small chance to force consensus on their desired block with each iteration.
-The main algorithm is comprised of three important procedures: the block step, where, if selected as a 
-committee member, votes for the block selected in the soft voting stage and then attempts to confirm it 
-by listening to other cast votes until a threshold is met.
-If this step times out and no consensus is reached, it moves on to the empty step. Very similar in nature 
-to the previous one, in this procedure a vote is cast for the value in hblock and then it attempts to 
-confirm an empty block.
-Finally, if no consensus is reached on the empty block, it arrives to the common coin procedure, where 
-it attempts another vote and vote count for the empty block. If here, no consensus is reached, it uses 
-the pseudo-randomness of the VRF hash output to "flip a coin" by looking at the last bit of the lowest 
-sortition hash owned by observed committee members.
-This makes it so even tho the coin flip is random, most users will observe the same outcome and will 
-in turn set their hblock values according to the observed bit. In turn, this prevents an adversary 
-from being able to easily predict beforehand what the next vote of a user would be if they were a 
-committee user, and therefore the attacker can't force consensus 
-sending their vote messages to targeted users in a scenario where the voting is split pretty evenly 
-but no block has quite enough votes to push the threshold.\\
+
+The {\sf CertifyVote} algorithm is comprised of three important procedures: 
+\begin{enumerate}
+    \item the block step, where, if selected as a committee member, votes for the block selected in 
+    the soft voting stage and then attempts to confirm it by listening to other cast votes until a 
+    threshold is met. If this step times out and no consensus is reached, it moves on to the empty 
+    step. 
+    \item Very similar in nature to the previous one, in this procedure a vote is cast for the 
+    value in {\em hblock} and then it attempts to confirm an empty block.
+    \item if no consensus is reached on the empty block, it arrives to the common coin procedure, 
+    where it attempts another vote and vote count for the empty block. 
+    If here, no consensus is reached, it uses the pseudo-randomness of the VRF hash output to ``flip a coin" 
+    by looking at the last bit of the lowest sortition hash owned by observed committee members.
+    This makes it so even though the coin flip is random, most users will observe the same outcome and will 
+    in turn set their {\em hblock} values according to the observed bit. 
+    In turn, this prevents an adversary from being able to easily predict beforehand what the next vote 
+    of a user would be if they were a committee user, and therefore the attacker cannot force consensus 
+    sending their vote messages to targeted users in a scenario where the voting is split pretty evenly 
+    but no block has quite enough votes to push the threshold.\marginpar{No se entiende lo de hangforever. Que quiere decir?}
+\end{enumerate}
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -402,13 +411,13 @@ but no block has quite enough votes to push the threshold.\\
 
 \end{subsection}
 % --------------------------------------------------------------------
-\begin{subsection}{Block Confirmation}
+\begin{subsection}{Block Confirmation}\label{ssect:blockconfirmation}
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$BlockConfirmation$}{$hblock$}
 
-    \State $r \gets CountVotes(ctx, round, FINAL, T_{final}, \tau_{final}, lstep)$
+    \State $r \gets \mathsf{CountVotes}(ctx, round, FINAL, T_{final}, \tau_{final}, lstep)$
     \If{$r = hblock$}
         \State \Return $\langle FINAL, BlockOfHash(hblock)\rangle$ 
     \Else
@@ -424,7 +433,7 @@ but no block has quite enough votes to push the threshold.\\
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item A block hash, $BlockHash$ received from the previous stage (certify vote)
+    \item A block hash, $BlockHash$ received from the previous stage (Sect.~\ref{ssect:certifyvote})
   \end{itemize}
 
 \noindent \textbf{Description:}\\
