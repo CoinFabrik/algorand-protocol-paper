@@ -64,8 +64,7 @@
 We aim to describe how the Algorand protocol works. We used \cite{DBLP:conf/sosp/GiladHMVZ17},
 \cite{DBLP:journals/corr/Micali16} and \href{https://www.a.com}{the code} as our main references.
 In the following document we present a detailed pseudocode interpretation 
-of the program run by an Algorand node with at least one online (aka. 
-participating) account. 
+of the program run by an Algorand node with at least one online (i.e., participating) account.
 We attempt to explain the 5 main stages of the code supporting 
 the protocol in a clear and concise way.
 This work aims to provide a basis for an Algorand blockchain simulator 
@@ -185,7 +184,7 @@ A full block, consisting of a variable number of transactions, and the following
 
                 \State $msg \gets \mathsf{MSG}(a.pk, \mathsf{Signed}_{a.sk}(priority, \langle sorthash, \pi\rangle))$
                 \State $ProposalMsgsSent \cup= msg$
-                \State $\mathsf{GOSSIP\_MSG}(a.pk, Signed{a.sk}(priority, \langle sorthash, \pi\rangle))$
+                \State $\mathsf{GOSSIP\_MSG}(a.pk, \mathsf{Signed}_{a.sk}(priority, \langle sorthash, \pi\rangle))$
             \EndIf
         \EndFor\
 
@@ -481,7 +480,7 @@ it from other users.
         \State $m \gets msgs.next()$
         \If{$m = \bot$}
             \If{$ElapsedTime > startTime + \lambda$}
-                \State $\Return TIMEOUT$
+                \State $\Return\;TIMEOUT$
             \EndIf
         \Else
             \State $ \langle votes, value, sorthash \rangle \gets \mathsf{ProcessMsg}(ctx, \tau, m)$
@@ -516,12 +515,16 @@ temporal window, it finishes with a TIMEOUT.
 It is important to notice that every committee user's vote is processed at most 
 once for the given context.\\
 
+Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
+The function $\mathsf{ProcessMsg}$ returns....
+
 \noindent \textbf{Returns:}
 \begin{itemize}
     \item the first block hash value observed to achieve the required threshold, 
-    or a TIMEOUT constant if none was found in the required time window
+    or a TIMEOUT constant if none was found in the required time window.
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$\mathsf{CommitteeVote}$}{$ctx, round, step, T, \tau, \lambda$}
@@ -529,7 +532,7 @@ once for the given context.\\
     \State $\langle sorthash,\pi,j\rangle \gets \mathsf{Sortition}(user.sk,ctx.seed,\tau ,role,ctx.weight[user.pk],ctx.W)$
     \mathtt{// only committee members originate a message}
     \If{$j > 0$}
-        \State $\mathsf{GOSSIP\_MSG}(user.pk, Signed_{user.sk} (round,step,sorthash,\pi,\mathsf{Hash}(ctx.last_{block}),value))$
+        \State $\mathsf{GOSSIP\_MSG}(user.pk, \mathsf{Signed}_{user.sk} (round,step,sorthash,\pi,\mathsf{Hash}(ctx.last_{block}),value))$
     \EndIf
     \EndFunction
     \end{algorithmic}
@@ -551,16 +554,16 @@ This subroutine verifies that the caller is a member of the specified committee 
 and in that case casts a vote for the block passed as argument.\\
 
 \noindent \textbf{Returns:}\\
-Has no return value, only gossips the specified vote if the caller is a committee member
+The subroutine has no return value, it only gossips the specified vote if the caller is a committee member.
 
-
+% ----------------------------------------------------------------------------------------------
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$\mathsf{ComputeSeed}$}{$ctx, round, B$}
         \If{$B \neq empty\_block$} 
             \State $\Return$ $\mathsf{VRF}_{\mathsf{get_{SKu}}(ctx, r)}(ctx.LastBlock.seed||r$)
         \Else
-            \State $\Return$ $\mathsf{H}(ctx.LastBlock.seed||r)$
+            \State $\Return$ $\mathsf{Hash}(ctx.LastBlock.seed||r)$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -580,7 +583,7 @@ Has no return value, only gossips the specified vote if the caller is a committe
 This subroutine computes the required sortition seed for the given round number, 
 which goes in the proposed block's metadata.
 If the block is empty, the seed is a hash of the previous block's seed.
-The $\mathsf{get}_{SKu}(ctx, round)$ helper function gets the relevant user's secret key 
+The $\mathsf{get}_{SKu}(ctx, round)$ helper function gets the relevant user's secret key \marginpar{User? O account $a$?}
 (according to the signing scheme described in specs).
 That is, the secret key from a round b time before block $r-1-(r\text{ mod }R)$, where $R$ 
 is the sortition seed's renewal rate, $r$ is the current round's number,
@@ -593,6 +596,8 @@ TODO: reescribir detallando mejor el proceso de selección de la seed
 \begin{itemize}
     \item the computed seed for the given block, ledger context and round
   \end{itemize}
+
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -616,7 +621,7 @@ TODO: reescribir detallando mejor el proceso de selección de la seed
     \item $seed$ = the sortition seed to be used
     \item $\tau$ = the expected committee size for the given role
     \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (aka. it's relevant stake)
+    \item $w$ = the user's weight (i.e., its relevant stake)
     \item $W$ = the total relevant stake for the given round
 \end{itemize}
 
@@ -625,7 +630,7 @@ The Sortition procedure is one of the most important subroutines in the main alg
 used in multiple stages and contexts.
 Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random 
 Function) select a user with probability proportional
-to their weight (aka. stake) by returning a j parameter, which indicates the number of times that 
+to their weight (i.e., stake) by returning a j parameter, which indicates the number of times that 
 specific user was chosen.
 Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one 
 of them is selected with probability $p = \frac{\tau}{W}$,
@@ -639,6 +644,8 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
     \item an integer $j$ that will be positive (larger than 0) if the user has been selected, 
     and its size corresponds to the amount of sub-users for a given committee member
   \end{itemize}
+
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -661,7 +668,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
     \item $seed$ = the sortition seed to be used
     \item $\tau$ = the expected committee size for the given role
     \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (aka. it's relevant stake)
+    \item $w$ = the user's weight (i.e., its relevant stake)
     \item $W$ = the total relevant stake for the given round
   \end{itemize}
 
@@ -679,6 +686,7 @@ observed stake.\\
     of sub-users for a given committee member
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -733,6 +741,8 @@ from the main procedure with a certified vote.
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$\mathsf{EMPTY\_STEP}$}{$hblock, step$}
@@ -774,6 +784,7 @@ consensus achievable in this scenario.
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$\mathsf{CommonCoinFlipVote}$}{$hblock, blockHash, step$}
@@ -812,7 +823,7 @@ next vote will be for a given user, and introduces a tool to facilitate reaching
     in the immediately following step
   \end{itemize}
 
-
+% ----------------------------------------------------------------------------------------------
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$\mathsf{CommonCoin}$}{$ctx, round, step, \tau$}
@@ -855,7 +866,8 @@ able to manipulate this stage would severely diminish.\\
   \end{itemize}
 
 \end{section}
-
+% ----------------------------------------------------------------------------------------------
+% ----------------------------------------------------------------------------------------------
 
 \bibliographystyle{alpha}
 \bibliography{bibliography}
