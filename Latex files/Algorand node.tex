@@ -63,8 +63,7 @@ We aim to describe how the Algorand protocol works. We used \cite{DBLP:conf/sosp
 \cite{DBLP:journals/corr/Micali16} and \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications}
 as our main references.
 In the following document we present a detailed pseudocode interpretation 
-of the program run by an Algorand node with at least one online (aka. 
-participating) account. 
+of the program run by an Algorand node with at least one online (i.e., participating) account.
 We attempt to explain the 5 main stages of the code supporting 
 the protocol in a clear and concise way.
 This work aims to provide a basis for an Algorand blockchain simulator 
@@ -431,7 +430,7 @@ respectively on the \href{https://github.com/algorandfoundation/specs}{specs.}).
 This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a 
 small chance to force consensus on their desired block with each iteration.
 
-The {\sf CertifyVote} algorithm is comprised of three important procedures: 
+The {\sf CertifyVote} algorithm comprises three important procedures: 
 \begin{enumerate}
     \item the block step, where, if selected as a committee member, votes for the block selected in 
     the soft voting stage and then attempts to confirm it by listening to other cast votes until a 
@@ -572,6 +571,15 @@ once for the given context.\\
 Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
 The function $\mathsf{ProcessMsg}$ returns....
 
+This subroutine counts the votes for any observed block hash value, for a given 
+round and step numbers.
+It returns as soon as it finds a value exceeding the specified threshold (which
+will also vary according to round and step).
+If no value is observed to have the required amount of votes in the predetermined 
+temporal window, it finishes with a TIMEOUT.
+It is important to notice that every committee user's vote is processed at most 
+once for the given context.\\
+
 \noindent \textbf{Returns:}
 \begin{itemize}
     \item the first block hash value observed to achieve the required threshold, 
@@ -619,7 +627,7 @@ The subroutine has no return value, it only gossips the specified vote if the ca
         \If{$B \neq empty\_block$} 
             \State $\Return$ $VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
         \Else
-            \State $\Return$ $H(ctx.LastBlock.seed||r)$
+            \State $\Return$ $\mathsf{Hash}(ctx.LastBlock.seed||r)$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -636,7 +644,8 @@ The subroutine has no return value, it only gossips the specified vote if the ca
 
 
 \noindent \textbf{Description:}\\
-This subroutine computes the required sortition seed for the given round number, which goes in the proposed block's metadata.
+This subroutine computes the required sortition seed for the given round number, 
+which goes in the proposed block's metadata.
 If the block is empty, the seed is a hash of the previous block's seed.
 The $get_{SK_a}(ctx, r)$ helper function gets the relevant account's secret ephemeral keys (according to the signing scheme described in specs, the keys 160 rounds prior to $r$).
 This roughly corresponds to the secret key from a round $b$ time before block $r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the current round's number,
@@ -777,7 +786,7 @@ of them is selected with probability $p = \frac{\tau}{W}$,
 where $\tau$ is the expected amount of users to be selected for the given role.
 The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated 
 binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
-belongs to the interval, that's the amount of chosen sub-users for the subroutine caller.\\
+belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -833,22 +842,22 @@ observed stake.\\
     \begin{algorithmic}[H]
     \Function{$\mathsf{BLOCK\_STEP}$}{$hblock, blockHash, step$}
         \State $bConfirmed \gets FALSE$
-        \State $r \gets hblock$
+        \State $hb \gets hblock$
 
-        \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, r)$
-        \State $r \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
-        \If{$r = TIMEOUT$}
-            \State $r \gets blockHash$
-        \ElsIf{$r \neq emptyHash$}
+        \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, hb)$
+        \State $hb \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
+        \If{$hb = TIMEOUT$}
+            \State $hb \gets blockHash$
+        \ElsIf{$hb \neq emptyHash$}
             \For{$step < s^\prime \leq step + 3$}
-                \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, r)$
+                \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, hb)$
             \EndFor
             \If {$step = 1$}
-                \State $\mathsf{CommitteeVote}(ctx, round, FINAL, \tau_{final}, r)$
+                \State $\mathsf{CommitteeVote}(ctx, round, FINAL, \tau_{final}, hb)$
             \EndIf
             \State $bConfirmed \gets TRUE$
         \EndIf
-        $\Return$ $ \langle r, bConfirmed \rangle$
+        $\Return$ $ \langle hb, bConfirmed \rangle$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{BLOCK\_STEP}}
@@ -877,7 +886,7 @@ from the main procedure with a certified vote.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash value and a 
+    \item a tuple $\langle hb, bConfirmed \rangle$, comprised of a block hash value and a 
     boolean flag to assert whether the given value was
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
@@ -888,19 +897,19 @@ from the main procedure with a certified vote.
     \begin{algorithmic}[H]
     \Function{$\mathsf{EMPTY\_STEP}$}{$hblock, step$}
         \State $bConfirmed \gets FALSE$
-        \State $r \gets hblock$
+        \State $hb \gets hblock$
 
-    \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, r)$
-    \State $r \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
-    \If{$r = TIMEOUT$}
-        \State $r \gets emptyHash$
-    \ElsIf{$r = emptyHash$}
+    \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, hb)$
+    \State $hb \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
+    \If{$hb = TIMEOUT$}
+        \State $hb \gets emptyHash$
+    \ElsIf{$hb = emptyHash$}
         \For{$step < s^\prime \leq step+3$}
-            \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, r)$
+            \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, hb)$
         \EndFor
         \State $bConfirmed \gets TRUE$
     \EndIf
-    $\Return$ $\langle r, bConfirmed \rangle$
+    $\Return$ $\langle hb, bConfirmed \rangle$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{EMPTY\_STEP}}
@@ -920,7 +929,7 @@ consensus achievable in this scenario.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash 
+    \item a tuple $\langle hb, bConfirmed \rangle$, comprised of a block hash 
     value and a boolean flag to assert whether the given value was
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
@@ -1011,7 +1020,6 @@ able to manipulate this stage would severely diminish.\\
 \end{section}
 % ----------------------------------------------------------------------------------------------
 % ----------------------------------------------------------------------------------------------
-
 
 \bibliographystyle{alpha}
 \bibliography{bibliography}
