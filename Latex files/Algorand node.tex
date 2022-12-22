@@ -5,6 +5,7 @@
 
 \usepackage{hyperref}
 
+
 %\usepackage{caratula}
 % \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
 
@@ -515,26 +516,27 @@ it from other users.
 \end{subsection}
 \end{section}
 % ------------------------------------------------------------------------------------
+% ------------------------------------------------------------------------------------
 \begin{section}{Subroutines}\label{sect:soubroutines}
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$CountVotes$}{$ctx, round, step, T, \tau, \lambda$}
+    \Function{$\mathsf{CountVotes}$}{$ctx, round, step, T, \tau, \lambda$}
 
-    \State $startTime \gets currentTime()$
+    \State $startTime \gets \mathsf{currentTime}()$
 
-    \State $counts \gets \{\}$ // hash table, new keys mapped to 0
+    \State $counts \gets \{\}$ \text{// hash table, new keys mapped to 0}
     \State $voters \gets \{\}$
-    \State $msgs \gets incomingMsgs[round,step]$
+    \State $msgs \gets incomingMsgs[round,\,step]$
 
     \While{$TRUE$}
         \State $m \gets msgs.next()$
         \If{$m = \bot$}
             \If{$ElapsedTime > startTime + \lambda$}
-                \State $\Return$ $TIMEOUT$
+                \State $\Return\;TIMEOUT$
             \EndIf
         \Else
-            \State $ \langle votes, value, sorthash \rangle \gets ProcessMsg(ctx, \tau, m)$
+            \State $ \langle votes, value, sorthash \rangle \gets \mathsf{ProcessMsg}(ctx, \tau, m)$
             \IfThen{$m.pk \in voters \lor votes = 0$}{$continue$}
             \State $voters$ $\cup=$ $\{m.pk\}$
             \State $counts[value] += votes$
@@ -546,6 +548,7 @@ it from other users.
     \caption{\underline{CountVotes}}
 \end{algorithm}
 
+
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
@@ -553,30 +556,39 @@ it from other users.
     \item $step$ = current step number
     \item $T$ = fraction of expected committee members to get the confirmation threshold
     \item $\tau$ = expected number of committee members
-    \item $\lambda$ = maximum time to keep running the vote count and awaiting for network messages
+    \item $\lambda$ = maximum time to keep running the vote count and waiting for network messages
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-This subroutine counts the votes for any observed block hash value, for a given round and step numbers.
-It returns as soon as it finds a value exceeding the specified threshold (which will also vary according to round and step).
-If no value is observed to have the required ammount of votes in the predetermined temporal window, it finishes with a TIMEOUT.
-It's important to notice that every committee user's vote is processed at most once for the given context.\\
+This subroutine counts the votes for any observed block hash value, for a given 
+round and step numbers.
+It returns as soon as it finds a value exceeding the specified threshold (which
+will also vary according to round and step).
+If no value is observed to have the required amount of votes in the predetermined 
+temporal window, it finishes with a TIMEOUT.
+It is important to notice that every committee user's vote is processed at most 
+once for the given context.\\
+
+Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
+The function $\mathsf{ProcessMsg}$ returns....
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item the first block hash value observed to achieve the required threshold, or a TIMEOUT constant if none was found in the
-    required time window
+    \item the first block hash value observed to achieve the required threshold, 
+    or a TIMEOUT constant if none was found in the required time window.
   \end{itemize}
+
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$CommitteeVote$}{$ctx, round, step, T, \tau, \lambda$}
-    \State $role \gets \langle {committee},round,step\rangle$
-    \State $\langle sorthash,\pi,j\rangle \gets Sortition(user.sk,ctx.seed,\tau ,role,ctx.weight[user.pk],ctx.W)$
-    // only committee members originate a message
-    \If{$j > 0$}
-        \State $GOSSIP\_MSG(user.pk, Signed_{user.sk} (round,step,sorthash,\pi,H(ctx.last_{block}),value))$
-    \EndIf
+    \Function{$\mathsf{CommitteeVote}$}{$ctx, round, step, T, \tau, \lambda$}
+        \State $role \gets \langle {committee},round,step\rangle$
+        \State $\langle sorthash,\pi,j\rangle \gets \mathsf{Sortition}(user.sk,ctx.seed,\tau ,role,ctx.weight[user.pk],ctx.W)$
+        \text{// only committee members originate a message}
+        \If{$j > 0$}
+            \State $\mathsf{GOSSIP\_MSG}(user.pk, \mathsf{Signed}_{user.sk} (round,step,sorthash,\pi,\mathsf{Hash}(ctx.last_{block}),value))$
+        \EndIf
     \EndFunction
     \end{algorithmic}
     \caption{\underline{CommitteeVote}}
@@ -597,14 +609,15 @@ This subroutine verifies that the caller is a member of the specified committee 
 and in that case casts a vote for the block passed as argument.\\
 
 \noindent \textbf{Returns:}\\
-Has no return value, only gossips the specified vote if the caller is a committee member
+The subroutine has no return value, it only gossips the specified vote if the caller is a committee member.
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$ComputeSeed$}{$ctx, r, B$}
         \If{$B \neq empty\_block$} 
-            \State $\Return$ $VRF_{get_{SK_u}(ctx, r)}(ctx.LastBlock.seed||r$)
+            \State $\Return$ $VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
         \Else
             \State $\Return$ $H(ctx.LastBlock.seed||r)$
         \EndIf
@@ -625,7 +638,7 @@ Has no return value, only gossips the specified vote if the caller is a committe
 \noindent \textbf{Description:}\\
 This subroutine computes the required sortition seed for the given round number, which goes in the proposed block's metadata.
 If the block is empty, the seed is a hash of the previous block's seed.
-The $get_{SKu}(ctx, r)$ helper function gets the relevant user's secret ephemeral keys (according to the signing scheme described in specs, the keys 160 rounds prior to $r$).
+The $get_{SK_a}(ctx, r)$ helper function gets the relevant account's secret ephemeral keys (according to the signing scheme described in specs, the keys 160 rounds prior to $r$).
 This roughly corresponds to the secret key from a round $b$ time before block $r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the current round's number,
 and $b$ is the upper bound for the maximum ammount of time that the network might be compromised.\\
 
@@ -634,6 +647,7 @@ and $b$ is the upper bound for the maximum ammount of time that the network migh
     \item the computed seed for the given block, ledger context and round
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -663,6 +677,7 @@ Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, ref
     \item a sortition seed to be used in the round $r$
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
@@ -693,6 +708,9 @@ with public key $a_{pk}$
   \end{itemize}
 
 
+% ----------------------------------------------------------------------------------------------
+
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
         \Function{$getSortition_W$}{$ctx, r$}
@@ -719,14 +737,15 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \item the total stake at play in the relevant round (according to lookback parameters)
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$Sortition$}{$sk, seed, \tau, role, w, W$}
-        \State $ \langle hash, \pi \rangle \gets VRF(seed||role)$
+    \Function{$\mathsf{Sortition}$}{$sk, seed, \tau, role, w, W$}
+        \State $ \langle hash, \pi \rangle \gets \mathsf{VRF}(seed||role)$
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
-        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^jB(k;w,p), \sum_{k=0}^{j+1}B(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
             \State $j++$
         \EndWhile
         \Return $ \langle hash,\pi,j \rangle$
@@ -742,32 +761,40 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \item $seed$ = the sortition seed to be used
     \item $\tau$ = the expected committee size for the given role
     \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (aka. it's relevant stake)
+    \item $w$ = the user's weight (i.e., its relevant stake)
     \item $W$ = the total relevant stake for the given round
 \end{itemize}
 
 \noindent \textbf{Description:}\\
-The Sortition procedure is one of the most important subroutines in the main algorithm, as it's used in multiple stages and contexts.
-Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random Function) select a user with probability proportional
-to their weight (aka. stake) by returning a j parameter, which indicates the number of times that specific user was chosen.
-Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one of them is selected with probability $p = \frac{\tau}{W}$,
-where $\tau$ is the expected ammount of users to be selected for the given role.
-The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
-belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.\\
+The Sortition procedure is one of the most important subroutines in the main algorithm, as it is 
+used in multiple stages and contexts.
+Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random 
+Function) select a user with probability proportional
+to their weight (i.e., stake) by returning a j parameter, which indicates the number of times that 
+specific user was chosen.
+Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one 
+of them is selected with probability $p = \frac{\tau}{W}$,
+where $\tau$ is the expected amount of users to be selected for the given role.
+The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated 
+binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
+belongs to the interval, that's the amount of chosen sub-users for the subroutine caller.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item an integer $j$ that will be positive (larger than 0) if the user has been selected, and it's size corresponds to the ammount
-    of sub-users for a given committee member
+    \item an integer $j$ that will be positive (larger than 0) if the user has been selected, 
+    and its size corresponds to the amount of sub-users for a given committee member
   \end{itemize}
+
+% ----------------------------------------------------------------------------------------------
+
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$VerifySortition$}{$pk, seed, \tau, role, w, W$}
-        \IfThen{$\neg VerifyVRF_{pk}(hash, \pi, seed||role)$}{$\Return 0$}
+    \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, role, w, W$}
+        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||role)$}{$\Return 0$}
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
-        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^jB(k;w,p), \sum_{k=0}^{j+1}B(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
             \State $j++$
         \EndWhile
         \Return $j$
@@ -782,38 +809,42 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
     \item $seed$ = the sortition seed to be used
     \item $\tau$ = the expected committee size for the given role
     \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (aka. it's relevant stake)
+    \item $w$ = the user's weight (i.e., its relevant stake)
     \item $W$ = the total relevant stake for the given round
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The sortition verification procedure takes Sortition's output and utilizes VRF properties to verify the validity of said output.
-Once the check is passed, it repeats Sortition's sub-user selection procedure, and outputs the ammount of times the user was chosen
-according to their respective observed stake.\\
+The sortition verification procedure takes Sortition's output and utilizes 
+VRF properties to verify the validity of said output.
+Once the check is passed, it repeats Sortition's sub-user selection procedure, 
+and outputs the amount of times the user was chosen according to their respective 
+observed stake.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item an integer $j$ that will be positive (larger than 0) if the user has been selected, and it's size corresponds to the ammount
+    \item an integer $j$ that will be positive (larger than 0) if the user has been 
+    selected, and it's size corresponds to the amount
     of sub-users for a given committee member
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$BLOCK\_STEP$}{$hblock, blockHash, step$}
+    \Function{$\mathsf{BLOCK\_STEP}$}{$hblock, blockHash, step$}
         \State $bConfirmed \gets FALSE$
         \State $r \gets hblock$
 
-        \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-        \State $r \gets CountVotes(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
+        \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, r)$
+        \State $r \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
         \If{$r = TIMEOUT$}
             \State $r \gets blockHash$
         \ElsIf{$r \neq emptyHash$}
             \For{$step < s^\prime \leq step + 3$}
-                \State $CommitteeVote(ctx, round, s^\prime, \tau_{step}, r)$
+                \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, r)$
             \EndFor
             \If {$step = 1$}
-                \State $CommitteeVote(ctx, round, FINAL, \tau_{final}, r)$
+                \State $\mathsf{CommitteeVote}(ctx, round, FINAL, \tau_{final}, r)$
             \EndIf
             \State $bConfirmed \gets TRUE$
         \EndIf
@@ -832,31 +863,40 @@ according to their respective observed stake.\\
 
 \noindent \textbf{Description:}\\
 The BLOCK\_STEP subroutine handles the first part of the certifyVote's main loop.
-It first casts a vote on the observed hblock value (possibly coming off of a coin toss vote -see commonCoinFlipVote-).
-It then attempts to count incoming votes. In case of a timeout (aka. no block passed the threshold), it returns the block hash.
-Otherwise, and assuming the highest voted value is not an empty block hash, it casts votes for the next three steps for the block seen as selected.
-Then, in the special scenario where we are in step 1, we cast our vote as FINAL, suggesting that this block is a candidate for a final consensus (if enough committee members observe this fact).
-Finally, the procedure returns the selected block amd a flag to either continue or return from the main procedure with a certified vote.
+It first casts a vote on the observed hblock value possibly coming off of a coin toss vote 
+(see commonCoinFlipVote).
+It then attempts to count incoming votes. In case of a timeout (i.e., no block passed the 
+threshold), it returns the block hash.
+Otherwise, and assuming the highest voted value is not an empty block hash, it casts votes 
+for the next three steps for the block seen as selected.
+Then, in the special scenario where we are in step 1, we cast our vote as FINAL, suggesting 
+that this block is a candidate for a final consensus (if enough committee members observe 
+this fact).
+Finally, the procedure returns the selected block and a flag to either continue or return 
+from the main procedure with a certified vote.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash value and a boolean flag to assert whether the given value was
+    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash value and a 
+    boolean flag to assert whether the given value was
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$EMPTY\_STEP$}{$hblock, step$}
+    \Function{$\mathsf{EMPTY\_STEP}$}{$hblock, step$}
         \State $bConfirmed \gets FALSE$
         \State $r \gets hblock$
 
-    \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-    \State $r \gets CountVotes(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
+    \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, r)$
+    \State $r \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
     \If{$r = TIMEOUT$}
         \State $r \gets emptyHash$
     \ElsIf{$r = emptyHash$}
         \For{$step < s^\prime \leq step+3$}
-            \State $CommitteeVote(ctx, round, s^\prime, \tau_{step}, r)$
+            \State $\mathsf{CommitteeVote}(ctx, round, s^\prime, \tau_{step}, r)$
         \EndFor
         \State $bConfirmed \gets TRUE$
     \EndIf
@@ -873,27 +913,32 @@ Finally, the procedure returns the selected block amd a flag to either continue 
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The EMPTY\_STEP procedure works in a very similar fashion to BLOCK\_STEP, with two main differences: 
-the block to attempt to confirm is the empty block, and there is no final consensus achievable in this scenario.
+The EMPTY\_STEP procedure works in a very similar fashion to BLOCK\_STEP, 
+with two main differences: 
+the block to attempt to confirm is the empty block, and there is no final 
+consensus achievable in this scenario.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash value and a boolean flag to assert whether the given value was
+    \item a tuple $\langle r, bConfirmed \rangle$, comprised of a block hash 
+    value and a boolean flag to assert whether the given value was
     observed to be confirmed in any way or if further steps are needed
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$CommonCoinFlipVote$}{$hblock, blockHash, step$}
-        \State $r \gets hblock$
+    \Function{$\mathsf{CommonCoinFlipVote}$}{$hblock, blockHash, step$}
+        \State $hb \gets hblock$
     
-        \State $CommitteeVote(ctx, round, step, \tau_{step}, r)$
-        \State $r \gets CountVotes(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
-        \If{$r = TIMEOUT$}
-            \If{$CommonCoin(ctx,round,step,T_{step},\tau_{step},\lambda_{step}) = 0$}
-                \State $r \gets blockHash$
+        \State $\mathsf{CommitteeVote}(ctx, round, step, \tau_{step}, hb)$
+        \State $hb \gets \mathsf{CountVotes}(ctx,round,step,T_{step},\tau_{step},\lambda_{step})$
+        \If{$hb = TIMEOUT$}
+            \If{$\mathsf{CommonCoin}(ctx,round,step,T_{step},\tau_{step},\lambda_{step}) = 0$}
+                \State $hb \gets blockHash$
             \Else
-                \State $r \gets emptyHash$
+                \State $hb \gets emptyHash$
             \EndIf
         \EndIf
     \EndFunction
@@ -920,16 +965,17 @@ next vote will be for a given user, and introduces a tool to facilitate reaching
     in the immediately following step
   \end{itemize}
 
+% ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$CommonCoin$}{$ctx, round, step, \tau$}
+    \Function{$\mathsf{CommonCoin}$}{$ctx, round, step, \tau$}
 
     \State $minhash \gets 2^{hashlen}$
     \For{$m \in incomingMsgs[round, step]$}
-        \State $\langle votes,value,sorthash\rangle \gets ProcessMsg(ctx,\tau,m)$
+        \State $\langle votes,value,sorthash\rangle \gets \mathsf{ProcessMsg}(ctx,\tau,m)$
         \For{$1 \leq j < votes$}
-                \State $h \gets H(sorthash||j)$
+                \State $h \gets \mathsf{Hash}(sorthash||j)$
                 \IfThen{$h < minhash$}{$minhash \gets h$}
         \EndFor
     \EndFor
@@ -963,6 +1009,8 @@ able to manipulate this stage would severely diminish.\\
   \end{itemize}
 
 \end{section}
+% ----------------------------------------------------------------------------------------------
+% ----------------------------------------------------------------------------------------------
 
 
 \bibliographystyle{alpha}
