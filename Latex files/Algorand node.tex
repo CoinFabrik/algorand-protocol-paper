@@ -49,9 +49,6 @@
 
 
 \usepackage{marginnote}
-%TODO
-%EXPLICAR parametros globales
-%Explicar parametros de entrada de cada algoritmo y de salida
 
 \author{Argimiro, CoinFabrik}
 \title{Algorand Protocol Description}
@@ -62,39 +59,49 @@
 
 \begin{section}{Introduction}
 We aim to describe how the Algorand protocol works. We used \cite{DBLP:conf/sosp/GiladHMVZ17},
-\cite{DBLP:journals/corr/Micali16} and \href{https://www.a.com}{the code} as our main references.
+\cite{DBLP:journals/corr/Micali16} and \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications}
+as our main references.
 In the following document we present a detailed pseudocode interpretation 
 of the program run by an Algorand node with at least one online (aka. 
 participating) account. 
 We attempt to explain the 5 main stages of the code supporting 
 the protocol in a clear and concise way.
 This work aims to provide a basis for an Algorand blockchain simulator 
-currently in development. 
+currently in development. \\
 
 \noindent \textbf{Global parameters}:
 \begin{itemize}
-    \item $R$ = sortition seed renewal rate (in number of rounds). Set to 2 in the specs
+    \item $R$ = sortition seed renewal rate (in number of rounds). Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     as of December 2022
     \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
-    as 255 in the specs.
+    as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     \item $\tau_{step}$ = expected number of members on a regular step committee
     \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
     \item $T_{step}$ = fraction of expected members for a voting committee on a given step
-    \item $T_{step}$ = fraction of expected members for a voting committee on the final step (step = 2). If observed,
+    \item $T_{final}$ = fraction of expected members for a voting committee on the final step (step = 2). If observed,
     achieves final consensus on the given block hash
     \item $\lambda_{proposal}$ = time interval for the node to accept block proposals, after
     which it chooses the observed block with the highest priority (lowest hash) 
     \item $\lambda_{block}$ = waiting time for the full block to be received once decided by vote.
     If no full block is received, the node falls back to the empty block.
+    \item $SL$ = the account balances lookback interval, in number of rounds (integer). Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
   \end{itemize}
 
 On top of that, each node may run in favour of different accounts. To do this,
 it needs the following parameters. 
-Let $A=\{a\}$ be a collection of accounts $a$.
+Let $A=\{a\}$ be a collection of accounts $a$.\\ \\
 \noindent \textbf{Account parameters}:
 \begin{itemize}
-    \item A pair of public and private keys $a_{pk}, a_{sk}$ (although the secret key may be unnecessary)
-    \item ephemeral keys....
+    \item Public keys $a_{pk}$ for every account linked to the node (doubles as their respective addresses)
+    \item Public participation keys $a_{p\_partkey}$ for all accounts registered as online (private participation keys are kept
+    securely by respective users and should not be directly accesible by the node)
+    \item Two levels of ephemeral keys, signed according to the signing scheme described in \href{https://github.com/algorandfoundation/specs}{specs.} (where 
+    first level keys are signed with the participation keys, and second level (aka. leaf) ephemeral keys are signed with 
+    first level ephemeral keys). 
+    These keys are used for actual participation in the consensus (abstracted as $a_{sk}$ in the following code)
+    They are ephemeral because they live for a single round, after which they are deleted
+    \item A balance table $BalanceTable$ for all accounts linked to the node, for the round $SL + R$ rounds before the one 
+    currently running
 \end{itemize}
 
 \end{section}
@@ -104,8 +111,13 @@ Let $A=\{a\}$ be a collection of accounts $a$.
 Assume right now that a given node is fixed, we are at round $r$,
 this node has access to a set of accounts $a\in A$. Moreover,
 the account owner has computed for each round a round 
-leaf ephemeral key $a_{sk}$.
-The main algorithm goes over the following steps on every round.
+leaf ephemeral key $a_{sk}$. Assume also the node has access to contextual
+information about the ledger state, that being the current last confirmed block,
+the last $n > 322$ confirmed blocks, balance and ephemeral keys of all 
+online accounts in that interval of rounds. For the sake of clarity and readability, 
+we abstract access to that data through a context structure ($ctx$ in code), accesible
+at all times by the node.
+The main algorithm goes over the following stages on every round.
 \begin{itemize}
     \item block creation: each node may assemble a block, which includes 
 transactions and metadata.
@@ -113,21 +125,53 @@ transactions and metadata.
     to decide whether it should participate in the next stage. If it
     gets selected, then it is going to assemble and then send the block 
     proposal to the other nodes.
-\end{itemize}
+    \item soft vote: each node will undergo two rounds of voting to reduce
+    all posible block options to a dicotomy: either a block proposed by a 
+    chosen online network user or an empty block.
+    \item certify vote: each node undergoes a series of $n$ voting rounds
+    ($253 \geq n \geq 1$) to certify either the block received by the prior
+    stage or an empty block. If $n = 1$, the consensus is said to be FINAL.
+    Otherwise, the consensus will be TENTATIVE.
+    \item block confirmation: the block chosen in the certification stage
+    is added to the ledger, as FINAL or TENTATIVE depending on the ammount
+    of users observing it as either (as defined by the threshold parameters 
+    for each kind of consensus).\\
+\end{itemize} 
+
+The following algorithm outlines the process of running a round for a given node:
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{NodeMain}()$}{}
+    
+    \State $asmBlock \gets BlockCreation(transactionPool)$
+    \State $propBlockHash \gets BlockProposal(asmBlock, r, accounts\;A)$
+    \State $SVBlockHash \gets SoftVote(propBlockHash)$
+    \State $CVBlockHash \gets CertifyVote(SVBlockHash)$
+    \State $BlockConfirmation(CVBlockHash)$
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{Main node algorithm}}
+\end{algorithm}
+
+It starts by assembling the block, going through the proposal process,
+running both voting stages, and by the time it finishes either a block has been
+confirmed and added to the ledger (as TENTATIVE or FINAL), or it gets stuck awaiting for
+the recovery protocol to be started by the network.
 
 % --------------------------------------------------------------------
 \begin{subsection}{Block Creation}\label{ssect:blockcreation}
 
 \begin{algorithm}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{BlockCreation}()$}{transactionPool}
+    \Function{$\mathsf{BlockCreation}()$}{$transactionPool$}
     
     \State $Pick$ $transactions$ $from$ $transactionPool$
     \State \Return $\mathrm{Block}$    
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block creation}}
-    \label{alg:fuerza_bruta}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
@@ -141,8 +185,8 @@ or internal order in which transactions are added to the block.
 %In fact, they don't force transactions to be added at all, being entirely possible 
 %for a node to propose an empty block.
 More research is needed on how block data is put together.
-Block metadata is added later (see below \ref{sect:metadata} for more 
-details).
+Most of the block metadata is added in this stage, with the exception of the seed
+which is computed during the block proposal stage (\ref{ssect:blockproposal})\\
 
 \noindent \textbf{Returns:} 
 A full block, consisting of a variable number of transactions, and the following metadata:
@@ -166,39 +210,38 @@ A full block, consisting of a variable number of transactions, and the following
 
 \begin{algorithm}
     \begin{algorithmic}[1]
-    \Function{$BlockProposal$}{$Block$ $B$, $Accounts$ $A$}
+    \Function{$BlockProposal$}{$Block$ $B$, $r$, $Accounts$ $A$}
         \State $ProposalMsgsSent = \{\}$ //Set of proposal messages sent by this node
 
         \For{$a \in A$}
             \State $\langle sorthash, \pi, j\rangle\gets 
             \mathsf{Sortition}(
                 a_{sk}, 
-                \mathsf{getSortitionSeed}(round), 
+                \mathsf{getSortitionSeed}(ctx, r), 
                 t, 
                 role, $ \newline
-                ${}$ ${\hskip 5.2cm}\mathsf{sortition}_w(a, round), 
-                \mathsf{sortitionW}(round)
+                ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
+                \mathsf{getSortition_W}(ctx, r)
             )$
             \If{$j > 0$}
                 \State $priority \gets \min\{\mathsf{Hash}(sorthash || n):1\le n\le j\}$
-                \State $UserPriorityHashTable[a] = priority$
 
                 \State $msg \gets \mathsf{MSG}(a.pk, \mathsf{Signed}_{a.sk}(priority, \langle sorthash, \pi\rangle))$
-                \State $ProposalMsgsSent \cup= msg$
+                \State $ProposalMsgsSent \gets  ProposalMsgsSent\;\cup\;msg$
                 \State $\mathsf{GOSSIP\_MSG}(a.pk, Signed{a.sk}(priority, \langle sorthash, \pi\rangle))$
             \EndIf
-        \EndFor\
+        \EndFor \\
 
-        \While{$elapsed\;time < proposal\;time$}
+        \While{$elapsed\;time < \lambda_{proposal}$}
             \State $incomingMsgs.push(listen())$
-        \EndWhile\
+        \EndWhile
 
-        \State $msgs \gets incomingMsgs[round, step=0]$
+        \State $msgs \gets incomingMsgs[r, step=0]$
 
         \State $lowestHashMsg \gets m \| m.priority = \min \{m.priority \in incomingMsgs : \forall m \text{ s.t. } $\newline
-        ${}$ {\hskip 3cm}  $\mathsf{verifySortition}(m.sorthash, m.pi, m.pk) \& \mathsf{ValidateMsg}(m) \}$
+        ${}$ {\hskip 3cm}  $\mathsf{verifySortition}(m.sorthash, m.pi, m.pk) \& \mathsf{ValidateMsg}(m) \}$ \\
 
-        \State $FullBlockToPropose \gets empty\_block(round)$
+        \State $FullBlockToPropose \gets empty\_block(r)$ 
 
         \If{$lowestHashMsg \in msgsSent$}
             \State $FullBlockToPropose \gets B$
@@ -206,37 +249,37 @@ A full block, consisting of a variable number of transactions, and the following
             \State $\mathsf{GOSSIP\_MSG}(a_{pk}, \mathsf{Signed}_{a_{sk}}(B, \langle sorthash, \pi \rangle))$
         \Else
         {
-            \While{$elapsed\;time < fullblock\; time$}
+            \While{$elapsed\;time < \lambda_{block}$}
                 \State $incomingMsgs.push(listen())$
                 \State $m \gets incomingMsgs.back()$
                 \If{$\mathsf{ValidateMsg}(m) \& lowestHashMsg.blockHash=\mathsf{Hash}(m.FullBlock)$}
                     \State $FullBlockToPropose \gets m.FullBlock$
                 \EndIf
-            \EndWhile
+            \EndWhile \\
         }
         \EndIf
         \Return $H(FullBlockToPropose)$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Block proposal}}
-\end{algorithm}\marginpar{1. Que hace la linea 9. No entiendo. 2. que es ctx ? 3. Cual es 
-la estructura del FullBlockToPropose, e.g, (B, seed,...)}
+\end{algorithm}
 
 \newpage
 \noindent{\bf Arguments:}
 \begin{itemize}
     \item A block $B$ received from the previous stage
+    \item The number of round currently executing, $r$
     \item A list of online accounts  $A=\{a\}$ associated with this node
     \item ephemeral keys
-    \item public key associated to these accounts
+    \item public keys associated to these accounts
   \end{itemize}
 \noindent \textbf{Description:}\\
-The {\bf block proposal} stage (step 0 on specs) is the first stage of the 
+The {\bf block proposal} stage (step 0 on \href{https://github.com/algorandfoundation/specs}{specs.}) is the first stage of the 
 consensus algorithm. 
 First, the node loops through all their online accounts ($a\in A$), 
 running the sortition subroutine ($\mathsf{sortition}()$).
-Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition}_w()$ and
-$\mathsf{sortitionW}()$ described in Section \ref{sect:soubroutines}).\marginpar{Ojo, no todos estan. Revisar!} 
+Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition_w}()$ and
+$\mathsf{sortition_W}()$ described in Section \ref{sect:soubroutines}.
 The sortition subroutine determines if an account $a$ is selected to 
 ${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
 that is used to prioritize votes.
@@ -245,62 +288,65 @@ If $j>0$ then the address $a$ gets to vote and proceeds as follows.
 For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
 it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
 and keeps the minimum (line 6), which we set as the $priority$ of this
-account for this round. (Here $\mathsf{Hash}()$ is a cryptographic hash
-function, XX.)
+account for this round (here $\mathsf{Hash}()$ is a cryptographic hash
+function, assumed to be a random oracle).
 The $\mathsf{GOSSIP\_MSG}()$ call which happens next, gossips (broadcasts) 
 the priority, sortition hash and proof to other nodes.
-\marginpar{Que es la UserPriorityHashTable?? Nunca vuelve a referenciarla}
 It further includes the public key $a_{pk}$ for the account $a$ and the
-signature of the triplet $(priority, \langle sorthash, \pi\rangle$ with the 
+signature of the triplet $(priority, \langle sorthash, \pi\rangle)$ with the 
 leaf ephemeral key associated with the account $a$ and the round $r$.
 
 In the lines 11 to 15, the algorithm accepts block proposals (in the same 
-format as gossiped) from other accounts until $proposal time$ is reached.
-\marginpar{De donde sale proposal time?}
+format as gossiped) from other accounts until $\lambda_{proposal}$ is reached.
 For each block proposal received it only keeps the one with the lowest 
-priority validating the block before accepting it as a possible proposal.\marginpar{Que quiere decir validar?}
+priority validating the block before accepting it as a possible proposal.
+
+To validate a block proposal, the node verifies the sortition proof and hash
+(utilizing the $\mathsf{verifySortition}()$ function).
+If the vote message was invalid, the node can decide to flag the proposing user
+as malicious and choose to ignore any further messages received from that public address.
 
 Finally, in lines 16-25, the algorithm will select a block as 
 follows. Assume the elapsed time has been reached. 
 If the selected proposal came from this node, the seed is computed 
-calling $\mathsf{ComputeSeed}()$ from the input block $B$, the ctx and
-the round number $r$, and the complete block is gossiped to the network.
+calling $\mathsf{ComputeSeed}()$ from the input block $B$, the context helper structure 
+$ctx$ and the round number $r$, and the complete block is gossiped to the network.
 
 However, if the proposal did not come from this node, then the node 
-waits until $fullblocktime$ to receive the full block from other nodes
+waits until $\lambda_{block}$ to receive the full block from other nodes
 in the network.
 In case of timeout in this last stage, it falls back to the empty block.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item The hash of a full block, whether a block proposed by a user (including users 
+    \item The hash of a full block $BlockHash$, whether a block proposed by a user (including users 
     whose accounts are linked to this node) or an empty block in any of the special 
-    cases mentioned above.
+    cases mentioned above. It contains all transactions and metadata added in block creation (\ref{ssect:blockcreation}), 
+    as well as the computed seed.
   \end{itemize}
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
 \begin{subsection}{Soft Vote}\label{ssect:softvote}
-This step is only undertaken by the round's committee, i.e., those accounts that have
-a $j>0$ in the previous step.
-The soft vote stage (step 1, labeled as reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
+The soft vote stage (step 1, called reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
 any amount of potentially conflicting proposed blocks in the stage prior into a binary 
-choice, either a block proposed by a user or an empty one.\marginpar{Que es reduction one/two, $\lambda_{step}$, hblock}
-    
+choice, either a block proposed by a user or an empty one.
+
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
     \Function{$SoftVote$}{$BlockHash$}
+    \State $state \gets 1$
     
-    \State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_ONE, \tau_{step}, BlockHash)$
-    \State $hblock \gets \mathsf{CountVotes}(ctx, r, REDUCTION\_ONE, T_{step}, \tau_{step}, \lambda_{block} + \lambda_{step})$
+    \State $\mathsf{CommitteeVote}(ctx, r, step, \tau_{step}, BlockHash)$
+    \State $hblock \gets \mathsf{CountVotes}(ctx, r, step, T_{step}, \tau_{step}, \lambda_{block} + \lambda_{step})$
 
     \State $empty\_hash \gets \mathsf{Hash}(Empty(r, \mathsf{Hash}(ctx.last\_block)))$ 
     \If{$hblock = TIMEOUT$}
-        \State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, empty\_hash)$
+        \State $\mathsf{CommitteeVote}(ctx, r, step, \tau_{step}, empty\_hash)$
     \Else
-        {\State $\mathsf{CommitteeVote}(ctx, r, REDUCTION\_TWO, \tau_{step}, hblock)$}
+        {\State $\mathsf{CommitteeVote}(ctx, r, step, \tau_{step}, hblock)$}
     \EndIf\
 
-    \State $hblock \gets \mathsf{CountVotes}(ctx, r, REDUCTION\_TWO, T_{step}, \tau_{step}, \lambda_{step})$ 
+    \State $hblock \gets \mathsf{CountVotes}(ctx, r, step, T_{step}, \tau_{step}, \lambda_{step})$ 
 
     \IfThenElse{$hblock = TIMEOUT$}
         {$\Return\; empty\_hash$}
@@ -313,26 +359,25 @@ choice, either a block proposed by a user or an empty one.\marginpar{Que es redu
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item A block hash, $BlockHash$, received from the previous stage (Sect \ref{ssect:blockproposal}).
-    \marginpar{Entonces especifiquemoslo arriba. Porque no aparece}
   \end{itemize}
 
 \noindent \textbf{Description:}\\
 In the first step and with the input block $block\; hash$ as input, together
-with other parameters, the node does a\marginpar{Ven solo el hash y votan a partir del hash?}
-preliminary vote count (with $\mathsf{CommitteeVote}()$) and counts votes 
-after $\lambda$ seconds have passed using the subroutine $\mathsf{CountVotes}()$ --both 
+with other parameters, the node does a preliminary vote count (with $\mathsf{CommitteeVote}()$) and counts votes 
+after $\lambda$ seconds have passed using the subroutine $\mathsf{CountVotes}()$ \-both 
 subroutines being described in Section \ref{sect:soubroutines} in more detail.
 
 In the second step, committee members vote for the hash that received at least the 
-amount of votes set by the threshold for this step, or the hash of the default empty\marginpar{cual threshold? que es ese if hblock=timeout?} 
-block if no hash was observed to receive enough votes.
+ammount of votes set by the threshold $\tau_{step} * T_{step}$ for this step, or the hash of the default empty
+block if no hash was observed to receive enough votes. Here, TIMEOUT is a special value to signify that the vote count
+could not observe a threshold surpassing value in the required time window.
 
-It relies heavily on the assumption that, if the block proposer was honest, most users 
-will get to the soft vote stage with the same hblock parameter.
-However, if some proposers were dishonest, then no single hblock may be popular enough to 
-cross the threshold (and therefore this stage will return an empty\_hash) and there 
-will at most be one non-empty block that can be returned by soft vote 
-for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `opinion' de la descrip del algoritmo}
+% It relies heavily on the assumption that, if the block proposer was honest, most users 
+% will get to the soft vote stage with the same hblock parameter.
+% However, if some proposers were dishonest, then no single hblock may be popular enough to 
+% cross the threshold (and therefore this stage will return an empty\_hash) and there 
+% will at most be one non-empty block that can be returned by soft vote 
+% for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `opinion' de la descrip del algoritmo}
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -345,26 +390,29 @@ for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `
 \begin{subsection}{Vote Certification}\label{ssect:certifyvote}
     \begin{algorithm}[H]
         \begin{algorithmic}[H]
-        \Function{$\mathsf{CertifyVote}$}{$hblock$}
-        \State $localBlockHash \gets hblock$
+        \Function{$\mathsf{CertifyVote}$}{$blockHash$}
+        \State $localBlockHash \gets blockHash$
     
         \State $step \gets 2$
         \While{$step < 256$}
             \\
-            \State $\langle hblock, bConfirmed \rangle \gets \mathsf{BLOCK\_STEP}(hblock, localBlockHash, step)$
-            \If{$bConfirmed$}{ $\Return$ $hblock$}
+            \State $\langle blockHash, bConfirmed \rangle \gets \mathsf{BLOCK\_STEP}(blockHash, localBlockHash, step)$
+            \If{$bConfirmed$}{ $\Return$ $blockHash$}
             \EndIf
             \State $step++$\\
        
-            \State $ \langle hblock, bConfirmed \rangle \gets \mathsf{EMPTY\_STEP}(hblock,step)$
-            \If{$bConfirmed$}{ $\Return$ $hblock$}
+            \State $ \langle blockHash, bConfirmed \rangle \gets \mathsf{EMPTY\_STEP}(blockHash,step)$
+            \If{$bConfirmed$}{ $\Return$ $blockHash$}
             \EndIf
             \State $step++$\\
     
-            \State $\mathsf{CommonCoinFlipVote}(hblock, step)$
+            \State $\mathsf{CommonCoinFlipVote}(blockHash, step)$
             \State $step++$
+        \EndWhile \\
+        
+        \While{$True$} \State $NOP$ ${}$ {\hskip 1cm} //await asynchronous recovery
         \EndWhile
-        \State $HangForever()$
+
         \EndFunction
         \end{algorithmic}
         \caption{\underline{CertifyVote}}
@@ -372,13 +420,13 @@ for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `
     
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item A block hash, $BlockHash$ received from the previous stage (soft vote)
+    \item A block hash, $BlockHash$, received from the previous stage (soft vote)
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The certify vote stage is the core of the BA* algorithm.\marginpar{What is the BA* algorithm? Introduce it earlier}
-The main loop executes a maximum of 254 times (from step 2 to step 255, labeled ``cert'' and ``down'' 
-respectively on the specs (\cite{specs})).\marginpar{What labels?}
+The certify vote stage is the core of the voting algorithm.
+The main loop executes a maximum of 254 times (from step 2 to step 255, called ``cert'' and ``down'' 
+respectively on the \href{https://github.com/algorandfoundation/specs}{specs.}).
 This is to avoid an attacker indefinitely postponing consensus in a compromised network, giving them a 
 small chance to force consensus on their desired block with each iteration.
 
@@ -389,18 +437,21 @@ The {\sf CertifyVote} algorithm is comprised of three important procedures:
     threshold is met. If this step times out and no consensus is reached, it moves on to the empty 
     step. 
     \item Very similar in nature to the previous one, in this procedure a vote is cast for the 
-    value in {\em hblock} and then it attempts to confirm an empty block.
+    value in {\em blockHash} and then it attempts to confirm an empty block.
     \item if no consensus is reached on the empty block, it arrives to the common coin procedure, 
     where it attempts another vote and vote count for the empty block. 
     If here, no consensus is reached, it uses the pseudo-randomness of the VRF hash output to ``flip a coin" 
     by looking at the last bit of the lowest sortition hash owned by observed committee members.
     This makes it so even though the coin flip is random, most users will observe the same outcome and will 
-    in turn set their {\em hblock} values according to the observed bit. 
+    in turn set their {\em blockHash} values according to the observed bit. 
     In turn, this prevents an adversary from being able to easily predict beforehand what the next vote 
     of a user would be if they were a committee user, and therefore the attacker cannot force consensus 
     sending their vote messages to targeted users in a scenario where the voting is split pretty evenly 
-    but no block has quite enough votes to push the threshold.\marginpar{No se entiende lo de hangforever. Que quiere decir?}
+    but no block has quite enough votes to push the threshold.
 \end{enumerate}
+If no consensus is reached before the step counter reaches {\em MAX\_STEPS}, 
+the program stops in an infinite loop and awaits for the asynchronous recovery
+protocol to kick in.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -415,14 +466,14 @@ The {\sf CertifyVote} algorithm is comprised of three important procedures:
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$BlockConfirmation$}{$hblock$}
+    \Function{$BlockConfirmation$}{$blockHash$}
 
     \State $r \gets \mathsf{CountVotes}(ctx, round, FINAL, T_{final}, \tau_{final}, lstep)$
-    \If{$r = hblock$}
-        \State \Return $\langle FINAL, BlockOfHash(hblock)\rangle$ 
+    \If{$r = blockHash$}
+        \State \Return $\langle FINAL, BlockOfHash(blockHash)\rangle$ 
     \Else
     {
-        \State \Return $\langle TENTATIVE, BlockOfHash(hblock)\rangle $
+        \State \Return $\langle TENTATIVE, BlockOfHash(blockHash)\rangle $
     }
     \EndIf
     \EndFunction
@@ -451,7 +502,7 @@ could have been labeled TENTATIVE.
 If this node is not able to ensure that enough users considered the 
 block represented by hblock as FINAL, the consensus is labeled as 
 TENTATIVE, and it may be confirmed by a later FINAL block.
-The BlockOfHash() function outputs the full block for the provided 
+The $\mathsf{BlockOfHash}()$ function outputs the full block for the provided 
 hash, either by returning a locally available copy or by requesting 
 it from other users.
 
@@ -551,9 +602,9 @@ Has no return value, only gossips the specified vote if the caller is a committe
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
-    \Function{$ComputeSeed$}{$ctx, round, B$}
+    \Function{$ComputeSeed$}{$ctx, r, B$}
         \If{$B \neq empty\_block$} 
-            \State $\Return$ $VRF_{getSKu(ctx, r)}(ctx.LastBlock.seed||r$)
+            \State $\Return$ $VRF_{get_{SK_u}(ctx, r)}(ctx.LastBlock.seed||r$)
         \Else
             \State $\Return$ $H(ctx.LastBlock.seed||r)$
         \EndIf
@@ -566,24 +617,108 @@ Has no return value, only gossips the specified vote if the caller is a committe
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $round$ = current round number
-    \item $B$ = the block whose seed is being computed (that will be added as metadata)
+    \item $r$ = current round number
+    \item $B$ = the block whose seed is being computed
   \end{itemize}
 
 
 \noindent \textbf{Description:}\\
 This subroutine computes the required sortition seed for the given round number, which goes in the proposed block's metadata.
 If the block is empty, the seed is a hash of the previous block's seed.
-The $get_{SKu}(ctx, round)$ helper function gets the relevant user's secret key (according to the signing scheme described in specs).
-That is, the secret key from a round b time before block $r-1-(r mod R)$, where $R$ is the sortition seed's renewal rate, $r$ is the current round's number,
-and $b$ is the upper bound for the loss of strong synchrony (according to the weak synchrony assumption, that is, $s < b$).\\
-
-TODO: reescribir detallando mejor el proceso de selección de la seed
+The $get_{SKu}(ctx, r)$ helper function gets the relevant user's secret ephemeral keys (according to the signing scheme described in specs, the keys 160 rounds prior to $r$).
+This roughly corresponds to the secret key from a round $b$ time before block $r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the current round's number,
+and $b$ is the upper bound for the maximum ammount of time that the network might be compromised.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
     \item the computed seed for the given block, ledger context and round
   \end{itemize}
+
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[H]
+        \Function{$getSortitionSeed$}{$ctx, r, a_{pk}$}
+        
+            $\Return\;ctx.block[r-1-(r\;mod\;R)].seed$
+
+        \EndFunction
+    \end{algorithmic}
+    \caption{\underline{getSortitionSeed}}
+\end{algorithm}
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
+    \item $round$ = current round number
+    \item $a_{pk}$ = the account's public key for the look up table
+  \end{itemize}
+
+
+\noindent \textbf{Description:}\\
+This helper function gets the relevant sortition seed for the current round $r$, according to the seed lookback parameter $R$.
+Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, refreshed every $R$ rounds.
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item a sortition seed to be used in the round $r$
+  \end{itemize}
+
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[H]
+        \Function{$getSortition_w$}{$ctx, round, a_{pk}$}
+
+            $\Return\;ctx.balanceTable[r - (R + SL)][a_{pk}]$
+
+        \EndFunction
+    \end{algorithmic}
+    \caption{\underline{getSortitionWeight}}
+\end{algorithm}
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
+    \item $r$ = current round number
+    \item $a_{pk}$ = the account's public key for the look up table
+  \end{itemize}
+
+
+\noindent \textbf{Description:}\\
+This helper function retrieves the stake $R + SL$ rounds prior to $r$, for an account
+with public key $a_{pk}$
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item the relevant account's stake
+  \end{itemize}
+
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[H]
+        \Function{$getSortition_W$}{$ctx, r$}
+        
+        $\Return \sum_{a_{pk}\;\in\;ctx.balanceTable[r - (R + SL)]}{balanceTable[r - (R + SL)][a_{pk}]}$
+
+        \EndFunction
+    \end{algorithmic}
+    \caption{\underline{getSortitionTotalStake}}
+\end{algorithm}
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
+    \item $r$ = current round number
+  \end{itemize}
+
+
+\noindent \textbf{Description:}\\
+This helper function returns the sum of all stake for $R + SL$ rounds prior to $r$.
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item the total stake at play in the relevant round (according to lookback parameters)
+  \end{itemize}
+
 
 \begin{algorithm}[H]
     \begin{algorithmic}[H]
