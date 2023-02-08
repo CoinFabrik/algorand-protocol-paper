@@ -58,51 +58,34 @@
 \maketitle
 \tableofcontents
 
+% ---------------------------------------------------------------------------------------
 \begin{section}{Introduction}
-We aim to describe how the Algorand protocol works. We used \cite{DBLP:conf/sosp/GiladHMVZ17},
-\cite{DBLP:journals/corr/Micali16} and \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications}
-as our main references.
+We aim to describe how the Algorand protocol works. 
+This document is meant to reflect how the Algorand mainnet is behaving
+today. We relied on Algorand's documents (\cite{DBLP:conf/sosp/GiladHMVZ17},
+\cite{DBLP:journals/corr/Micali16} and 
+\href{https://github.com/algorandfoundation/specs}{Algorand's official specifications})
+but consulted the node's code and probed the network when information was unclear or 
+unavailable.
+
+
+Algorand is a proof-of-stake blockchain cryptocurrency protocol 
+using a decentralized Byzantine Agreement protocol that leverages 
+pure proof of stake for concensus. 
+There's two kind of nodes: participation nodes and relay nodes.
+Starting on the genesis block (round 0), on each round each
+{\bf participation node} may run a function to decide whether it is 
+a candidate for generating a block and voting  on whether it should 
+be written to the chain.
+Nodes voting rights are proportional to the stake they hold.
+
 In the following document we present a detailed pseudocode interpretation 
-of the program run by an Algorand node with at least one online (i.e., participating) account.
-We attempt to explain the 5 main stages of the code supporting 
+of the program run by an Algorand node with at least one online (i.e., participating) 
+account. We attempt to explain the 5 main stages of the code supporting 
 the protocol in a clear and concise way.
 This work aims to provide a basis for an Algorand blockchain simulator 
-currently in development. \\
+currently in development. 
 
-\noindent \textbf{Global parameters}:
-\begin{itemize}
-    \item $R$ = sortition seed renewal rate (in number of rounds). Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
-    as of December 2022
-    \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
-    as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
-    \item $\tau_{step}$ = expected number of members on a regular step committee
-    \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
-    \item $T_{step}$ = fraction of expected members for a voting committee on a given step
-    \item $T_{final}$ = fraction of expected members for a voting committee on the final step (step = 2). If observed,
-    achieves final consensus on the given block hash
-    \item $\lambda_{proposal}$ = time interval for the node to accept block proposals, after
-    which it chooses the observed block with the highest priority (lowest hash) 
-    \item $\lambda_{block}$ = waiting time for the full block to be received once decided by vote.
-    If no full block is received, the node falls back to the empty block.
-    \item $SL$ = the account balances lookback interval, in number of rounds (integer). Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
-  \end{itemize}
-
-On top of that, each node may run in favour of different accounts. To do this,
-it needs the following parameters. 
-Let $A=\{a\}$ be a collection of accounts $a$.\\ \\
-\noindent \textbf{Account parameters}:
-\begin{itemize}
-    \item Public keys $a_{pk}$ for every account linked to the node (doubles as their respective addresses)
-    \item Public participation keys $a_{p\_partkey}$ for all accounts registered as online (private participation keys are kept
-    securely by respective users and should not be directly accesible by the node)
-    \item Two levels of ephemeral keys, signed according to the signing scheme described in \href{https://github.com/algorandfoundation/specs}{specs.} (where 
-    first level keys are signed with the participation keys, and second level (aka. leaf) ephemeral keys are signed with 
-    first level ephemeral keys). 
-    These keys are used for actual participation in the consensus (abstracted as $a_{sk}$ in the following code)
-    They are ephemeral because they live for a single round, after which they are deleted
-    \item A balance table $BalanceTable$ for all accounts linked to the node, for the round $SL + R$ rounds before the one 
-    currently running
-\end{itemize}
 
 \end{section}
 % ------------------------------------------------------------------------
@@ -159,6 +142,46 @@ It starts by assembling the block, going through the proposal process,
 running both voting stages, and by the time it finishes either a block has been
 confirmed and added to the ledger (as TENTATIVE or FINAL), or it gets stuck awaiting for
 the recovery protocol to be started by the network.
+
+
+
+\noindent \textbf{Global parameters}:
+\begin{itemize}
+    \item $R$ = sortition seed renewal rate (in number of rounds). 
+    Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
+    as of December 2022
+    \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
+    as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
+    \item $\tau_{step}$ = expected number of members on a regular step committee
+    \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
+    \item $T_{step}$ = fraction of expected members for a voting committee on a given step
+    \item $T_{final}$ = fraction of expected members for a voting committee on the final step (step = 2). 
+    If observed, achieves final consensus on the given block hash
+    \item $\lambda_{proposal}$ = time interval for the node to accept block proposals, after
+    which it chooses the observed block with the highest priority (lowest hash) 
+    \item $\lambda_{block}$ = waiting time for the full block to be received once decided by vote.
+    If no full block is received, the node falls back to the empty block.
+    \item $SL$ = the account balances lookback interval, in number of rounds (integer). 
+    Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
+  \end{itemize}
+
+On top of that, each node may run in favour of different accounts. To do this,
+it needs the following parameters. 
+Let $A=\{a\}$ be a collection of accounts $a$.\\ \\
+\noindent \textbf{Account parameters}:
+\begin{itemize}
+    \item Public keys $a_{pk}$ for every account linked to the node (doubles as their respective addresses)
+    \item Public participation keys $a_{p\_partkey}$ for all accounts registered as online (private participation keys are kept
+    securely by respective users and should not be directly accesible by the node)
+    \item Two levels of ephemeral keys, signed according to the signing scheme described in \href{https://github.com/algorandfoundation/specs}{specs.} (where 
+    first level keys are signed with the participation keys, and second level (aka. leaf) ephemeral keys are signed with 
+    first level ephemeral keys). 
+    These keys are used for actual participation in the consensus (abstracted as $a_{sk}$ in the following code)
+    They are ephemeral because they live for a single round, after which they are deleted
+    \item A balance table $BalanceTable$ for all accounts linked to the node, for the round $SL + R$ rounds before the one 
+    currently running
+\end{itemize}
+
 
 % --------------------------------------------------------------------
 \begin{subsection}{Block Creation}\label{ssect:blockcreation}
