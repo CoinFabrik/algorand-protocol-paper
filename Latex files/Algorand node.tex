@@ -106,11 +106,91 @@ currently in development.
 \end{section}
 
 
+\begin{section}{Player accounts}
+
+A player is a unique participant of the protocol. We will
+use the terms player and account indistinctly throughout this document.
+A player is uniquely identified by a 256-bit string I called an address.
+Furthermore, they posess a certain balance (an unsigned 64 bit integer), 
+and a pair of participation keys set up according to the key scheme. An account may be online, 
+offline or nonparticipating.
+An account is offline when it has not sent an online transaction, that creates
+a participation key and a set of ephemeral keys to be used at each round and
+destroyed at the end.
+Also, an account has a set of VRF keys, computed at each round.
+TODO: keep describing player. Describe register process, online / offline /nonpart attributions)
+
+\end{section}
+
+\begin{section}{Ledger definition}
+A ledger is a sequence of states which comprise the common information established by some instantiation of the Algorand protocol. 
+Given a Ledger instance, its immutable characteristics are (...)
+A ledger state then is defined by the following parameters:
+
+A Ledger entry e (also known as block) is a data structure that models a ledger's state transition.
+PARAPHRASE DAPA
+The data in a block is divided between the block header and its block body. The block
+header contains the following components:
+• The block’s round, which matches the round of the state it is transitioning
+into. (The block with round 0 is special in that this block specifies not a
+transition but rather the entire initial state, which is called the genesis
+state. This block is correspondingly called the genesis block.) The round is
+stored under msgpack key rnd.
+• The block’s genesis identifier and genesis hash, which match the genesis
+identifier and hash of the states it transitions between. The genesis identifier
+is stored under msgpack key gen, and the genesis hash is stored under
+msgpack key gh.
+• The block’s upgrade vote, which results in the new upgrade state. The
+block also duplicates the upgrade state of the state it transitions into.
+The msgpack representation of the components of the upgrade vote are
+described in detail below.
+• The block’s timestamp, which matches the timestamp of the state it
+transitions into. The timestamp is stored under msgpack key ts.
+• The block’s seed, which matches the seed of the state it transitions into.
+The seed is stored under msgpack key seed.
+• The block’s reward updates, which results in the new reward state. The
+block also duplicates the reward state of the state it transitions into. The
+msgpack representation of the components of the reward updates are
+described in detail below.
+• A cryptographic commitment to the block’s transaction sequence, described
+below, stored under msgpack key txn.
+4
+• A cryptographic commitment, using SHA256 hash function, to the block’s
+transaction sequence, described below, stored under msgpack key txn256.
+• The block’s previous hash, which is the cryptographic hash of the previous
+block in the sequence. (The previous hash of the genesis block is 0.) The
+previous hash is stored under msgpack key prev.
+• The block’s transaction counter, which is the total number of transactions
+issued prior to this block. This count starts from the first block with a
+protocol version that supported the transaction counter. The counter is
+stored in msgpack field tc.
+• The block’s expired participation accounts, which contains an optional slice
+of public keys of accounts. These accounts are expected to have their
+participation key expire by the end of the round (or was expired before
+the current round). The msgpack representation of the components are
+described in detail below. The slice is stored in msgpack key partupdrmv.
+The block’s expired participation accounts slice is valid as long as the participation
+keys of all the accounts in the slice are expired by the end of the round or were
+expired before, the accounts themselves would have been online at the end of
+the round if they were not included in the slice, and the number of elements
+in the slice is less or equal to 32. A block proposer may not include all such
+accounts in the slice and may even omit the slice completely.
+The block body is the block’s transaction sequence, which describes the sequence
+of updates (transactions) to the account state and box state.
+A block is valid if each component is also valid. (The genesis block is always
+valid). Applying a valid block to a state produces a new state by updating each
+of its components.
+\end{section}
+
 \begin{section}{Node as a State Machine}
+
+We model each player as a finite state machine. In order to do so, we will first
+define and explain all variables involved in a given state a player is able to be in or transition to.
+A node, the network entity running the protocol, will then be "playing for" one or more online accounts that it manages.
 
 Let round and period number, $r$ and $p$, be unsigned 64 bit integers. Let the 
 step number, $s$, be an unsigned  8 bit integer.
-For convenience and readability, we define the following aliases for step number:
+For convenience and readability, the following aliases for step number are defined:
 \begin{itemize}
     \item $s=0 \equiv proposal$
     \item $s=1 \equiv soft$
@@ -121,12 +201,32 @@ For convenience and readability, we define the following aliases for step number
     \item $s=255 \equiv down$
 \end{itemize}
 
+
+A proposal-value is a tuple v = (I, p, Hash(e), Hash(Encoding(e))) where I is
+an address (the “original proposer”), p is a period (the “original period”),
+Hash is some cryptographic hash function (usually SHA512/256), Encoding is
+performed in msgpack, and e is a given ledger entry (as described in the previous section).
+The special proposal where all fields are the zero-string is called the bottom proposal $\bot$.
+
+
+
+Consider now tuples of the form (I, r, p, s, v), where v is a value.
+We will call this kind of construct a vote, noting it Vote(r, p, s, v), read as
+a vote for value 'v' at round r, period p and step s.
+
+We now consider ledger entries of the form (...).
+A tuple of the form () is called a proposal or proposal payload, noted Proposal(v).
+
 Given all of the above data types and constructs, a node can be modelled as 
 a finite state machine. A state is given by a 3-tuple of integers, $(r, p, s)$, 
 two sets $P$ and $V$ of objects which we will call observed $proposal$ and $vote$ values, 
+a special value vprime which we call the pinned value (see recovery algorithms),
 a Ledger $L$ and a balance table $BT$, a table of public addresses for all 
 accounts holding any stake in the network, and their balances. A Ledger is an 
-ordered chain of blocks...
+ordered chain of entries, and fundamentally it represents state changes in the balance table.
+The round number can be thought of as an index into the ledger, where the event of observing
+a new round cannot be decoupled from the event of adding an entry (block) to the ledger.
+
 
 
 
@@ -145,18 +245,18 @@ ordered chain of blocks...
             \State $BlockProposal()$
         \ElsIf{$time = FilterTimeout(p)$}
             \State $SoftVote()$
-        \ElsIf{$time = \max\{4\lambda, A\} \lor time = \max\{4\lambda, A\} + 2^{st-3}\lambda + r, st \in [4, 252], r \in [0, 2^{st-3}\lambda]$}
+        \ElsIf{$time = \max\{4\lambda, A\} \ \lor \ time = \max\{4\lambda, A\} + 2^{st-3}\lambda + r, st \in [4, 252], r \in [0, 2^{st-3}\lambda]$}
             \State $Recovery()$
-        \ElsIf{$time = k\lambda_f + r, k \in \mathbb{Z}, r \in [0, \lambda_f]$}
+        \ElsIf{$\exists k \in \mathbb{Z}, r \sim U(0, \lambda_f), time = k\lambda_f + r$}
             \State $FastRecovery()$
         \EndIf
     \Else %//Event is MessageEvent
         \State $msg \gets ev.msg$
         \If{$msg \ is \ Proposal \ p$}
             \State $HandleProposal(p)$
-        \ElsIf{$msg is Vote v$}
+        \ElsIf{$msg \ is \ Vote \ v$}
             \State $HandleVote(v)$
-        \ElsIf{$msg is Bundle b$}
+        \ElsIf{$msg \ is \ Bundle \ b$}
             \State $HandleBundle(b)$
         \EndIf
     \EndIf
@@ -167,29 +267,30 @@ ordered chain of blocks...
 \end{algorithm}
 
 %TODO: explain algorithm
-Events are the only way in which the node state machine is able to both internally transition and produce output.
-In case an event is not identified as misconstrued or malicious in nature, it will certainly produce a state change,
-and it will almost certainly cause a receiving node to produce and then broadcast or relay an output, to be consumed
-by its peers in the network.
-There are two kinds of events: Timeout events, which are produced once the internal clock of a node reaches a certain
-time since the start of the current period; and Message events, which is output produced by nodes in response to some stimulus
-(could include the receiving node itself).
+Algorand nodes operate based on events, which are the only means 
+through which the node state machine can transition and produce outputs. 
+Whenever an event is received, the node will produce a state change and
+will typically generate an output that will be broadcasted or relayed to other nodes on the network.
 
+There are two types of events: Timeout events and Message events. Timeout events are produced when 
+the node's internal clock reaches a certain time since the start of the current period, while 
+Message events are generated in response to messages sent by other network actors.
 
-% A proposal-value is a tuple v = (I, p, Digest(e), Hash(Encoding(e))) where I is
-% an address (the “original proposer”), p is a period (the “original period”), and
-% Hash is some cryptographic hash function (implemented as SHA512/256). The special proposal where all fields
-% are the zero-string is called the bottom proposal ⊥.
+The main algorithm describes how the event handling mechanism works. 
+If the event is a timeout and a new period has just started, the node will run the block proposal step. 
+After a certain amount of time, the node will attempt to soft vote, selecting the best received proposal 
+value based on the lowest proposer hash criteria and broadcasting its votes to the network if selected as part of the soft voting committee.
 
+If the event is a message reception, the node will handle it according to its context. 
+For example, a soft vote outside of the soft voting step could produce a next vote, 
+but it could not produce a certification vote without a period change and another round of voting.
 
-% Let I be an address, r be a round, p be a period, s be a step, and v be a
-% proposal-value, then consider y the output of signing this tuple and 
-% consider a VRF hash and VRF proof for this tuple, we say that this tuple
-% is a Vote for value v at round r, period p, step s by player I.
-% Vote(I, r, p, s, v, credentials)
+After a certain amount of time, the node will start the recovery steps and next vote a value or an empty block 
+if it observes the required threshold votes. Finally, after another specified amount of time, the block will 
+attempt a FastRecovery.
 
-Furthermore, given a proposal value, we denote Proposal(v) = e such that if v is a valid proposal value
-(validated according to context).
+More details on the specifics of each handler can be found in their respective subsections.
+
 
 
 % on that (r, p), we define a node state. A state transition can only be triggered by one of two kinds of events:
@@ -410,9 +511,9 @@ Furthermore, given a proposal value, we denote Proposal(v) = e such that if v is
                     \mathsf{getSortition_W}(ctx, r)
                 )$
                 \If{$j > 0$}
-                    \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s, \bot) \subset V$}
+                    \If{$p = 0 \lor \exists s^\prime > 2 \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         \State $e \gets AssembleBlock()$
-                        \State $priority \gets \min_{1\le n < j\}\{\mathsf{Hash}(sorthash || n)}$
+                        %\State $priority \gets \min_{1\le n < j}\{\mathsf{Hash}(sorthash || n)\}$
                         %\State $\mathsf{GOSSIP\_MSG}(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi\rangle))$
                         \State $v \gets Proposal_{value}(e)$
                         \State $Broadcast(Vote(I, r, p, proposal, v))$
@@ -441,61 +542,25 @@ Furthermore, given a proposal value, we denote Proposal(v) = e such that if v is
 %     \item public keys associated to these accounts.
 %   \end{itemize}
 \noindent \textbf{Description:}\\
-The node loops through all of its managed accounts. Functionally, the node "plays"
-for every account it manages, as each online account represents a different player
-in the system.
+The node manages multiple accounts and executes a "play" for each account, 
+as each account represents a distinct player in the system. The node runs a 
+sortition process for the proposal step of each account. If the account is selected 
+to propose (i.e., if the account has more than 0 votes for the specific context), 
+the node proceeds with the proposal step and period.
 
-% The {\bf block proposal} stage (step 0 on \href{https://github.com/algorandfoundation/specs}{specs.}) is the first stage of the 
-% consensus algorithm. 
-% First, the node loops through all their online accounts ($a\in A$), 
-% running the sortition subroutine ($\mathsf{sortition}()$).
-% Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition_w}()$ and
-% $\mathsf{sortition_W}()$ described in Section \ref{sect:soubroutines}.
-% The sortition subroutine determines if an account $a$ is selected to 
-% ${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
-% that is used to prioritize votes.
+If the check on line 5 passes (i.e., if it is the first period or an empty block
+ has been observed during the recovery step of the previous period), 
+ the node assembles a new block (e), calculates the proposal value (v), 
+ and broadcasts a vote for v on step 0 along with the full block (e).
 
-% If $j>0$ then the address $a$ gets to vote and proceeds as follows.
-% For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
-% it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
-% and keeps the minimum (line 6), which we set as the $priority$ of this
-% account for this round (here $\mathsf{Hash}()$ is a cryptographic hash
-% function, assumed to be a random oracle).
-% The $\mathsf{GOSSIP\_MSG}()$ call which happens next, gossips (broadcasts) 
-% the priority, sortition hash and proof to other nodes.
-% It further includes the public key $a_{pk}$ for the account $a$ and the
-% signature of the triplet $(priority, \langle sorthash, \pi\rangle)$ with the 
-% leaf ephemeral key associated with the account $a$ and the round $r$.
+If the check on line 5 fails (i.e., it is not the first period and no 
+empty block was observed during the recovery step of the previous period), 
+the period change must have been triggered by observing a bundle for a specific value $v_0$. 
+The node broadcasts a vote for this value.
 
-% In the lines 11 to 15, the algorithm accepts block proposals (in the same 
-% format as gossiped) from other accounts until $\lambda_{proposal}$ is reached.
-% For each block proposal received it only keeps the one with the lowest 
-% priority validating the block before accepting it as a possible proposal.
+If the actual proposal (i.e., the full ledger entry) is available, the node then broadcasts it 
+in a separate message.
 
-% To validate a block proposal, the node verifies the sortition proof and hash
-% (utilizing the $\mathsf{verifySortition}()$ function).
-% If the vote message was invalid, the node can decide to flag the proposing user
-% as malicious and choose to ignore any further messages received from that public address.
-
-% Finally, in lines 16-25, the algorithm will select a block as 
-% follows. Assume the elapsed time has been reached. 
-% If the selected proposal came from this node, the seed is computed 
-% calling $\mathsf{ComputeSeed}()$ from the input block $B$, the context helper structure 
-% $ctx$ and the round number $r$, and the complete block is gossiped to the network.
-
-% However, if the proposal did not come from this node, then the node 
-% waits until $\lambda_{block}$ to receive the full block from other nodes
-% in the network.
-% In case of timeout in this last stage, it falls back to the empty block.
-
-% \bigskip
-% \noindent \textbf{Returns:}
-% \begin{itemize}
-%     \item The hash of a full block $BlockHash$, whether a block proposed by a user (including users 
-%     whose accounts are linked to this node) or an empty block in any of the special 
-%     cases mentioned above. It contains all transactions and metadata added in block creation (\ref{ssect:blockcreation}), 
-%     as well as the computed seed.
-%   \end{itemize}
 
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
@@ -847,7 +912,7 @@ The soft vote stage (also known as "filtering")...
 
         \State $ResynchronizationAttempt()$
     
-        \For{$Account a \in A$}
+        \For{$Account \ a \in A$}
             \If{$IsCommitable(v)$}
                 \State $\langle sorthash, \pi, j\rangle\gets 
                 \mathsf{Sortition}(
