@@ -118,7 +118,7 @@ An account is offline when it has not sent an online transaction, that creates
 a participation key and a set of ephemeral keys to be used at each round and
 destroyed at the end.
 Also, an account has a set of VRF keys, computed at each round.
-TODO: keep describing player. Describe register process, online / offline /nonpart attributions)
+TODO: keep describing player. Describe register process, online / offline /nonpart attributions
 
 \end{section}
 
@@ -128,58 +128,58 @@ Given a Ledger instance, its immutable characteristics are (...)
 A ledger state then is defined by the following parameters:
 
 A Ledger entry e (also known as block) is a data structure that models a ledger's state transition.
-PARAPHRASE DAPA
-The data in a block is divided between the block header and its block body. The block
-header contains the following components:
-• The block’s round, which matches the round of the state it is transitioning
-into. (The block with round 0 is special in that this block specifies not a
-transition but rather the entire initial state, which is called the genesis
-state. This block is correspondingly called the genesis block.) The round is
-stored under msgpack key rnd.
-• The block’s genesis identifier and genesis hash, which match the genesis
-identifier and hash of the states it transitions between. The genesis identifier
-is stored under msgpack key gen, and the genesis hash is stored under
-msgpack key gh.
-• The block’s upgrade vote, which results in the new upgrade state. The
-block also duplicates the upgrade state of the state it transitions into.
-The msgpack representation of the components of the upgrade vote are
-described in detail below.
-• The block’s timestamp, which matches the timestamp of the state it
-transitions into. The timestamp is stored under msgpack key ts.
-• The block’s seed, which matches the seed of the state it transitions into.
-The seed is stored under msgpack key seed.
-• The block’s reward updates, which results in the new reward state. The
-block also duplicates the reward state of the state it transitions into. The
-msgpack representation of the components of the reward updates are
-described in detail below.
-• A cryptographic commitment to the block’s transaction sequence, described
-below, stored under msgpack key txn.
-4
-• A cryptographic commitment, using SHA256 hash function, to the block’s
-transaction sequence, described below, stored under msgpack key txn256.
-• The block’s previous hash, which is the cryptographic hash of the previous
-block in the sequence. (The previous hash of the genesis block is 0.) The
-previous hash is stored under msgpack key prev.
-• The block’s transaction counter, which is the total number of transactions
-issued prior to this block. This count starts from the first block with a
-protocol version that supported the transaction counter. The counter is
-stored in msgpack field tc.
-• The block’s expired participation accounts, which contains an optional slice
-of public keys of accounts. These accounts are expected to have their
-participation key expire by the end of the round (or was expired before
-the current round). The msgpack representation of the components are
-described in detail below. The slice is stored in msgpack key partupdrmv.
-The block’s expired participation accounts slice is valid as long as the participation
-keys of all the accounts in the slice are expired by the end of the round or were
-expired before, the accounts themselves would have been online at the end of
-the round if they were not included in the slice, and the number of elements
-in the slice is less or equal to 32. A block proposer may not include all such
-accounts in the slice and may even omit the slice completely.
-The block body is the block’s transaction sequence, which describes the sequence
-of updates (transactions) to the account state and box state.
-A block is valid if each component is also valid. (The genesis block is always
-valid). Applying a valid block to a state produces a new state by updating each
-of its components.
+%TODO: PARAPHRASE AND FORMAT:
+% The data in a block is divided between the block header and its block body. The block
+% header contains the following components:
+% • The block’s round, which matches the round of the state it is transitioning
+% into. (The block with round 0 is special in that this block specifies not a
+% transition but rather the entire initial state, which is called the genesis
+% state. This block is correspondingly called the genesis block.) The round is
+% stored under msgpack key rnd.
+% • The block’s genesis identifier and genesis hash, which match the genesis
+% identifier and hash of the states it transitions between. The genesis identifier
+% is stored under msgpack key gen, and the genesis hash is stored under
+% msgpack key gh.
+% • The block’s upgrade vote, which results in the new upgrade state. The
+% block also duplicates the upgrade state of the state it transitions into.
+% The msgpack representation of the components of the upgrade vote are
+% described in detail below.
+% • The block’s timestamp, which matches the timestamp of the state it
+% transitions into. The timestamp is stored under msgpack key ts.
+% • The block’s seed, which matches the seed of the state it transitions into.
+% The seed is stored under msgpack key seed.
+% • The block’s reward updates, which results in the new reward state. The
+% block also duplicates the reward state of the state it transitions into. The
+% msgpack representation of the components of the reward updates are
+% described in detail below.
+% • A cryptographic commitment to the block’s transaction sequence, described
+% below, stored under msgpack key txn.
+% 4
+% • A cryptographic commitment, using SHA256 hash function, to the block’s
+% transaction sequence, described below, stored under msgpack key txn256.
+% • The block’s previous hash, which is the cryptographic hash of the previous
+% block in the sequence. (The previous hash of the genesis block is 0.) The
+% previous hash is stored under msgpack key prev.
+% • The block’s transaction counter, which is the total number of transactions
+% issued prior to this block. This count starts from the first block with a
+% protocol version that supported the transaction counter. The counter is
+% stored in msgpack field tc.
+% • The block’s expired participation accounts, which contains an optional slice
+% of public keys of accounts. These accounts are expected to have their
+% participation key expire by the end of the round (or was expired before
+% the current round). The msgpack representation of the components are
+% described in detail below. The slice is stored in msgpack key partupdrmv.
+% The block’s expired participation accounts slice is valid as long as the participation
+% keys of all the accounts in the slice are expired by the end of the round or were
+% expired before, the accounts themselves would have been online at the end of
+% the round if they were not included in the slice, and the number of elements
+% in the slice is less or equal to 32. A block proposer may not include all such
+% accounts in the slice and may even omit the slice completely.
+% The block body is the block’s transaction sequence, which describes the sequence
+% of updates (transactions) to the account state and box state.
+% A block is valid if each component is also valid. (The genesis block is always
+% valid). Applying a valid block to a state produces a new state by updating each
+% of its components.
 \end{section}
 
 \begin{section}{Node as a State Machine}
@@ -266,7 +266,6 @@ a new round cannot be decoupled from the event of adding an entry (block) to the
     \caption{\underline{Main node algorithm}}
 \end{algorithm}
 
-%TODO: explain algorithm
 Algorand nodes operate based on events, which are the only means 
 through which the node state machine can transition and produce outputs. 
 Whenever an event is received, the node will produce a state change and
@@ -369,50 +368,6 @@ More details on the specifics of each handler can be found in their respective s
 %         the effect of a block being tentative?}
 % \end{itemize} 
 
-% The following algorithm outlines the process of running a round for a given node:
-
-% \begin{algorithm}[H]
-%     \begin{algorithmic}[1]
-%     \Function{$\mathsf{NodeMain}()$}{}
-    
-%     \State $asmBlock \gets \mathsf{BlockCreation}(transactionPool)$
-%     \State $propBlockHash \gets \mathsf{BlockProposal}(asmBlock, r, accounts\;A)$
-%     \State $SVBlockHash \gets \mathsf{SoftVote}(propBlockHash)$
-%     \State $CVBlockHash \gets \mathsf{CertifyVote}(SVBlockHash)$
-%     \State $\mathsf{BlockConfirmation}(CVBlockHash)$
-
-%     \EndFunction
-%     \end{algorithmic}
-%     \caption{\underline{Main node algorithm}}
-% \end{algorithm}
-
-% It starts by assembling the block, going through the proposal process,
-% running both voting stages, and by the time it finishes either a block has been
-% confirmed and added to the ledger (as TENTATIVE or FINAL), or it gets stuck awaiting for
-% the recovery protocol to be started by the network.
-
-
-
-% \begin{subsection}{Notions and Notations}
-
-
-%  $R$ = sortition seed renewal rate (in number of rounds). 
-%     Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
-%     as of December 2022
-%     \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
-%     as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
-%     \item $\tau_{step}$ = expected number of members on a regular step committee
-%     \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
-%     \item $T_{step}$ = fraction of expected members for a voting committee on a given step
-%     \item $T_{final}$ = fraction of expected members for a voting committee on the final step (step = 2). 
-%     If observed, achieves final consensus on the given block hash
-%     \item $\lambda_{proposal}$ = time interval for the node to accept block proposals, after
-%     which it chooses the observed block with the highest priority (lowest hash) 
-%     \item $\lambda_{block}$ = waiting time for the full block to be received once decided by vote.
-%     If no full block is received, the node falls back to the empty block.
-%     \item $SL$ = the account balances lookback interval, in number of rounds (integer). 
-%     Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
-
     
 
 % On top of that, each node may run in favour of different accounts. To do this,
@@ -457,8 +412,6 @@ More details on the specifics of each handler can be found in their respective s
 % At one point, the participation node starts assembling a block.
 % The Algorand protocol specs (\cite{DBLP:conf/sosp/GiladHMVZ17}) do not ensure 
 % a specific way or internal order in which transactions are added to the block.
-% %In fact, they don't force transactions to be added at all, being entirely possible 
-% %for a node to propose an empty block.
 % The node will validate the signature and execute the transactions in the Algorand
 % Virtual Machine (AVM for short) \marginpar{How does this work? Do accounts need to hold
 % ALGO? So the genesis block already assigned some ALGOs to some accounts without any
@@ -500,6 +453,8 @@ More details on the specifics of each handler can be found in their respective s
         \begin{algorithmic}[1]
         \Function{$BlockProposal$}{}
 
+            \State $ResynchronizationAttempt()$
+
             \For{$a \in A$}
                 \State $\langle sorthash, \pi, j\rangle\gets 
                 \mathsf{Sortition}(
@@ -533,14 +488,7 @@ More details on the specifics of each handler can be found in their respective s
     \end{algorithm}
 
 \newpage
-% \noindent{\bf Arguments:}
-% \begin{itemize}
-%     \item A block $B$ received from the previous stage.
-%     \item The number of round currently executing, $r$.
-%     \item A list of online accounts  $A=\{a\}$ associated with this node.
-%     \item ephemeral keys.
-%     \item public keys associated to these accounts.
-%   \end{itemize}
+
 \noindent \textbf{Description:}\\
 The node manages multiple accounts and executes a "play" for each account, 
 as each account represents a distinct player in the system. The node runs a 
@@ -565,9 +513,6 @@ in a separate message.
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
 \begin{subsection}{Soft Vote}\label{ssect:softvote}
-% The soft vote stage (step 1, called reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
-% any amount of potentially conflicting proposed blocks in the stage prior into a binary 
-% choice, either a block proposed by a user or an empty one.
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
@@ -577,7 +522,7 @@ in a separate message.
 
 
     \For{$vote \in V, vote.step = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, j)} H(vote.priority || i)$
+        \State $priorityHash \gets \min_{i \in [0, j)} Hash(vote.sorthash || i)$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
             \State $v \gets vote.v$
@@ -587,9 +532,9 @@ in a separate message.
     \For{$a \in Accounts$}
         \State $<j, hash, \pi> \gets sortition(a, soft)$
         \If{$j > 0 \land lowestObservedHash < \infty$}
-            \State $GOSSIP(Vote(r, p, soft, v))$
+            \State $Broadcast(Vote(r, p, soft, v))$
             \If{$Proposal(v) \in P$}
-                \State $GOSSIP(Proposal(v))$
+                \State $Broadcast(Proposal(v))$
             \EndIf
         \EndIf
     \EndFor
@@ -599,36 +544,17 @@ in a separate message.
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
-% \noindent \textbf{Arguments:}
-% \begin{itemize}
-%     \item A block hash, $BlockHash$, received from the previous stage (Sect \ref{ssect:blockproposal}).
-%   \end{itemize}
-
 \noindent \textbf{Description:}\\
-The soft vote stage (also known as "filtering")...
-
-% In the first step and with the input block $block\; hash$ as input, together
-% with other parameters, the node does a preliminary vote count (with $\mathsf{CommitteeVote}()$) and counts votes 
-% after $\lambda$ seconds have passed using the subroutine $\mathsf{CountVotes}()$ \-both 
-% subroutines being described in Section \ref{sect:soubroutines} in more detail.
-
-% In the second step, committee members vote for the hash that received at least the 
-% ammount of votes set by the threshold $\tau_{step} * T_{step}$ for this step, or the hash of the default empty
-% block if no hash was observed to receive enough votes. Here, TIMEOUT is a special value to signify that the vote count
-% could not observe a threshold surpassing value in the required time window.
-
-% It relies heavily on the assumption that, if the block proposer was honest, most users 
-% will get to the soft vote stage with the same hblock parameter.
-% However, if some proposers were dishonest, then no single hblock may be popular enough to 
-% cross the threshold (and therefore this stage will return an empty\_hash) and there 
-% will at most be one non-empty block that can be returned by soft vote 
-% for all honest users.\marginpar{porque at most one? Igual, quizas sacaria esta `opinion' de la descrip del algoritmo}
-
-% \noindent \textbf{Returns:}
-% \begin{itemize}
-%     \item A block hash, chosen by a majority of users in the soft vote / reduction stage 
-%     (could be the empty block hash)
-% \end{itemize}
+The soft vote routine (also known as "filtering") is triggered after a SV timeout since the beginning of a period.
+Of all received proposal votes, the node finds the one that minimizes the priority function.
+The priority function is computed, for each voting unit of each proposer, as the minimum Hash(sorthash || i), where sorthash is
+the proposer's sortition output hash, i is an integer in between 1 (inclusive) and the j value output by
+the proposer's sortition run (exclusive).
+If no valid votes were observed by the node, there is no output and the algorithm ends here.
+If a value with minimum priority is found, every account managed by the node runs sortition to be part of 
+the soft vote committee.
+If selected, the vote is broadcast. If the ledger entry associated to that value has also been observed, it is broadcast
+separately but immediately after.
 
 \end{subsection}
 % --------------------------------------------------------------------
@@ -765,35 +691,42 @@ The soft vote stage (also known as "filtering")...
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
-        \Function{$HandleProposal$}{$Proposal e$}
+        \Function{$HandleProposal$}{$Proposal \ e$}
 
-            %Relays Proposal(v) if σ(S, r + 1, 0) = v.
+            \State $v \gets Proposal_{value}(e)$ \\
+
+            \If{$\sigma(S, r+1, 0) = v$}
+                \State $Relay(e)$
+            \EndIf \\
+
             %Ignores it if it is invalid.
             %Ignores it if Proposal(v) ∈ P.
+            \If{$isValid(e) \land e \notin P \land v \in \{\sigma(S, r, p), v, \mu(S, r, p)\}$}
+                \State $Relay(e)$
+                \State $P \gets P \cup \{e\}$ \\  %observe it
+
+                %produce output 
+                \If{$IsCommitable(v) \land s \leq cert$}
+                    \For{$a \in A$}
+                        \State $\langle sorthash, \pi, j\rangle\gets 
+                        \mathsf{Sortition}(
+                        a_{sk}, 
+                        \mathsf{getSortitionSeed}(ctx, r), 
+                        t, 
+                        cert, $ \newline
+                        ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
+                        \mathsf{getSortition_W}(ctx, r)
+                        )$
+                        \If{$j > 0$}
+                            \State $Broadcast(Vote(a.I, r, p, cert, v))$
+                        \EndIf
+                    \EndFor    
+                \EndIf
+
+            \EndIf
             %Relays Proposal(v), observes it, and then produces any consequent output,
             %if v ∈ {σ(S, r, p), v, µ ¯ (S, r, p)}.
             %Otherwise, ignores it
-
-            %TODO: chequeos en pseudocodigo
-            %asumiendo chequeos OK
-
-            \State $v \gets Proposal_{value}(e)$
-            \If{$IsCommitable(v) \land s \leq cert$}
-                \For{$a \in A$}
-                    \State $\langle sorthash, \pi, j\rangle\gets 
-                    \mathsf{Sortition}(
-                    a_{sk}, 
-                    \mathsf{getSortitionSeed}(ctx, r), 
-                    t, 
-                    cert, $ \newline
-                    ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
-                    \mathsf{getSortition_W}(ctx, r)
-                    )$
-                    \If{$j > 0$}
-                        \State $Broadcast(Vote(a.I, r, p, cert, v))$
-                    \EndIf
-                \EndFor    
-            \EndIf
 
         \EndFunction
         \end{algorithmic}
@@ -802,6 +735,12 @@ The soft vote stage (also known as "filtering")...
     
     
     \noindent \textbf{Description:}\\
+The proposal handler is activated when a message event for a full proposal (aka. a ledger entry, e) is received by the node.
+There's two parts to the algorithm. First, a series of checkups are performed (...)
+Afterwards, and assuming the proposal is valid and not to be ignored, a check for commitability of the proposal value is performed.
+If the value is commitable (that is, there is a soft bundle for it - more on that on IsCommitable() -), and the current step number
+is cert (2) or less, we run sortition for the account for a membership of the certification committee.
+If selected, a certification vote is broadcast.
     
 \end{subsection}
 
@@ -811,18 +750,44 @@ The soft vote stage (also known as "filtering")...
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
-        \Function{$HandleVote$}{$Vote v$}
+        \Function{$HandleVote$}{$Vote \ vt$}
 
-            \If{$not VerifyVote(v)$}
-                \If{}
-                \EndIf
+            \If{$\neg VerifyVote(vt) \lor
+            (s=0 \land vt \in V) \lor 
+            (s=0 \land IsEquiv(vt)) \lor
+             (s>0 \land IsSecondEquiv(vt))
+            \lor vt.r \notin [r,r+1] 
+            \lor (vt.r = r+1 \land (vt.p > 0 \lor vt.s \in (next_0, late))) \lor 
+            (vt.r = r \land 
+                (vt.p \notin [p-1, p+1] \lor 
+                vt.p = p+1 \lor
+                (vt.p = p \land vt.s \in (next_0, late) \land vt.s \notin [s-1, s+1]) \lor 
+                (vt.p = p-1 \land vt.s \in (next_0, late) \land vt.s \notin [\hbar{s}-1, \hbar{s}+1]) ))$
+            }
+                \State $\Return$ //the vote is ignored
+            \EndIf \\
 
+            //if we got here, the vote is to be relayed and observed
+            \State $Relay(vt)$
+            \State $V \gets V \cup vt$
+
+            \If{$vt.s = proposal$}
+                //reproposal payload
+                %TODO: necesita ser miembro de comite aca? Yo pensaria que si porque es un broadcast, no un relay
+                \State $Broadcast(Proposal(vt.v))$
+
+            \ElsIf{$vt.s = soft \land \mathsf{IsCommitable}(vt.v) \land s \leq cert$}
+                %TODO ACA: for account, run sortition
+                    \State $Broadcast(Vote(r,p,cert,vt.v))$
+            
+            \ElsIf{$vt.s = cert \land Bundle(r,p,cert,vt.v) \subset V$}
+                \State $Commit(Proposal(vt.v))$
+
+            \ElsIf{$vt.s \in [next_0, next_{250}] \land \exists v | Bundle(r,p,vt.s,v) \subset V$}
+                %TODO: ver si arrancar nuevo periodo
+                %si arranca nuevo periodo, ver si pinnear un valor
+                
             \EndIf
-
-            %\If{certBundleObserved}
-            %   L.append(Proposal(v))
-            %   GarbageCollect()
-            %   r \gets r+1
 
         \EndFunction
         \end{algorithmic}
@@ -831,6 +796,8 @@ The soft vote stage (also known as "filtering")...
     
     
     \noindent \textbf{Description:}\\
+The vote handler is called whenever a node receives a vote of any kind.
+
     
 \end{subsection}
 
@@ -855,7 +822,12 @@ The soft vote stage (also known as "filtering")...
     
     
     \noindent \textbf{Description:}\\
-    
+This handler is called when a message containing a bundle is received.
+If the bundle is verified (which implies verifying the validity of every vote separately),
+the round of all votes in it matches the node's current round and its period is at least the previous one (p - 1), 
+then each vote in the bundle is processed independantly.
+Functionally, receiving a bundle is the same as receiving a set of votes sequentially.
+
 \end{subsection}
 
 % --------------------------------------------------------------------
@@ -952,10 +924,14 @@ The soft vote stage (also known as "filtering")...
     \end{algorithm}
     
     
-    \noindent \textbf{Description:}\\
-    The fast recovery algorithm is executed periodically every integer multiple of lambdaF
-    seconds. In it, nodes of the network make a synchronization attempt.
-    In the first section, if there is a value v 
+\noindent \textbf{Description:}\\
+The fast recovery algorithm is executed periodically every integer multiple of $\lambda_F$
+seconds. In it, nodes of the network make an attempt to reestablish normal functioning
+of the network by broadcasting, in the hopes of observing, any kind of consensus.
+Firstly, and same as in the previous mentioned "next" recovery stages, a resynchronization attempt
+is made (broadcasting freshest bundle or value if there is any, see ResynchronizationAttempt() in the next section).
+
+
 \end{subsection}
 
 
@@ -977,43 +953,20 @@ The soft vote stage (also known as "filtering")...
 \end{algorithm}
 
 
-% \noindent \textbf{Arguments:}
-% \begin{itemize}
-%     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-%     \item $round$ = current round number
-%     \item $step$ = current step number
-%     \item $T$ = fraction of expected committee members to get the confirmation threshold
-%     \item $\tau$ = expected number of committee members
-%     \item $\lambda$ = maximum time to keep running the vote count and waiting for network messages
-%   \end{itemize}
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $v$ = a proposal value (as we know from a previous section, computed as a function of a ledger entry in consideration).
+  \end{itemize}
 
-% \noindent \textbf{Description:}\\
-% This subroutine counts the votes for any observed block hash value, for a given 
-% round and step numbers.
-% It returns as soon as it finds a value exceeding the specified threshold (which
-% will also vary according to round and step).
-% If no value is observed to have the required amount of votes in the predetermined 
-% temporal window, it finishes with a TIMEOUT.
-% It is important to notice that every committee user's vote is processed at most 
-% once for the given context.\\
+\noindent \textbf{Description:}\\
+A boolean helper subroutine that returns $True$ if, for the input value $v$,
+a ledger entry $e = Proposal(v)$ has been observed by the player and is available in the current state,
+and a soft bundle of votes $b$ has been observerd, where for every vote $vt \in b$ 
+either $vt.v = v$ or $vt$ is an equivocation vote (in which case it counts as a "wildcard" towards 
+any value; in particular $v$ in this case). Otherwise, the subroutine returns $False$.
 
 % Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
 % The function $\mathsf{ProcessMsg}$ returns....
-
-% This subroutine counts the votes for any observed block hash value, for a given 
-% round and step numbers.
-% It returns as soon as it finds a value exceeding the specified threshold (which
-% will also vary according to round and step).
-% If no value is observed to have the required amount of votes in the predetermined 
-% temporal window, it finishes with a TIMEOUT.
-% It is important to notice that every committee user's vote is processed at most 
-% once for the given context.\\
-
-% \noindent \textbf{Returns:}
-% \begin{itemize}
-%     \item the first block hash value observed to achieve the required threshold, 
-%     or a TIMEOUT constant if none was found in the required time window.
-%   \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1031,23 +984,6 @@ The soft vote stage (also known as "filtering")...
 %     \caption{\underline{CommitteeVote}}
 % \end{algorithm}
 
-% \noindent \textbf{Arguments:}
-% \begin{itemize}
-%     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-%     \item $round$ = current round number
-%     \item $step$ = current step number
-%     \item $T$ = fraction of expected committee members to get the confirmation threshold
-%     \item $\tau$ = expected number of committee members
-%     \item $\lambda$ = maximum time to keep running the vote count and awaiting for network messages
-%   \end{itemize}
-
-% \noindent \textbf{Description:}\\
-% This subroutine verifies that the caller is a member of the specified committee (for a given round and step number), 
-% and in that case casts a vote for the block passed as argument.\\
-
-% \noindent \textbf{Returns:}\\
-% The subroutine has no return value, it only gossips the specified vote if the caller is a committee member.
-
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
@@ -1057,17 +993,17 @@ The soft vote stage (also known as "filtering")...
     \State $Val = \bot$
 
     \If{$\exists v | Bundle(r, p, soft, v) \subset V$}
-        \State $GOSSIP(Bundle(r, p, soft, v))$
+        \State $Broadcast(Bundle(r, p, soft, v))$
         \State $val = v$    
     \ElsIf{$\exists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subset V$}
-        \State $GOSSIP(Bundle(r, p, s_0, \bot))$
+        \State $Broadcast(Bundle(r, p, s_0, \bot))$
     \ElsIf{$\exists s_0 > cert, v \neq \bot | Bundle(r, p - 1, s_0, v) \subset V$}
-        \State $GOSSIP(Bundle(r, p, s_0, v))$
+        \State $Broadcast(Bundle(r, p, s_0, v))$
         \State $val = v$   
     \EndIf
 
     \If{$val \neq \bot and Proposal(v) \in P$}
-        \State $GOSSIP(Proposal(v))$
+        \State $Broadcast(Proposal(v))$
     \EndIf
 
     \EndFunction
@@ -1252,6 +1188,54 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
     and its size corresponds to the amount of sub-users for a given committee member
   \end{itemize}
 
+
+% ----------------------------------------------------------------------------------------------
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{Commit}$}{$LedgerEntry \ e$}
+
+        \State $L \gets L || e$
+        \State $GarbageCollect()$
+        \State $r \gets r+1$
+        \State $UpdateBalanceTable()$
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{Commit}}
+\end{algorithm}
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $LedgerEntry e$ = a ledger entry deemed to be commitable by the consensus mechanism.
+    That is, $e$ is a valid entry for $L$, and a valid certification bundle has been observed for 
+    its corresponding value (the unique value $v$ for which $Proposal_{value}(e) = v$)
+\end{itemize}
+
+\noindent \textbf{Description:}\\
+This subroutine commits an entry $e$ to the ledger. The entry passed as argument is appended to the ledger $L$,
+the current state is garbage collected, a new round is observed and the balance table and general
+account records are updated with whatever transaction information was present in $e$.
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{GarbageCollect}$}{}
+
+    %garbage collect current state
+    \State $s \gets proposal$
+    \State $P \gets P - {\forall e \in P, e.r=r, e.p = p}$
+    %TODO FINISH!
+
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{GarbageCollect}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+
 % ----------------------------------------------------------------------------------------------
 
 
@@ -1304,8 +1288,6 @@ observed stake.\\
     \item $R$ = sortition seed renewal rate (in number of rounds). 
     Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     as of December 2022
-    \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
-    as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     \item $\tau_{step}$ = expected number of members on a regular step committee
     \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
     \item $T_{step}$ = fraction of expected members for a voting committee on a given step
