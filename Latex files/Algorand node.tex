@@ -184,6 +184,9 @@ A Ledger entry e (also known as block) is a data structure that models a ledger'
 
 \begin{section}{Node as a State Machine}
 
+% Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
+% The function $\mathsf{ProcessMsg}$ returns....
+
 We model each player as a finite state machine. In order to do so, we will first
 define and explain all variables involved in a given state a player is able to be in or transition to.
 A node, the network entity running the protocol, will then be "playing for" one or more online accounts that it manages.
@@ -468,8 +471,6 @@ More details on the specifics of each handler can be found in their respective s
                 \If{$j > 0$}
                     \If{$p = 0 \lor \exists s^\prime > 2 \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         \State $e \gets AssembleBlock()$
-                        %\State $priority \gets \min_{1\le n < j}\{\mathsf{Hash}(sorthash || n)\}$
-                        %\State $\mathsf{GOSSIP\_MSG}(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi\rangle))$
                         \State $v \gets Proposal_{value}(e)$
                         \State $Broadcast(Vote(I, r, p, proposal, v))$
                         \State $Broadcast(e)$
@@ -687,7 +688,7 @@ separately but immediately after.
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{HandleProposal}\label{ssect:HandleProposal}
+\begin{subsection}{Proposal handler}\label{ssect:HandleProposal}
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
@@ -746,7 +747,7 @@ If selected, a certification vote is broadcast.
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{HandleVote}\label{ssect:HandleVote}
+\begin{subsection}{Vote handler}\label{ssect:HandleVote}
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
@@ -754,7 +755,7 @@ If selected, a certification vote is broadcast.
 
             \If{$\neg VerifyVote(vt) \lor
             (s=0 \land vt \in V) \lor 
-            (s=0 \land IsEquiv(vt)) \lor
+            (s=0 \land \mathsf{IsEquivocation}(vt)) \lor
              (s>0 \land IsSecondEquiv(vt))
             \lor vt.r \notin [r,r+1] 
             \lor (vt.r = r+1 \land (vt.p > 0 \lor vt.s \in (next_0, late))) \lor 
@@ -777,16 +778,30 @@ If selected, a certification vote is broadcast.
                 \State $Broadcast(Proposal(vt.v))$
 
             \ElsIf{$vt.s = soft \land \mathsf{IsCommitable}(vt.v) \land s \leq cert$}
-                %TODO ACA: for account, run sortition
-                    \State $Broadcast(Vote(r,p,cert,vt.v))$
+                \For{$Account \ a \in A$} 
+                    \State $\langle sorthash, \pi, j\rangle\gets 
+                    \mathsf{Sortition}(
+                    a_{sk}, 
+                    \mathsf{getSortitionSeed}(ctx, r), 
+                    t, 
+                    cert, $ \newline
+                    ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
+                    \mathsf{getSortition_W}(ctx, r)
+                    )$
+                    \If{$j > 0$}
+                        \State $Broadcast(Vote(a.I,r,p,cert,vt.v))$
+                    \EndIf
+                \EndFor
             
             \ElsIf{$vt.s = cert \land Bundle(r,p,cert,vt.v) \subset V$}
                 \State $Commit(Proposal(vt.v))$
+                \State $ObserveNewRound()$
 
             \ElsIf{$vt.s \in [next_0, next_{250}] \land \exists v | Bundle(r,p,vt.s,v) \subset V$}
+
                 %TODO: ver si arrancar nuevo periodo
                 %si arranca nuevo periodo, ver si pinnear un valor
-                
+
             \EndIf
 
         \EndFunction
@@ -803,15 +818,15 @@ The vote handler is called whenever a node receives a vote of any kind.
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{HandleBundle}\label{ssect:HandleBundle}
+\begin{subsection}{Bundle handler}\label{ssect:HandleBundle}
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
-        \Function{$HandleBundle$}{$Bundle b$}
+        \Function{$HandleBundle$}{$Bundle \ b$}
 
-            \If{$VerifyBundle(b) \land b.r = r \land b.p \geq p-1$}
+            \If{$\mathsf{VerifyBundle}(b) \land b.r = r \land b.p \geq p-1$}
                 \For{$vote \in b$}
-                    \State $HandleVote(vote)$
+                    \State $\mathsf{HandleVote}(vote)$
                 \EndFor
             \EndIf
 
@@ -943,7 +958,7 @@ is made (broadcasting freshest bundle or value if there is any, see Resynchroniz
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} v$}
+    \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
     \State $return \ Proposal(v) \in P \land Bundle(r,p,soft,v) \subset V$
 
@@ -964,25 +979,6 @@ a ledger entry $e = Proposal(v)$ has been observed by the player and is availabl
 and a soft bundle of votes $b$ has been observerd, where for every vote $vt \in b$ 
 either $vt.v = v$ or $vt$ is an equivocation vote (in which case it counts as a "wildcard" towards 
 any value; in particular $v$ in this case). Otherwise, the subroutine returns $False$.
-
-% Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
-% The function $\mathsf{ProcessMsg}$ returns....
-
-% ----------------------------------------------------------------------------------------------
-
-% \begin{algorithm}[H]
-%     \begin{algorithmic}[H]
-%     \Function{$\mathsf{CommitteeVote}$}{$ctx, round, step, T, \tau, \lambda$}
-%         \State $role \gets \langle {committee},round,step\rangle$
-%         \State $\langle sorthash,\pi,j\rangle \gets \mathsf{Sortition}(user.sk,ctx.seed,\tau ,role,ctx.weight[user.pk],ctx.W)$
-%         \text{// only committee members originate a message}
-%         \If{$j > 0$}
-%             \State $\mathsf{GOSSIP\_MSG}(user.pk, \mathsf{Signed}_{user.sk} (round,step,sorthash,\pi,\mathsf{Hash}(ctx.last_{block}),value))$
-%         \EndIf
-%     \EndFunction
-%     \end{algorithmic}
-%     \caption{\underline{CommitteeVote}}
-% \end{algorithm}
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1017,12 +1013,69 @@ any value; in particular $v$ in this case). Otherwise, the subroutine returns $F
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$ComputeSeed$}{$ctx, r, B$}
-        \If{$B \neq empty\_block$} 
-            \State $\Return$ $VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
-        \Else
-            \State $\Return$ $\mathsf{Hash}(ctx.LastBlock.seed||r)$
-        \EndIf
+    \Function{$\mathsf{ObserveNewRound}$}{}
+
+
+    \State $\bar{s} \gets s$
+    \State $\bar{v} \gets \bot$
+    \State $s \gets 0$
+    \State $r \gets r+1$
+    \State $p \gets proposal$
+
+    \State $\mathsf{GarbageCollect}()$
+
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{ObserveNewRound}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{ObserveNewPeriod}$}{}
+
+
+    \State $\bar{s} \gets s$
+    \State $s \gets 0$
+    \State $p \gets p+1$
+
+    \State $\mathsf{GarbageCollect}()$
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{ObserveNewRound}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{IsEquivocation}$}{$Vote vt$}
+
+    \Return \ $\exists v^\prime \neq vt.v \ | \ Vote(vt.I, vt.r, vt.p, vt.s, vt.v) \in V \land 
+    Vote(vt.I, vt.r, vt.p, vt.s, v^\prime) \in V$
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{IsEquivocation}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$ComputeSeed$}{}
+
+    %TODO: seed computation
+
     \EndFunction
     \end{algorithmic}
     \caption{\underline{ComputeSeed}}
@@ -1031,9 +1084,7 @@ any value; in particular $v$ in this case). Otherwise, the subroutine returns $F
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $r$ = current round number
-    \item $B$ = the block whose seed is being computed
+    \item x
   \end{itemize}
 
 
@@ -1223,10 +1274,14 @@ account records are updated with whatever transaction information was present in
     \Function{$\mathsf{GarbageCollect}$}{}
 
     %garbage collect current state
-    \State $s \gets proposal$
-    \State $P \gets P - {\forall e \in P, e.r=r, e.p = p}$
-    %TODO FINISH!
+    %period and / or round number have been updated already
+    %so current values (r,p) are the new ones
 
+    \State $P \gets P - \{\forall e \in P, e.r < r\} - 
+        \{\forall e^\prime \in P, e^\prime.r = r \land e^\prime.p + 1 < p\}$
+
+    \State $V \gets V - \{\forall vt \in V, vt.r < r\} - 
+        \{\forall vt^\prime \in V, vt^\prime.r = r \land vt^\prime.p + 1 < p\}$
 
     \EndFunction
     \end{algorithmic}
@@ -1234,7 +1289,7 @@ account records are updated with whatever transaction information was present in
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-
+%TODO: talk about scenarios. Que pasa si (r+i, 0), que pasa si (r, p+i)
 
 % ----------------------------------------------------------------------------------------------
 
