@@ -1,8 +1,8 @@
-PWD c:/Coinfabrik/SimulatorPaper/algorand-protocol-node-overview/Latex files
+PWD c:/Coinfabrik/PPR/algorand-protocol-node-overview/Latex files
 INPUT c:/texlive/2022/texmf.cnf
 INPUT c:/texlive/2022/texmf-dist/web2c/texmf.cnf
 INPUT c:/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt
-INPUT c:/Coinfabrik/SimulatorPaper/algorand-protocol-node-overview/Latex files/Algorand node.tex
+INPUT c:/Coinfabrik/PPR/algorand-protocol-node-overview/Latex files/Algorand node.tex
 OUTPUT Algorand node.log
 INPUT c:/texlive/2022/texmf-dist/tex/latex/base/article.cls
 INPUT c:/texlive/2022/texmf-dist/tex/latex/base/article.cls

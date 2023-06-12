@@ -106,94 +106,11 @@ currently in development.
 \end{section}
 
 
-\begin{section}{Player accounts}
-
-A player is a unique participant of the protocol. We will
-use the terms player and account indistinctly throughout this document.
-A player is uniquely identified by a 256-bit string I called an address.
-Furthermore, they posess a certain balance (an unsigned 64 bit integer), 
-and a pair of participation keys set up according to the key scheme. An account may be online, 
-offline or nonparticipating.
-An account is offline when it has not sent an online transaction, that creates
-a participation key and a set of ephemeral keys to be used at each round and
-destroyed at the end.
-Also, an account has a set of VRF keys, computed at each round.
-TODO: keep describing player. Describe register process, online / offline /nonpart attributions
-
-\end{section}
-
-\begin{section}{Ledger definition}
-A ledger is a sequence of states which comprise the common information established by some instantiation of the Algorand protocol. 
-Given a Ledger instance, its immutable characteristics are (...)
-A ledger state then is defined by the following parameters:
-
-A Ledger entry e (also known as block) is a data structure that models a ledger's state transition.
-%TODO: PARAPHRASE AND FORMAT:
-% The data in a block is divided between the block header and its block body. The block
-% header contains the following components:
-% • The block’s round, which matches the round of the state it is transitioning
-% into. (The block with round 0 is special in that this block specifies not a
-% transition but rather the entire initial state, which is called the genesis
-% state. This block is correspondingly called the genesis block.) The round is
-% stored under msgpack key rnd.
-% • The block’s genesis identifier and genesis hash, which match the genesis
-% identifier and hash of the states it transitions between. The genesis identifier
-% is stored under msgpack key gen, and the genesis hash is stored under
-% msgpack key gh.
-% • The block’s upgrade vote, which results in the new upgrade state. The
-% block also duplicates the upgrade state of the state it transitions into.
-% The msgpack representation of the components of the upgrade vote are
-% described in detail below.
-% • The block’s timestamp, which matches the timestamp of the state it
-% transitions into. The timestamp is stored under msgpack key ts.
-% • The block’s seed, which matches the seed of the state it transitions into.
-% The seed is stored under msgpack key seed.
-% • The block’s reward updates, which results in the new reward state. The
-% block also duplicates the reward state of the state it transitions into. The
-% msgpack representation of the components of the reward updates are
-% described in detail below.
-% • A cryptographic commitment to the block’s transaction sequence, described
-% below, stored under msgpack key txn.
-% 4
-% • A cryptographic commitment, using SHA256 hash function, to the block’s
-% transaction sequence, described below, stored under msgpack key txn256.
-% • The block’s previous hash, which is the cryptographic hash of the previous
-% block in the sequence. (The previous hash of the genesis block is 0.) The
-% previous hash is stored under msgpack key prev.
-% • The block’s transaction counter, which is the total number of transactions
-% issued prior to this block. This count starts from the first block with a
-% protocol version that supported the transaction counter. The counter is
-% stored in msgpack field tc.
-% • The block’s expired participation accounts, which contains an optional slice
-% of public keys of accounts. These accounts are expected to have their
-% participation key expire by the end of the round (or was expired before
-% the current round). The msgpack representation of the components are
-% described in detail below. The slice is stored in msgpack key partupdrmv.
-% The block’s expired participation accounts slice is valid as long as the participation
-% keys of all the accounts in the slice are expired by the end of the round or were
-% expired before, the accounts themselves would have been online at the end of
-% the round if they were not included in the slice, and the number of elements
-% in the slice is less or equal to 32. A block proposer may not include all such
-% accounts in the slice and may even omit the slice completely.
-% The block body is the block’s transaction sequence, which describes the sequence
-% of updates (transactions) to the account state and box state.
-% A block is valid if each component is also valid. (The genesis block is always
-% valid). Applying a valid block to a state produces a new state by updating each
-% of its components.
-\end{section}
-
 \begin{section}{Node as a State Machine}
-
-% Messages $m$ are structured ....\marginpar{completar que es un msj, que es mpk, etc}
-% The function $\mathsf{ProcessMsg}$ returns....
-
-We model each player as a finite state machine. In order to do so, we will first
-define and explain all variables involved in a given state a player is able to be in or transition to.
-A node, the network entity running the protocol, will then be "playing for" one or more online accounts that it manages.
 
 Let round and period number, $r$ and $p$, be unsigned 64 bit integers. Let the 
 step number, $s$, be an unsigned  8 bit integer.
-For convenience and readability, the following aliases for step number are defined:
+For convenience and readability, we define the following aliases for step number:
 \begin{itemize}
     \item $s=0 \equiv proposal$
     \item $s=1 \equiv soft$
@@ -204,32 +121,12 @@ For convenience and readability, the following aliases for step number are defin
     \item $s=255 \equiv down$
 \end{itemize}
 
-
-A proposal-value is a tuple v = (I, p, Hash(e), Hash(Encoding(e))) where I is
-an address (the “original proposer”), p is a period (the “original period”),
-Hash is some cryptographic hash function (usually SHA512/256), Encoding is
-performed in msgpack, and e is a given ledger entry (as described in the previous section).
-The special proposal where all fields are the zero-string is called the bottom proposal $\bot$.
-
-
-
-Consider now tuples of the form (I, r, p, s, v), where v is a value.
-We will call this kind of construct a vote, noting it Vote(r, p, s, v), read as
-a vote for value 'v' at round r, period p and step s.
-
-We now consider ledger entries of the form (...).
-A tuple of the form () is called a proposal or proposal payload, noted Proposal(v).
-
 Given all of the above data types and constructs, a node can be modelled as 
 a finite state machine. A state is given by a 3-tuple of integers, $(r, p, s)$, 
-two sets $P$ and $V$ of objects which we will call observed $proposal$ and $vote$ values, 
-a special value vprime which we call the pinned value (see recovery algorithms),
+two sets of objects $P$ and $V$ which we will call observed $proposal$ and $vote$ values, 
 a Ledger $L$ and a balance table $BT$, a table of public addresses for all 
 accounts holding any stake in the network, and their balances. A Ledger is an 
-ordered chain of entries, and fundamentally it represents state changes in the balance table.
-The round number can be thought of as an index into the ledger, where the event of observing
-a new round cannot be decoupled from the event of adding an entry (block) to the ledger.
-
+ordered chain of blocks.
 
 
 
@@ -248,18 +145,18 @@ a new round cannot be decoupled from the event of adding an entry (block) to the
             \State $BlockProposal()$
         \ElsIf{$time = FilterTimeout(p)$}
             \State $SoftVote()$
-        \ElsIf{$time = \max\{4\lambda, A\} \ \lor \ time = \max\{4\lambda, A\} + 2^{st-3}\lambda + r, st \in [4, 252], r \in [0, 2^{st-3}\lambda]$}
+        \ElsIf{$time = \max\{4\lambda, A\} \lor time = \max\{4\lambda, A\} + 2^{st-3}\lambda + r, st \in [4, 252], r \in [0, 2^{st-3}\lambda]$}
             \State $Recovery()$
-        \ElsIf{$\exists k \in \mathbb{Z}, r \sim U(0, \lambda_f), time = k\lambda_f + r$}
+        \ElsIf{$time = k\lambda_f + r, k \in \mathbb{Z}, r \in [0, \lambda_f]$}
             \State $FastRecovery()$
         \EndIf
-    \Else %//Event is MessageEvent
+    \Else \ //ev is MessageEvent
         \State $msg \gets ev.msg$
         \If{$msg \ is \ Proposal \ p$}
             \State $HandleProposal(p)$
-        \ElsIf{$msg \ is \ Vote \ v$}
+        \ElsIf{$msg\ is \ Vote \ v$}
             \State $HandleVote(v)$
-        \ElsIf{$msg \ is \ Bundle \ b$}
+        \ElsIf{$msg\ is \ Bundle \ b$}
             \State $HandleBundle(b)$
         \EndIf
     \EndIf
@@ -269,30 +166,32 @@ a new round cannot be decoupled from the event of adding an entry (block) to the
     \caption{\underline{Main node algorithm}}
 \end{algorithm}
 
-Algorand nodes operate based on events, which are the only means 
-through which the node state machine can transition and produce outputs. 
-Whenever an event is received, the node will produce a state change and
-will typically generate an output that will be broadcasted or relayed to other nodes on the network.
+%TODO: explain algorithm
+Events are the only way in which the node state machine is able to both internally transition and produce output.
+In case an event is not identified as misconstrued or malicious in nature, it will certainly produce a state change,
+and it will almost certainly cause a receiving node to produce and then broadcast or relay an output, to be consumed
+by its peers in the network.
+There are two kinds of events: Timeout events, which are produced once the internal clock of a node reaches a certain
+time since the start of the current period; and Message events, which is output produced by nodes in response to some stimulus
+(including the receiving node itself).
+Internally, we consider the relevant data of an event to be a trigger time, a type and associated data (that is cast 
+and interpreted according to event type).
 
-There are two types of events: Timeout events and Message events. Timeout events are produced when 
-the node's internal clock reaches a certain time since the start of the current period, while 
-Message events are generated in response to messages sent by other network actors.
 
-The main algorithm describes how the event handling mechanism works. 
-If the event is a timeout and a new period has just started, the node will run the block proposal step. 
-After a certain amount of time, the node will attempt to soft vote, selecting the best received proposal 
-value based on the lowest proposer hash criteria and broadcasting its votes to the network if selected as part of the soft voting committee.
+% A proposal-value is a tuple v = (I, p, Digest(e), Hash(Encoding(e))) where I is
+% an address (the “original proposer”), p is a period (the “original period”), and
+% Hash is some cryptographic hash function (implemented as SHA512/256). The special proposal where all fields
+% are the zero-string is called the bottom proposal ⊥.
 
-If the event is a message reception, the node will handle it according to its context. 
-For example, a soft vote outside of the soft voting step could produce a next vote, 
-but it could not produce a certification vote without a period change and another round of voting.
 
-After a certain amount of time, the node will start the recovery steps and next vote a value or an empty block 
-if it observes the required threshold votes. Finally, after another specified amount of time, the block will 
-attempt a FastRecovery.
+% Let I be an address, r be a round, p be a period, s be a step, and v be a
+% proposal-value, then consider y the output of signing this tuple and 
+% consider a VRF hash and VRF proof for this tuple, we say that this tuple
+% is a Vote for value v at round r, period p, step s by player I.
+% Vote(I, r, p, s, v, credentials)
 
-More details on the specifics of each handler can be found in their respective subsections.
-
+Furthermore, given a proposal value, we denote Proposal(v) = e such that if v is a valid proposal value
+(validated according to context).
 
 
 % on that (r, p), we define a node state. A state transition can only be triggered by one of two kinds of events:
@@ -371,6 +270,28 @@ More details on the specifics of each handler can be found in their respective s
 %         the effect of a block being tentative?}
 % \end{itemize} 
 
+
+
+% \begin{subsection}{Notions and Notations}
+
+
+%  $R$ = sortition seed renewal rate (in number of rounds). 
+%     Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
+%     as of December 2022
+%     \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
+%     as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
+%     \item $\tau_{step}$ = expected number of members on a regular step committee
+%     \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
+%     \item $T_{step}$ = fraction of expected members for a voting committee on a given step
+%     \item $T_{final}$ = fraction of expected members for a voting committee on the final step (step = 2). 
+%     If observed, achieves final consensus on the given block hash
+%     \item $\lambda_{proposal}$ = time interval for the node to accept block proposals, after
+%     which it chooses the observed block with the highest priority (lowest hash) 
+%     \item $\lambda_{block}$ = waiting time for the full block to be received once decided by vote.
+%     If no full block is received, the node falls back to the empty block.
+%     \item $SL$ = the account balances lookback interval, in number of rounds (integer). 
+%     Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
+
     
 
 % On top of that, each node may run in favour of different accounts. To do this,
@@ -415,6 +336,8 @@ More details on the specifics of each handler can be found in their respective s
 % At one point, the participation node starts assembling a block.
 % The Algorand protocol specs (\cite{DBLP:conf/sosp/GiladHMVZ17}) do not ensure 
 % a specific way or internal order in which transactions are added to the block.
+% %In fact, they don't force transactions to be added at all, being entirely possible 
+% %for a node to propose an empty block.
 % The node will validate the signature and execute the transactions in the Algorand
 % Virtual Machine (AVM for short) \marginpar{How does this work? Do accounts need to hold
 % ALGO? So the genesis block already assigned some ALGOs to some accounts without any
@@ -458,6 +381,8 @@ More details on the specifics of each handler can be found in their respective s
 
             \State $ResynchronizationAttempt()$
 
+            \State $e \gets AssembleBlock()$
+
             \For{$a \in A$}
                 \State $\langle sorthash, \pi, j\rangle\gets 
                 \mathsf{Sortition}(
@@ -469,13 +394,14 @@ More details on the specifics of each handler can be found in their respective s
                     \mathsf{getSortition_W}(ctx, r)
                 )$
                 \If{$j > 0$}
-                    \If{$p = 0 \lor \exists s^\prime > 2 \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
-                        \State $e \gets AssembleBlock()$
+                    \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
+                        % \State $priority \gets \min_{1\le n < j}\{\mathsf{Hash}(sorthash || n)\}$
+                        %\State $\mathsf{GOSSIP\_MSG}(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi\rangle))$
                         \State $v \gets Proposal_{value}(e)$
                         \State $Broadcast(Vote(I, r, p, proposal, v))$
                         \State $Broadcast(e)$
                     \Else
-                        \State $v \gets v_0 | \exists s, Bundle(r,p-1,s,v_0) \subset V$
+                        \State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
                         \State $Broadcast(Vote(I, r, p, proposal, v))$
                         \If{$Proposal(v) \in P$}
                             \State $Broadcast(Proposal(v))$
@@ -491,29 +417,76 @@ More details on the specifics of each handler can be found in their respective s
 \newpage
 
 \noindent \textbf{Description:}\\
-The node manages multiple accounts and executes a "play" for each account, 
-as each account represents a distinct player in the system. The node runs a 
-sortition process for the proposal step of each account. If the account is selected 
-to propose (i.e., if the account has more than 0 votes for the specific context), 
-the node proceeds with the proposal step and period.
+Block proposal is the first step, and the starting stage of the algorithm at every cycle.
+First, on line 2, the node attempts a resynchronization. This only has any effect on periods
+p > 0.
+Afterwards, the node loops through all of its managed online accounts, Functionally
+"playing" for each of the accounts. Any account that is selected as a possible proposer
+Should broadcast a vote and its corresponding proposal, where the proposalvalue v inside the vote
+matches the proposal e, which is the bloc assembled by the node.
 
-If the check on line 5 passes (i.e., if it is the first period or an empty block
- has been observed during the recovery step of the previous period), 
- the node assembles a new block (e), calculates the proposal value (v), 
- and broadcasts a vote for v on step 0 along with the full block (e).
+% The node loops through all of its managed accounts. Functionally, the node "plays"
+% for every account it manages, as each online account represents a different player
+% in the system.
 
-If the check on line 5 fails (i.e., it is not the first period and no 
-empty block was observed during the recovery step of the previous period), 
-the period change must have been triggered by observing a bundle for a specific value $v_0$. 
-The node broadcasts a vote for this value.
+% The {\bf block proposal} stage (step 0 on \href{https://github.com/algorandfoundation/specs}{specs.}) is the first stage of the 
+% consensus algorithm. 
+% First, the node loops through all their online accounts ($a\in A$), 
+% running the sortition subroutine ($\mathsf{sortition}()$).
+% Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition_w}()$ and
+% $\mathsf{sortition_W}()$ described in Section \ref{sect:soubroutines}.
+% The sortition subroutine determines if an account $a$ is selected to 
+% ${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
+% that is used to prioritize votes.
 
-If the actual proposal (i.e., the full ledger entry) is available, the node then broadcasts it 
-in a separate message.
+% If $j>0$ then the address $a$ gets to vote and proceeds as follows.
+% For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
+% it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
+% and keeps the minimum (line 6), which we set as the $priority$ of this
+% account for this round (here $\mathsf{Hash}()$ is a cryptographic hash
+% function, assumed to be a random oracle).
+% The $\mathsf{GOSSIP\_MSG}()$ call which happens next, gossips (broadcasts) 
+% the priority, sortition hash and proof to other nodes.
+% It further includes the public key $a_{pk}$ for the account $a$ and the
+% signature of the triplet $(priority, \langle sorthash, \pi\rangle)$ with the 
+% leaf ephemeral key associated with the account $a$ and the round $r$.
 
+% In the lines 11 to 15, the algorithm accepts block proposals (in the same 
+% format as gossiped) from other accounts until $\lambda_{proposal}$ is reached.
+% For each block proposal received it only keeps the one with the lowest 
+% priority validating the block before accepting it as a possible proposal.
+
+% To validate a block proposal, the node verifies the sortition proof and hash
+% (utilizing the $\mathsf{verifySortition}()$ function).
+% If the vote message was invalid, the node can decide to flag the proposing user
+% as malicious and choose to ignore any further messages received from that public address.
+
+% Finally, in lines 16-25, the algorithm will select a block as 
+% follows. Assume the elapsed time has been reached. 
+% If the selected proposal came from this node, the seed is computed 
+% calling $\mathsf{ComputeSeed}()$ from the input block $B$, the context helper structure 
+% $ctx$ and the round number $r$, and the complete block is gossiped to the network.
+
+% However, if the proposal did not come from this node, then the node 
+% waits until $\lambda_{block}$ to receive the full block from other nodes
+% in the network.
+% In case of timeout in this last stage, it falls back to the empty block.
+
+% \bigskip
+% \noindent \textbf{Returns:}
+% \begin{itemize}
+%     \item The hash of a full block $BlockHash$, whether a block proposed by a user (including users 
+%     whose accounts are linked to this node) or an empty block in any of the special 
+%     cases mentioned above. It contains all transactions and metadata added in block creation (\ref{ssect:blockcreation}), 
+%     as well as the computed seed.
+%   \end{itemize}
 
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
 \begin{subsection}{Soft Vote}\label{ssect:softvote}
+% The soft vote stage (step 1, called reduction in \cite{DBLP:conf/sosp/GiladHMVZ17}) aims to reduce 
+% any amount of potentially conflicting proposed blocks in the stage prior into a binary 
+% choice, either a block proposed by a user or an empty one.
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
@@ -523,7 +496,7 @@ in a separate message.
 
 
     \For{$vote \in V, vote.step = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, j)} Hash(vote.sorthash || i)$
+        \State $priorityHash \gets \min_{i \in [0, j)} H(vote.priority || i)$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
             \State $v \gets vote.v$
@@ -545,17 +518,17 @@ in a separate message.
     \caption{\underline{Soft Vote}}
 \end{algorithm}
 
+% \noindent \textbf{Arguments:}
+% \begin{itemize}
+%     \item A block hash, $BlockHash$, received from the previous stage (Sect \ref{ssect:blockproposal}).
+%   \end{itemize}
+
 \noindent \textbf{Description:}\\
-The soft vote routine (also known as "filtering") is triggered after a SV timeout since the beginning of a period.
-Of all received proposal votes, the node finds the one that minimizes the priority function.
-The priority function is computed, for each voting unit of each proposer, as the minimum Hash(sorthash || i), where sorthash is
-the proposer's sortition output hash, i is an integer in between 1 (inclusive) and the j value output by
-the proposer's sortition run (exclusive).
-If no valid votes were observed by the node, there is no output and the algorithm ends here.
-If a value with minimum priority is found, every account managed by the node runs sortition to be part of 
-the soft vote committee.
-If selected, the vote is broadcast. If the ledger entry associated to that value has also been observed, it is broadcast
-separately but immediately after.
+The soft vote stage (also known as "filtering") is run after a timeout of X is observed by the node.
+Let V* be all proposal votes received. By a priority hash function, this stage performas a filtering action,
+keeping the lowest hashed value observed.
+Then, it proceeds to broadcast this value.
+If the associated proposal, p, is in P, then it is subsequently broadcast too.
 
 \end{subsection}
 % --------------------------------------------------------------------
@@ -688,26 +661,126 @@ separately but immediately after.
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{Proposal handler}\label{ssect:HandleProposal}
+\begin{subsection}{HandleProposal}\label{ssect:HandleProposal}
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
         \Function{$HandleProposal$}{$Proposal \ e$}
 
-            \State $v \gets Proposal_{value}(e)$ \\
+            \State $v \gets Proposal_{value}(e)$
 
-            \If{$\sigma(S, r+1, 0) = v$}
+            %relays proposal if its for a future round (but does not process it)
+            \If{$\sigma(r+1, 0) = v$}
                 \State $Relay(e)$
-            \EndIf \\
+                \State $return$  //do not observe, as it's for a future round (we're behind)
+            \EndIf
 
-            %Ignores it if it is invalid.
-            %Ignores it if Proposal(v) ∈ P.
-            \If{$isValid(e) \land e \notin P \land v \in \{\sigma(S, r, p), v, \mu(S, r, p)\}$}
-                \State $Relay(e)$
-                \State $P \gets P \cup \{e\}$ \\  %observe it
+            %ignores proposal if it's invalid or if it has already been observed
+            \If{$\lnot VerifyProposal(e) \lor e \in P$ }
+                \State $return$  //ignore proposal
+            \EndIf
 
-                %produce output 
-                \If{$IsCommitable(v) \land s \leq cert$}
+            %ignores proposal if its proposal value is not either 
+            %the current sigma, the pinned value or the current mu
+            \If{$v \notin \{ \sigma(r,p), \bar{v}, \mu(r,p)\}$}
+                \State $return$ //ignore proposal
+            \EndIf
+
+            %we need to relay (broadcast to everybody but ourselves), and observe p
+            \State $Relay(e)$
+            \State $P \gets P \cup e$
+
+            %all checks passsed, produce output
+            \If{$IsCommitable(v) \land s \leq cert$}
+                \For{$a \in A$}
+                    \State $\langle sorthash, \pi, j\rangle\gets 
+                    \mathsf{Sortition}(
+                    a_{sk}, 
+                    \mathsf{getSortitionSeed}(ctx, r), 
+                    t, 
+                    cert, $ \newline
+                    ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
+                    \mathsf{getSortition_W}(ctx, r)
+                    )$
+                    \If{$j > 0$}
+                        \State $Broadcast(Vote(a.I, r, p, cert, v))$
+                    \EndIf
+                \EndFor    
+            \EndIf
+
+        \EndFunction
+        \end{algorithmic}
+        \caption{\underline{HandleProposal}}
+    \end{algorithm}
+    
+    
+    \noindent \textbf{Description:}\\
+The proposal handler is triggered when a node receives a message containing a full proposal.
+It starts by performing a series of checks, after which it will either ignore the received
+proposal, discarding it and emitting no output; or relay, observe and produce an output
+according to the proposal's characteristics and the current context.
+The first check (lines 3:5) is a special case, where if the proposal is from the next round's 
+first period, the node relays it and then ignores it for the purpose of the current round. 
+Whenever the node catches up (observes a round change), and only if necessary, it will request 
+this proposal back from the network.
+Lines 6:7 check if the proposal is invalid, or if it has been observed already. Any one of those
+conditions are sufficient to discard and ignore the proposal.
+Finally, on lines 8:9 it checks if the associated proposal value is either of the special values for the current
+round and period ($\sigma$, $\mu$, or the pinned proposal value $\bar{v}$). Any proposal whose proposal value does not match
+one of these is ignored.
+Once the checks have been surpassed, the node is ready to relay the proposal and observe it by adding
+it to the observed proposals set, P (lines 10:11).
+Once relayed and observed, the proposal is then processed for further output.
+Here, and only if the proposal value has become commitable and the current executing node's step is lower or equal
+to a certification step (it's not yet in a recovery step), the node plays for each account performing sortition
+to select committee members for the certification step. For each selected member, a corresponding certify vote for
+the current proposal value is cast.
+
+
+\end{subsection}
+
+% --------------------------------------------------------------------
+
+\begin{subsection}{HandleVote}\label{ssect:HandleVote}
+
+    \begin{algorithm}[H]
+        \begin{algorithmic}[1]
+        \Function{$HandleVote$}{$Vote \ vt$}
+
+            \If{$\lnot VerifyVote(vt)$}
+                \State $PenalizeVoter(vt)$ \ //optional
+                \State $return$ \ //ignore invalid vote
+            \EndIf
+
+            \If{$vt.step = 0 \land (vt \in V \lor IsEquivocation(vt))$}
+                \State $return$ \ //ignore vote, equivocation not allowed in proposal votes
+            \EndIf
+
+            \If{$vt.step > 0 \land IsSecondEquivocation(vt) $}
+                \State $return$ \ //ignore vote if it's a second equivocation
+            \EndIf
+
+            \If{$vt.round < r $}
+                \State $return$ \ //ignore vote of past round
+            \EndIf
+
+            \If{$vt.round = r+1 \land (vt.period > 0 \lor vt.step \in (cert, late))$}
+                \State $return$ \ //ignore vote of next round if non-zero period or $next_k$ step
+            \EndIf
+
+            \If{$vt.round = r \land (vt.period \notin [p-1, p+1] \lor$ \\
+            $(vt.period = p+1 \land vt.step \in (next_0, late)) \lor$ \\
+            $(vt.period = p \land vt.step \in (next_0, late) \land vt.step \notin [s-1, s+1]) \lor$ \\
+            $(vt.period = p-1 \land vt.step \in (next_0, late) \land vt.step \notin [\bar{s}-1, \bar{s}+1]))$}
+                \State $return$ \ //ignore vote
+            \EndIf
+
+            \State $V \gets V \cup vt$ \ //observe vote
+
+            \If{$vt.step = soft$}
+                %check if soft bundle has been achieved
+                \If{$\exists v | Bundle(vt.round,vt.period,soft,v) \subset V$}
+                    %Try to emit a certification vote
                     \For{$a \in A$}
                         \State $\langle sorthash, \pi, j\rangle\gets 
                         \mathsf{Sortition}(
@@ -721,87 +794,23 @@ separately but immediately after.
                         \If{$j > 0$}
                             \State $Broadcast(Vote(a.I, r, p, cert, v))$
                         \EndIf
-                    \EndFor    
+                    \EndFor
                 \EndIf
-
-            \EndIf
-            %Relays Proposal(v), observes it, and then produces any consequent output,
-            %if v ∈ {σ(S, r, p), v, µ ¯ (S, r, p)}.
-            %Otherwise, ignores it
-
-        \EndFunction
-        \end{algorithmic}
-        \caption{\underline{HandleProposal}}
-    \end{algorithm}
-    
-    
-    \noindent \textbf{Description:}\\
-The proposal handler is activated when a message event for a full proposal (aka. a ledger entry, e) is received by the node.
-There's two parts to the algorithm. First, a series of checkups are performed (...)
-Afterwards, and assuming the proposal is valid and not to be ignored, a check for commitability of the proposal value is performed.
-If the value is commitable (that is, there is a soft bundle for it - more on that on IsCommitable() -), and the current step number
-is cert (2) or less, we run sortition for the account for a membership of the certification committee.
-If selected, a certification vote is broadcast.
-    
-\end{subsection}
-
-% --------------------------------------------------------------------
-
-\begin{subsection}{Vote handler}\label{ssect:HandleVote}
-
-    \begin{algorithm}[H]
-        \begin{algorithmic}[1]
-        \Function{$HandleVote$}{$Vote \ vt$}
-
-            \If{$\neg VerifyVote(vt) \lor
-            (s=0 \land vt \in V) \lor 
-            (s=0 \land \mathsf{IsEquivocation}(vt)) \lor
-             (s>0 \land IsSecondEquiv(vt))
-            \lor vt.r \notin [r,r+1] 
-            \lor (vt.r = r+1 \land (vt.p > 0 \lor vt.s \in (next_0, late))) \lor 
-            (vt.r = r \land 
-                (vt.p \notin [p-1, p+1] \lor 
-                vt.p = p+1 \lor
-                (vt.p = p \land vt.s \in (next_0, late) \land vt.s \notin [s-1, s+1]) \lor 
-                (vt.p = p-1 \land vt.s \in (next_0, late) \land vt.s \notin [\hbar{s}-1, \hbar{s}+1]) ))$
-            }
-                \State $\Return$ //the vote is ignored
-            \EndIf \\
-
-            //if we got here, the vote is to be relayed and observed
-            \State $Relay(vt)$
-            \State $V \gets V \cup vt$
-
-            \If{$vt.s = proposal$}
-                //reproposal payload
-                %TODO: necesita ser miembro de comite aca? Yo pensaria que si porque es un broadcast, no un relay
-                \State $Broadcast(Proposal(vt.v))$
-
-            \ElsIf{$vt.s = soft \land \mathsf{IsCommitable}(vt.v) \land s \leq cert$}
-                \For{$Account \ a \in A$} 
-                    \State $\langle sorthash, \pi, j\rangle\gets 
-                    \mathsf{Sortition}(
-                    a_{sk}, 
-                    \mathsf{getSortitionSeed}(ctx, r), 
-                    t, 
-                    cert, $ \newline
-                    ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
-                    \mathsf{getSortition_W}(ctx, r)
-                    )$
-                    \If{$j > 0$}
-                        \State $Broadcast(Vote(a.I,r,p,cert,vt.v))$
+            \ElsIf{$vt.step = cert$}
+                %check if cert bundle has been achieved
+                \If{$\exists v | Bundle(vt.round,vt.period,cert,v) \subset V$}
+                    \If{$Proposal(v) \notin P$}
+                        \State $RequestProposal(v)$ //waits until proposal is obtained
                     \EndIf
-                \EndFor
-            
-            \ElsIf{$vt.s = cert \land Bundle(r,p,cert,vt.v) \subset V$}
-                \State $Commit(Proposal(vt.v))$
-                \State $ObserveNewRound()$
-
-            \ElsIf{$vt.s \in [next_0, next_{250}] \land \exists v | Bundle(r,p,vt.s,v) \subset V$}
-
-                %TODO: ver si arrancar nuevo periodo
-                %si arranca nuevo periodo, ver si pinnear un valor
-
+                    \State $Commit(v)$  %ver que pasa si no se pudiera commitear
+                    \State $StartNewRound(vt.round)$
+                    \State $GarbageCollect()$
+                \EndIf
+            \Else
+                \If{$\exists v,s | Bundle(vt.round,vt.period,s,v) \subset V$}
+                    \State $StartNewPeriod(vt.period)$
+                    \State $GarbageCollect()$
+                \EndIf
             \EndIf
 
         \EndFunction
@@ -811,22 +820,21 @@ If selected, a certification vote is broadcast.
     
     
     \noindent \textbf{Description:}\\
-The vote handler is called whenever a node receives a vote of any kind.
+The vote handler is triggered when a node receives a message containing a vote for a given proposal value, round, period and step.
 
-    
 \end{subsection}
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{Bundle handler}\label{ssect:HandleBundle}
+\begin{subsection}{HandleBundle}\label{ssect:HandleBundle}
 
     \begin{algorithm}[H]
         \begin{algorithmic}[1]
         \Function{$HandleBundle$}{$Bundle \ b$}
 
-            \If{$\mathsf{VerifyBundle}(b) \land b.r = r \land b.p \geq p-1$}
+            \If{$VerifyBundle(b) \land b.r = r \land b.p + 1 \geq p$}
                 \For{$vote \in b$}
-                    \State $\mathsf{HandleVote}(vote)$
+                    \State $HandleVote(vote)$
                 \EndFor
             \EndIf
 
@@ -837,12 +845,13 @@ The vote handler is called whenever a node receives a vote of any kind.
     
     
     \noindent \textbf{Description:}\\
-This handler is called when a message containing a bundle is received.
-If the bundle is verified (which implies verifying the validity of every vote separately),
-the round of all votes in it matches the node's current round and its period is at least the previous one (p - 1), 
-then each vote in the bundle is processed independantly.
-Functionally, receiving a bundle is the same as receiving a set of votes sequentially.
-
+The bundle handler is invoked whenever a bundle message is received. 
+If the received bundle is valid, its round is the current node's round
+and is at most one period behind of the node's current period, then the bundle
+is processed, which is simply calling the vote handler for each vote constituting
+the bundle. If any of the conditions outlined previously are not met, then the
+whole bundle is ignored and discarded.
+    
 \end{subsection}
 
 % --------------------------------------------------------------------
@@ -856,7 +865,7 @@ Functionally, receiving a bundle is the same as receiving a set of votes sequent
         \State $s \gets next_s$
         \State $ResynchronizationAttempt()$
     
-        \For{$Account a \in A$}
+        \For{$Account \ a \in A$}
             \State $\langle sorthash, \pi, j\rangle\gets 
             \mathsf{Sortition}(
             a_{sk}, 
@@ -868,12 +877,12 @@ Functionally, receiving a bundle is the same as receiving a set of votes sequent
             )$
             \If{$j > 0$}
                 \If{$\exists v | IsCommitable(v)$}
-                    \State $GOSSIP(Vote(I, r, p, next_s, v))$
+                    \State $Broadcast(Vote(I, r, p, next_s, v))$
                 \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
-                    \State $GOSSIP(Vote(I, r, p, next_s, \bar{v}))$
+                    \State $Broadcast(Vote(I, r, p, next_s, \bar{v}))$
                 \Else
-                    \State $GOSSIP(Vote(I, r, p, next_s, \bot))$
+                    \State $Broadcast(Vote(I, r, p, next_s, \bot))$
                 \EndIf
             \EndIf    
         \EndFor
@@ -906,15 +915,15 @@ Functionally, receiving a bundle is the same as receiving a set of votes sequent
                 a_{sk}, 
                 \mathsf{getSortitionSeed}(ctx, r), 
                 t, 
-                'late', $ \newline
+                late, $ \newline
                 ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
                 \mathsf{getSortition_W}(ctx, r)
                 )$
                 \If{$j > 0$}
-                    \State $GOSSIP(Vote(I, r, p, late, v))$
+                    \State $Broadcast(Vote(I, r, p, late, v))$
                 \EndIf
             \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
-            ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
+                ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
                     \State $\langle sorthash, \pi, j\rangle\gets 
                     \mathsf{Sortition}(
                     a_{sk}, 
@@ -925,10 +934,21 @@ Functionally, receiving a bundle is the same as receiving a set of votes sequent
                     \mathsf{getSortition_W}(ctx, r)
                     )$
                     \If{$j > 0$}
-                        \State $GOSSIP()$
+                        \State $Broadcast(Vote(r,p,redo,\bar{v}))$
                     \EndIf
             \Else
-                
+                \State $\langle sorthash, \pi, j\rangle\gets 
+                \mathsf{Sortition}(
+                a_{sk}, 
+                \mathsf{getSortitionSeed}(ctx, r), 
+                t, 
+                down, $ \newline
+                ${}$ ${\hskip 5.2cm}\mathsf{getSortition}_w(ctx, r, a_{pk}), 
+                \mathsf{getSortition_W}(ctx, r)
+                )$
+                \If{$j > 0$}
+                    \State $Broadcast(Vote(r,p,down,\bot))$
+                \EndIf
             \EndIf    
         \EndFor
 
@@ -939,14 +959,10 @@ Functionally, receiving a bundle is the same as receiving a set of votes sequent
     \end{algorithm}
     
     
-\noindent \textbf{Description:}\\
-The fast recovery algorithm is executed periodically every integer multiple of $\lambda_F$
-seconds. In it, nodes of the network make an attempt to reestablish normal functioning
-of the network by broadcasting, in the hopes of observing, any kind of consensus.
-Firstly, and same as in the previous mentioned "next" recovery stages, a resynchronization attempt
-is made (broadcasting freshest bundle or value if there is any, see ResynchronizationAttempt() in the next section).
-
-
+    \noindent \textbf{Description:}\\
+    The fast recovery algorithm is executed periodically every integer multiple of lambdaF
+    seconds. In it, nodes of the network make a synchronization attempt.
+    In the first section, if there is a value v 
 \end{subsection}
 
 
@@ -960,7 +976,7 @@ is made (broadcasting freshest bundle or value if there is any, see Resynchroniz
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
-    \State $return \ Proposal(v) \in P \land Bundle(r,p,soft,v) \subset V$
+    \State $\mathsf{return} \ Proposal(v) \in P \land Bundle(r,p,soft,v) \subset V$
 
     \EndFunction
     \end{algorithmic}
@@ -970,21 +986,161 @@ is made (broadcasting freshest bundle or value if there is any, see Resynchroniz
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $v$ = a proposal value (as we know from a previous section, computed as a function of a ledger entry in consideration).
+    \item $Proposal_{value} \ v$ = A value to check for commitability
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-A boolean helper subroutine that returns $True$ if, for the input value $v$,
-a ledger entry $e = Proposal(v)$ has been observed by the player and is available in the current state,
-and a soft bundle of votes $b$ has been observerd, where for every vote $vt \in b$ 
-either $vt.v = v$ or $vt$ is an equivocation vote (in which case it counts as a "wildcard" towards 
-any value; in particular $v$ in this case). Otherwise, the subroutine returns $False$.
+Checks that the value $v$ is commitable in the current node's context.
+To be commitable, the two conditions outlined in line 2 have to be met.
+That is, the corresponding proposal that the value refers to has to be
+available (have been observed in the current round), and there must
+be a valid bundle of soft votes for $v$ observed during the current round and
+period. \\
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item A boolean value indicating commitability of the argument $v$
+  \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{ResynchronizationAttempt}$}{}
+    \Function{$\mathsf{VerifyVote}$}{$Vote \ vt$}
+        \State $valid \gets vt.round <= round+2$
+        
+        \If{$vt.step = 0$}
+            \State $valid \gets valid \land vt.v.p_{orig} <= vt.period$
+            \If{$vt.period = vt.v.p_{orig}$}
+                \State $valid \gets valid \land vt.v.I_{orig} = vt.I$
+            \EndIf
+        \EndIf
+        
+        \If{$vt.step \in \{propose, soft, cert, late, redo\}$}
+            \State $valid \gets valid \land vt.v \neq \bot$
+        \ElsIf{$vt.step = down$}
+            \State $valid \gets valid \land vt.v = \bot$
+        \EndIf
+
+        //TODO: verificacion de firmas, VRFs y rounds de validez
+
+        \State $\mathsf{return} \ valid$
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{VerifyVote}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{VerifyProposal}$}{$Proposal \ p$}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{VerifyProposal}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{VerifyBundle}$}{$Bundle \ b$}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{VerifyBundle}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{StartNewRound}$}{$uint64 \ finishedRound$}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{StartNewRound}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{StartNewPeriod}$}{$uint64 \ finishedPeriod$}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{StartNewPeriod}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{GarbageCollect}$}{}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{GarbageCollect}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
+        //ver como hacer el request...como lo resuelve el nodo?
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{RequestProposal}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{PenalizeVoter}$}{$Account \ a$}
+        //ver como resuelve el nodo la desconexion o blacklist de un peer
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{PenalizeVoter}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{AssembleBlock}$}{}
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{AssembleBlock}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{ResynchronizationAttempt}$}{$()$}
 
     \State $Val = \bot$
 
@@ -1013,69 +1169,12 @@ any value; in particular $v$ in this case). Otherwise, the subroutine returns $F
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{ObserveNewRound}$}{}
-
-
-    \State $\bar{s} \gets s$
-    \State $\bar{v} \gets \bot$
-    \State $s \gets 0$
-    \State $r \gets r+1$
-    \State $p \gets proposal$
-
-    \State $\mathsf{GarbageCollect}()$
-
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{ObserveNewRound}}
-\end{algorithm}
-
-\noindent \textbf{Description:}\\
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]
-    \begin{algorithmic}[1]
-    \Function{$\mathsf{ObserveNewPeriod}$}{}
-
-
-    \State $\bar{s} \gets s$
-    \State $s \gets 0$
-    \State $p \gets p+1$
-
-    \State $\mathsf{GarbageCollect}()$
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{ObserveNewRound}}
-\end{algorithm}
-
-\noindent \textbf{Description:}\\
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]
-    \begin{algorithmic}[1]
-    \Function{$\mathsf{IsEquivocation}$}{$Vote vt$}
-
-    \Return \ $\exists v^\prime \neq vt.v \ | \ Vote(vt.I, vt.r, vt.p, vt.s, vt.v) \in V \land 
-    Vote(vt.I, vt.r, vt.p, vt.s, v^\prime) \in V$
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{IsEquivocation}}
-\end{algorithm}
-
-\noindent \textbf{Description:}\\
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]
-    \begin{algorithmic}[1]
-    \Function{$ComputeSeed$}{}
-
-    %TODO: seed computation
-
+    \Function{$ComputeSeed$}{$ctx, r, B$}
+        \If{$B \neq empty\_block$} 
+            \State $\mathsf{return} \ VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
+        \Else
+            \State $\mathsf{return} \ \mathsf{Hash}(ctx.LastBlock.seed||r)$
+        \EndIf
     \EndFunction
     \end{algorithmic}
     \caption{\underline{ComputeSeed}}
@@ -1084,7 +1183,9 @@ any value; in particular $v$ in this case). Otherwise, the subroutine returns $F
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item x
+    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
+    \item $r$ = current round number
+    \item $B$ = the block whose seed is being computed
   \end{itemize}
 
 
@@ -1200,7 +1301,7 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
         \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
-            \State $j++$
+            \State $j \gets j+1$
         \EndWhile
         \Return $ \langle hash,\pi,j \rangle$
     \EndFunction
@@ -1239,65 +1340,13 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
     and its size corresponds to the amount of sub-users for a given committee member
   \end{itemize}
 
-
-% ----------------------------------------------------------------------------------------------
-\begin{algorithm}[H]
-    \begin{algorithmic}[1]
-    \Function{$\mathsf{Commit}$}{$LedgerEntry \ e$}
-
-        \State $L \gets L || e$
-        \State $GarbageCollect()$
-        \State $r \gets r+1$
-        \State $UpdateBalanceTable()$
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{Commit}}
-\end{algorithm}
-
-\noindent \textbf{Arguments:}
-\begin{itemize}
-    \item $LedgerEntry e$ = a ledger entry deemed to be commitable by the consensus mechanism.
-    That is, $e$ is a valid entry for $L$, and a valid certification bundle has been observed for 
-    its corresponding value (the unique value $v$ for which $Proposal_{value}(e) = v$)
-\end{itemize}
-
-\noindent \textbf{Description:}\\
-This subroutine commits an entry $e$ to the ledger. The entry passed as argument is appended to the ledger $L$,
-the current state is garbage collected, a new round is observed and the balance table and general
-account records are updated with whatever transaction information was present in $e$.
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]
-    \begin{algorithmic}[1]
-    \Function{$\mathsf{GarbageCollect}$}{}
-
-    %garbage collect current state
-    %period and / or round number have been updated already
-    %so current values (r,p) are the new ones
-
-    \State $P \gets P - \{\forall e \in P, e.r < r\} - 
-        \{\forall e^\prime \in P, e^\prime.r = r \land e^\prime.p + 1 < p\}$
-
-    \State $V \gets V - \{\forall vt \in V, vt.r < r\} - 
-        \{\forall vt^\prime \in V, vt^\prime.r = r \land vt^\prime.p + 1 < p\}$
-
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{GarbageCollect}}
-\end{algorithm}
-
-\noindent \textbf{Description:}\\
-%TODO: talk about scenarios. Que pasa si (r+i, 0), que pasa si (r, p+i)
-
 % ----------------------------------------------------------------------------------------------
 
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, role, w, W$}
-        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||role)$}{$\Return 0$}
+        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||role)$}{$\mathsf{return} \ 0$}
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
         \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
@@ -1343,6 +1392,8 @@ observed stake.\\
     \item $R$ = sortition seed renewal rate (in number of rounds). 
     Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     as of December 2022
+    \item $MAX\_STEPS$ = maximum number of allowed steps in the main algorithm. Defined 
+    as 255 in the \href{https://github.com/algorandfoundation/specs}{specs.}
     \item $\tau_{step}$ = expected number of members on a regular step committee
     \item $\tau_{final}$ = expected number of members on a final consensus achieving committee
     \item $T_{step}$ = fraction of expected members for a voting committee on a given step
