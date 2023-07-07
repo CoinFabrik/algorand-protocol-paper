@@ -1,0 +1,5 @@
+PWD c:/Coinfabrik/PPR/algorand-protocol-node-overview/Latex files
+INPUT c:/texlive/2022/texmf.cnf
+INPUT c:/texlive/2022/texmf-dist/web2c/texmf.cnf
+INPUT c:/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt
+INPUT c:/Coinfabrik/PPR/algorand-protocol-node-overview/Latex files/Algorand node.tex
