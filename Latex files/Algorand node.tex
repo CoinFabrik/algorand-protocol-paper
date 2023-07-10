@@ -295,8 +295,8 @@ $S = (r, p, s, V, P, \bar{v}, \bar{s}, L, BT)$ where
     \item $s$ is the current step
     \item $V$ is all valid observed votes and equivocation votes in the current execution state ( $(r,p,s)$ tuple)
     \item $P$ is all valid observed proposals in the current execution state ( $(r,p,s)$ tuple)
-    \item $bar{v}$ is the pinned proposal-value
-    \item $bar{s}$ is the last finished step
+    \item $\bar{v}$ is the pinned proposal-value
+    \item $\bar{s}$ is the last finished step
     \item $L$ is the Ledger state. Note that, thanks to the genesis hash and previous hash components, a ledger state unambiguously
 defines the whole history of state changes.
     \item $BT$ is the current balance table as described above.
@@ -548,7 +548,7 @@ the corresponding construct (coinciding with their attached data type field).
 
             \For{$a \in A$}
                 \State $cred \gets 
-                \mathsf{Sortition}(a_{sk}, proposal)$
+                \mathsf{Sortition}(a, proposal)$
                 \If{$cred.j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         % \State $priority \gets \min_{1\le n < j}\{\mathsf{Hash}(sorthash || n)\}$
@@ -573,7 +573,7 @@ the corresponding construct (coinciding with their attached data type field).
 \newpage
 
 \noindent \textbf{Description:}\\
-Block proposal is the first step, and the starting stage of the algorithm at every cycle.
+Block proposal is the first step, and the starting stage of the algorithm on every period.
 First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). This only has any effect on periods
 $p > 0$.
 Afterwards, the node loops through all of its managed online accounts, Functionally
@@ -1580,13 +1580,18 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
-        \State $ \langle hash, \pi \rangle \gets \mathsf{VRF}(seed||step)$
-        \State $p \gets \frac{t}{W}$
+        \State $seed \gets L[r - \delta_s].seed$
+        //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
+        \State $w \gets a.balance$ //$BT[a.address][r-\delta_s-\delta_r].balance$
+        \State $W \gets \sum_{a \in A_{r-\delta_s-\delta_r}}a.balance$
+        \State $\tau \gets \mathsf{CommitteeThreshold}(p)$
+        \State $ \langle hash, \pi \rangle \gets \mathsf{VRF_{a_{sk}}}(seed||step)$
+        \State $t \gets \frac{\tau}{W}$
         \State $j \gets 0$
-        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
             \State $j \gets j+1$
         \EndWhile
-        \Return $ \langle hash,\pi,j \rangle$
+        \Return $credentials(hash, \pi, j)$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Sortition}}
@@ -1595,12 +1600,8 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $sk$ = a user's secret key (an ephemeral key for the given round, according to key specs)
-    \item $seed$ = the sortition seed to be used
-    \item $\tau$ = the expected committee size for the given role
-    \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (i.e., its relevant stake)
-    \item $W$ = the total relevant stake for the given round
+    \item $Account \ a$, an online account's balance table record
+    \item $uint64 \ step$, the step to run sortition for
 \end{itemize}
 
 \noindent \textbf{Description:}\\
@@ -1619,9 +1620,9 @@ belongs to the interval, that's the ammount of chosen sub-users for the subrouti
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item an object of type $credentials$, containing 
-    %  integer $j$ that will be positive (larger than 0) if the user has been selected, 
-    % and its size corresponds to the amount of sub-users for a given committee member
+    \item an object of type $credentials$, containing the sortition hash and proof (output of VRF
+    computation) and an unsigned integer $j$ representing the weight that player has in the committee,
+    for the desired round, period and step.
   \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
