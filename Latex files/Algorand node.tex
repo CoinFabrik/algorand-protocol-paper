@@ -69,21 +69,21 @@ but consulted the node's code and probed the network when information was unclea
 unavailable.
 
 Algorand is a proof-of-stake blockchain cryptocurrency protocol 
-using a decentralized Byzantine Agreement protocol that leverages 
+using a decentralized By\-zan\-tine Agreement protocol that leverages 
 pure proof of stake for consensus. The protocol maintains a ledger
 that is modified via consensus. In particular, this ledger encodes
-how many ALGOs (the native token) holds each account.
+how many ALGO (the native token) holds each account.
 Blocks encode the status of the ledger. Starting on the genesis
 block (round 0) that encodes the first state of the network, 
 on each round the participation nodes vote on what will the next
-block be. Their voting power is proportional to the stake (in ALGOs) 
-held by the accounts assoicated to the node.
+block be. Algorand is designed so that the voting power is proportional
+to the stake (in ALGO) held by the accounts associated to the node.
 
-At the genesis of the Algorand blockchain, 10Bn ALGO was minted. 
+At the genesis of the Algorand blockchain, 10Bn ALGO were minted. 
 As of September 2022, circulating supply is approximately 6.9b ALGO, 
 distributed through different forms of ecosystem support and 
 community incentives. 
-The remaining Algos are held by the Foundation in secure wallets 
+The remaining ALGO tokens are held by the Foundation in secure wallets 
 assigned to 
 Community and Governance Rewards (\%53), 
 Ecosystem Support (\%36), and 
@@ -97,9 +97,8 @@ output. This work aims to provide a basis for an Algorand blockchain simulator
 currently in development. 
 
 \end{section}
-
+% ---------------------------------------------------------------------
 \begin{section}{Network}
-
 A network is formed with two kind of nodes: relay and participation 
 nodes. Participation nodes can connect only to relay nodes.
 They are non-archival in nature, meaning they don't keep 
