@@ -166,7 +166,7 @@ a Ledger's state is defined by the following components:
     \item Genesis identifier and genesis hash, unambiguously defining the ledger 
     to which the state belongs
     \item Protocol version and update state
-    \item Timestamp (in miliseconds since genesis block), identifying when the state was first proposed
+    \item Timestamp identifying when the state was first proposed.
     \item A 64 byte seed, source of randmoness for the consensus algorithm
     \item The current reward state, which describes the policy at which incentives
     are distributed to participants
@@ -208,7 +208,10 @@ A block header holds the following data:
     Ledger creation.
     \item The block's upgrade vote, which results in the new upgrade state. The
     block also duplicates the upgrade state of the state it transitions into.
-    \item The block's timestamp, which matches the timestamp of the state it transitions into.
+    \item The block's timestamp, which matches the timestamp of the state it transitions into. 
+    The timestamp is decided by the proposer of the block using their own internal clock. 
+    To be valid, a timestamp must be greater than the last commited block's timestamp 
+    and must not be more than 25 seconds away from said time.
     \item The block's seed, which matches the seed of the state it transitions into.
     \item The block's reward updates, which results in the new reward state. The
     block also duplicates the reward state of the state it transitions into.
@@ -387,7 +390,7 @@ Internally, we consider the relevant data of an event to be:
     timeout event.
 \end{itemize}
 
-$\bold{Timeout Events}$ are events that are triggered after a certain time has elapsed after the start of a new period.
+$\bold{Timeout \ Events}$ are events that are triggered after a certain time has elapsed after the start of a new period.
 \begin{itemize}
     \item $soft$ Timeout (aka. Filtering): The filter timeout is run after a timeout of $FilterTimeout(p)$ is observed 
     (where $p$ is the currently running period). Note that it only depends on the period as far as if it's the first
@@ -401,7 +404,7 @@ $\bold{Timeout Events}$ are events that are triggered after a certain time has e
     a new period.
 
     \item $next_{st}$ Timeout: this family of timeouts runs whenever the elapsed time since the start of the period reaches
-    $\max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r$, where $st [4, \in 252]$ and $r \in [0, 2^{st-3}\lambda]$, a random 
+    $max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r$, where $st [4, \in 252]$ and $r \in [0, 2^{st-3}\lambda]$, a random 
     delta sampled uniformly at random that represents network variability.
     The algorithm run is exactly the same as in the $next_0$ step.
 
@@ -411,129 +414,11 @@ $\bold{Timeout Events}$ are events that are triggered after a certain time has e
 \end{itemize}
 
 
-$\bold{Message Events}$ Are events triggered after observing a certain message carrying data.
+$\bold{Message \ Events}$ Are events triggered after observing a certain message carrying data.
 There are 3 kinds of messages: votes, proposal payloads, and bundles, and each carry
 the corresponding construct (coinciding with their attached data type field).
 \\
 
-% There's 256 possible steps inside a period, each with their own characteristics.
-% Step 0 is the proposal step, where nodes iterate over their managed accounts, propose a block and propagate it (detailed below).
-% Step 1 is triggered when soft timeout is reached. Here a block is soft voted based on the proposer's credentials.
-% Step 2 is then started, where nodes are listening for messages containing soft votes until next timeout.
-% If a soft bundle is observed for a certain value, a certification vote is emmitted.
-% Steps 3 to 255 are recovery steps. 3 to 252 are called "next", and try to achieve quorum on the start of a new period.
-% Steps 253 to 255 are called "late", "redo" and "down", and are associated with fast recovery.
-% The fast recovery protocol is called once every time a fast recovery timeout is triggered.
-
-% Assume right now that a given node is fixed, we are at round $r$,
-% this node has access to a set of accounts $a\in A$. 
-% Moreover, the account owner has computed for each round a round 
-% leaf ephemeral key $a_{sk}$. Assume also the node has access to contextual
-% information about the ledger state, that being the current last confirmed block,
-% the last $n > 322$ confirmed blocks, balance and ephemeral keys of all 
-% online accounts in that interval of rounds.
-% The main algorithm goes over the following stages on every round.
-% \begin{itemize}
-%     \item {\bf block creation:} the node assembles a block with a set of
-%         transactions and metadata.
-%     \item {\bf block proposal:} the node runs the Verifiable Random Function 
-%         (VRF for short) algorithm to decide whether it should participate in 
-%         the next stage. If it gets selected, then it is sends the block proposal 
-%         to the other nodes together with the result of the VRF run.
-%     \item {\bf soft vote:} the node undergos two rounds of voting to 
-%         reduce all posible block options to a dicotomy: either a block 
-%         proposed by a chosen online network user or an empty block.
-%         \marginpar{With this description the next round is superfluous}
-%     \item {\bf certify vote:} the node undergoes a series of $n$ voting rounds
-%         ($253 \geq n \geq 1$) to certify either the block received by the 
-%         prior stage or an empty block. If $n = 1$, the consensus is said 
-%         to be FINAL. Otherwise, the consensus will be TENTATIVE.
-%     \item {\bf block confirmation:} the block chosen in the certification 
-%         stage is added to the ledger, as FINAL or TENTATIVE depending on 
-%         the amount of users observing it as either (as defined by the 
-%         threshold parameters for each kind of consensus).\marginpar{What is 
-%         the effect of a block being tentative?}
-% \end{itemize} 
-
-    
-
-% On top of that, each node may run in favour of different accounts. To do this,
-% it needs the following parameters. 
-% Let $A=\{a\}$ be a collection of accounts $a$.\\ \\
-% \noindent \textbf{Account parameters}:
-%     \item Public keys $a_{pk}$ for every account linked to the node (doubles as their respective addresses)
-%     \item Public participation keys $a_{p\_partkey}$ for all accounts registered as online (private participation keys are kept
-%     securely by respective users and should not be directly accesible by the node)
-%     \item Two levels of ephemeral keys, signed according to the signing scheme described in \href{https://github.com/algorandfoundation/specs}{specs.} (where 
-%     first level keys are signed with the participation keys, and second level (aka. leaf) ephemeral keys are signed with 
-%     first level ephemeral keys). 
-%     These keys are used for actual participation in the consensus (abstracted as $a_{sk}$ in the following code)
-%     They are ephemeral because they live for a single round, after which they are deleted
-%     \item A balance table $BalanceTable$ for all accounts linked to the node, for the round $SL + R$ rounds before the one 
-%     currently running
-
-
-% --------------------------------------------------------------------
-% \begin{subsection}{Block Creation}\label{ssect:blockcreation}
-
-% \begin{algorithm}
-%     \begin{algorithmic}[1]
-%     \Function{$\mathsf{BlockCreation}$}{$transactionPool$}
-%     \State Pick transactions from transactionPool
-%     \State \Return $\mathrm{Block}$    
-%     \EndFunction
-%     \end{algorithmic}
-%     \caption{\underline{Block creation}}
-% \end{algorithm}
-
-% \noindent \textbf{Arguments:}
-% \begin{itemize}
-%     \item The local pending transaction pool, which should be accesible to the node\\
-%   \end{itemize}
-
-% \noindent \textbf{Description:}\\
-% After confirming a block (and before the genesis block is confirmed) nodes listen to 
-% transactions that are sent to the {\tt algod REST API} and relay these transactions\marginpar{How does the Algorand client send transactions
-% to the transaction pool?}. 
-% At one point, the participation node starts assembling a block.
-% The Algorand protocol specs (\cite{DBLP:conf/sosp/GiladHMVZ17}) do not ensure 
-% a specific way or internal order in which transactions are added to the block.
-% %In fact, they don't force transactions to be added at all, being entirely possible 
-% %for a node to propose an empty block.
-% The node will validate the signature and execute the transactions in the Algorand
-% Virtual Machine (AVM for short) \marginpar{How does this work? Do accounts need to hold
-% ALGO? So the genesis block already assigned some ALGOs to some accounts without any
-% block-recorded transaction, right?}
-% Most of the block metadata is added in this stage, with the exception of the seed
-% which is computed during the block proposal stage (\ref{ssect:blockproposal}).
-% Notwithstanding, the official node implementation follows one (undocumented)
-% algorithm, yet when a node sends a proposal, the official node implementation
-% does not check the order of the transactions or whether a particular transaction
-% has been included.
-
-% \medskip
-% \noindent \textbf{Returns:} \newline
-% A full block, consisting in a variable number of transactions\marginpar{the block 
-% holds the state, right? not the transactions executied alone}, 
-% and the following metadata.
-% \begin{itemize}
-%     \item A round number, $r$.
-%     \item The genesis identifier. That is, an ID that identifies univocally the 
-%         genesis block for this blockchain. For example, Mainnet and Testnet will
-%         have different genesis identifiers.
-%     \item upgrade vote.
-%     \item A timestamp specifying when was the block created.
-%     \item seed\marginpar{pero como se calcula cada uno de estos bichos?}
-%     \item reward updates
-%     \item crytographic commitment to transaction sequence\marginpar{what is this?}
-%     \item crytographic commitment to txn sequence SHA256.
-%     \item previous block hash\marginpar{how are these computed?}.
-%     \item txn counter.
-%     \item newly expired participation keys.\marginpar{are these also voted?
-%     who gets to decide which keys expire and how}
-%   \end{itemize}
-
-% \end{subsection}
 % --------------------------------------------------------------------
 \begin{subsection}{Block Proposal}\label{ssect:blockproposal}
 
@@ -550,16 +435,15 @@ the corresponding construct (coinciding with their attached data type field).
                 \mathsf{Sortition}(a, proposal)$
                 \If{$cred.j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
-                        % \State $priority \gets \min_{1\le n < j}\{\mathsf{Hash}(sorthash || n)\}$
-                        %\State $\mathsf{GOSSIP\_MSG}(a.pk, Signed_{a.sk}(priority, \langle sorthash, \pi\rangle))$
                         \State $v \gets Proposal_{value}(e)$
                         \State $\mathsf{Broadcast}(Vote(I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
                     \Else
-                        \State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
-                        \State $\mathsf{Broadcast}(Vote(I, r, p, proposal, v, cred))$
-                        \If{$Proposal(v) \in P$}
-                            \State $\mathsf{Broadcast}(Proposal(v))$
+                        %VER. Convencerme de que siempre es el pinned value
+                        %\State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
+                        \State $\mathsf{Broadcast}(Vote(I, r, p, proposal, \bar{v}, cred))$
+                        \If{$Proposal(\bar{v}) \in P$}
+                            \State $\mathsf{Broadcast}(Proposal(\bar{v}))$
                         \EndIf
                     \EndIf
                 \EndIf
@@ -573,67 +457,26 @@ the corresponding construct (coinciding with their attached data type field).
 
 \noindent \textbf{Description:}\\
 Block proposal is the first step, and the starting stage of the algorithm on every period.
-First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). This only has any effect on periods
-$p > 0$.
+First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). 
+This only has any effect on periods $p > 0$.
 Afterwards, the node loops through all of its managed online accounts, Functionally
 "playing" for each of the accounts. This is a pattern that we'll see in every other
-main algorithm subroutine that performs any form of broadcasting.
-Any account that is selected as a possible proposer
-Should broadcast a vote and its corresponding proposal, where the Proposal value v inside the vote
-matches the proposal e, which is the block assembled by the node.
+main algorithm subroutine that performs any form of committee voting.
 
+Lines 7 to 15 are the core proposal algorithm. On lines 7 to 10, 
+if the node's on a first period, or it observed a bundle for the bottom proposal on the previous 
+period (meaning there is no valid pinned value), then it will compute the proposal-value for the 
+previously assembled block, broadcast a proposal vote by the selected account for this value, and 
+broadcast the full block in a proposal payload message.
+Otherwise, the node is at least on a second period and it has a pinned value available, supported by a 
+bundle observed in the period immediately before, being the observation of this bundle the event to trigger 
+a period change in the first place. On line 12 the node gets this value explicitly, which coincides with the pinned
+value $\bar{v}$. 
+%P*? CAN the pinned value at this stage, by some manipulation of equivocation votes, not be unique? meaning there
+%is more than one full bundle for the past period.
+Then, for every account selected, a proposal vote for this pinned value is broadcast. Afterwards, 
+if the corresponding full proposal has been observed, then it is also broadcast.
 
-% The {\bf block proposal} stage (step 0 on \href{https://github.com/algorandfoundation/specs}{specs.}) is the first stage of the 
-% consensus algorithm. 
-% First, the node loops through all their online accounts ($a\in A$), 
-% running the sortition subroutine ($\mathsf{sortition}()$).
-% Functions  $\mathsf{Sortition}(), \mathsf{getSortitionSeed}(), \mathsf{sortition_w}()$ and
-% $\mathsf{sortition_W}()$ described in Section \ref{sect:soubroutines}.
-% The sortition subroutine determines if an account $a$ is selected to 
-% ${sorthash}$, a proof of the sortition $\pi$, and an integer $j\ge 0$
-% that is used to prioritize votes.
-
-% If $j>0$ then the address $a$ gets to vote and proceeds as follows.
-% For this account $a$ and this triplet $\langle sorthash, \pi, j\rangle$
-% it computes the hashes $\{ \mathsf{Hash}(sorthash \| n):1\le n\le j\}$
-% and keeps the minimum (line 6), which we set as the $priority$ of this
-% account for this round (here $\mathsf{Hash}()$ is a cryptographic hash
-% function, assumed to be a random oracle).
-% The $\mathsf{GOSSIP\_MSG}()$ call which happens next, gossips (broadcasts) 
-% the priority, sortition hash and proof to other nodes.
-% It further includes the public key $a_{pk}$ for the account $a$ and the
-% signature of the triplet $(priority, \langle sorthash, \pi\rangle)$ with the 
-% leaf ephemeral key associated with the account $a$ and the round $r$.
-
-% In the lines 11 to 15, the algorithm accepts block proposals (in the same 
-% format as gossiped) from other accounts until $\lambda_{proposal}$ is reached.
-% For each block proposal received it only keeps the one with the lowest 
-% priority validating the block before accepting it as a possible proposal.
-
-% To validate a block proposal, the node verifies the sortition proof and hash
-% (utilizing the $\mathsf{verifySortition}()$ function).
-% If the vote message was invalid, the node can decide to flag the proposing user
-% as malicious and choose to ignore any further messages received from that public address.
-
-% Finally, in lines 16-25, the algorithm will select a block as 
-% follows. Assume the elapsed time has been reached. 
-% If the selected proposal came from this node, the seed is computed 
-% calling $\mathsf{ComputeSeed}()$ from the input block $B$, the context helper structure 
-% $ctx$ and the round number $r$, and the complete block is gossiped to the network.
-
-% However, if the proposal did not come from this node, then the node 
-% waits until $\lambda_{block}$ to receive the full block from other nodes
-% in the network.
-% In case of timeout in this last stage, it falls back to the empty block.
-
-% \bigskip
-% \noindent \textbf{Returns:}
-% \begin{itemize}
-%     \item The hash of a full block $BlockHash$, whether a block proposed by a user (including users 
-%     whose accounts are linked to this node) or an empty block in any of the special 
-%     cases mentioned above. It contains all transactions and metadata added in block creation (\ref{ssect:blockcreation}), 
-%     as well as the computed seed.
-%   \end{itemize}
 
 \end{subsection}
 % ---------------------------------------------------------------------------------------------------
