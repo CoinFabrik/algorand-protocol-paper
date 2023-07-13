@@ -1,41 +1,12 @@
 \documentclass[10pt,a4paper]{article}
+
 \usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
-\usepackage{babel} % para que comandos como \today den el resultado en Ingles
+\usepackage[english]{babel}
 \usepackage{a4wide} % márgenes un poco más anchos que lo usual
-
 \usepackage{hyperref}
-
-
-%\usepackage{caratula}
-% \usepackage[left=3cm,right=3cm,bottom=3cm,top=3cm]{geometry}
-
 \usepackage{float}
-
 % Comandos para simbolos matematicos.
 \usepackage{amsmath, amssymb}%, tabularx}
-
-% Comandos para referencias
-%\usepackage{natbib}
-
-% Comandos para Figuras, Graficos, Tikz etc.
-% \usepackage{tikz}
-% \usepackage{epsfig}
-% \usepackage{pgfplots}
-% \usepackage{graphicx}
-% \usepackage{epsfig}
-% \usepackage{caption}
-% \usepackage{subcaption}
-% \usepackage{svg}
-% \setsvg{inkscape=inkscape -z -D}
-
-% Comandos para teoremas etc.
-%\usepackage{amsthm}
-% \newtheorem{theorem}{Teorema}
-% \newtheorem{lemma}[theorem]{Lema}
-% \newtheorem{proposition}[theorem]{Proposición}
-% \newtheorem{remark}{Observación}
-% \newtheorem{corollary}{Corolario}
-% \newproof{proof}{Demostración}
 
 % Comandos para algoritmos.
 \usepackage[noend]{algpseudocode}
@@ -48,8 +19,13 @@
     \State \algorithmicif\ #1\ \algorithmicthen\ #2}
 %\pgfplotsset{compat=1.16}
 
+% index of words
+\usepackage{imakeidx}
+\makeindex
 
-\usepackage{marginnote}
+\usepackage[fulladjust]{marginnote}
+%\renewcommand{\marginpar}[1]{\marginpar{\raggedleft\small #1}}
+
 
 \author{Argimiro, CoinFabrik}
 \title{Algorand Protocol Description}
@@ -63,17 +39,22 @@
 We aim to describe how the Algorand protocol works. 
 This document is meant to reflect how the Algorand mainnet is behaving
 today. We relied on Algorand's documents (\cite{DBLP:conf/sosp/GiladHMVZ17},
-\cite{DBLP:journals/corr/Micali16} and 
+\cite{DBLP:journals/corr/Micali16} and
 \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications})
-but consulted the node's code and probed the network when information was unclear or 
+but consulted the node's code and probed the network when information was unclear or
 unavailable.
 
 Algorand is a proof-of-stake blockchain cryptocurrency protocol 
 using a decentralized By\-zan\-tine Agreement protocol that leverages 
-pure proof of stake for consensus. The protocol maintains a ledger
-that is modified via consensus. In particular, this ledger encodes
-how many ALGO (the native token) holds each account.
-Blocks encode the status of the ledger. Starting on the genesis
+pure proof of stake for consensus. 
+Protocol parties are represented by accounts, which may represent users
+or smart contracts. 
+The protocol maintains a ledger, which encodes the protocol status,
+that is modified via consensus.
+In particular, this ledger encodes how many {\sf ALGO tokens}\index{ALGO token} 
+(the native token) holds each account.
+
+Blocks encode the status of the ledger. Starting on the genesis\index{blocks}
 block (round 0) that encodes the first state of the network, 
 on each round the participation nodes vote on what will the next
 block be. Algorand is designed so that the voting power is proportional
@@ -99,33 +80,39 @@ currently in development.
 \end{section}
 % ---------------------------------------------------------------------
 \begin{section}{Network}
-A network is formed with two kind of nodes: relay and participation 
-nodes. Participation nodes can connect only to relay nodes.
-They are non-archival in nature, meaning they don't keep 
-the whole ledger in memory at all times. At the time of writing,
+A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
+and {\sf participation nodes}\index{participation nodes}. 
+Both nodes operate on servers that are connected to the internet and run publicly
+available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
+Participation nodes can connect only to relay nodes, they run an instance
+of the Aglorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
+They are non-archival in nature, meaning they don't keep\index{archival node}\index{non-archival node}
+the whole ledger in memory at all times. At the time of this writing,
 participation nodes keep the latest 1000 blocks.
 Any queries that require blocks prior to those, need to be made
 through one of the relay nodes they are connected to.
-These nodes are responsible of running the consensus algorithm that
+These nodes are responsible for running the consensus algorithm that
 will be outlined in this document.
 Relay nodes on the other hand, are archival (meaning they have immediate
 access to the whole ledger), but do not participate in consensus.
 They function as network level facilitators, collecting messages sent by participation
 nodes or other relay nodes and distributing them across the network.
 
-Currently, any individual or entity is able to run a participation node, but relay nodes
-are permissioned.
+Currently, any individual or entity is able to run a participation node, 
+but relay nodes are permissioned. They must be {\em whitelisted} by Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
 
-When a participation node is booted up, it establishes a P2P connection with 4 relay nodes on average, using
-a phonebook. Relay nodes manage a significantly higher number of connections, as they 
-are responsible of keeping the network's high throughput.
+When a participation node is booted up, it establishes a peer-to-peer (P2P) 
+channel with at least one relay (4 on average), using a phone book which is included
+as part of the node's code. 
+Relay nodes manage a significantly higher number of connections, as they 
+are responsible for keeping the network's high throughput.
 
-Accounts are managed by participation nodes. Accounts should be registered in one participation
+Accounts are managed by participation nodes. Accounts should be registered in at least one participation
 node only, however this is not enforced.
-In order for an account to participate in consensus,
-it needs to switch its status to "online". That is achieved by sending a special "keyreg" transaction,
-which registers a participation key for the account and creates the two-level ephemeral key tree.
-Its important to note that the registered account will only start participating in consensus
+In order for an account to participate in consensus, it needs to switch its status to "online". 
+That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
+which registers a participation key for the account and creates a two-level ephemeral key tree.
+It is important to note that the registered account will only start participating in consensus
 $\delta_r$ rounds after the key registration transaction is approved.
 Any account participating in consensus does so with their full balance. There is no risk
 associated to participation, nor there are any rewards for running a node.
@@ -133,64 +120,65 @@ associated to participation, nor there are any rewards for running a node.
 TODO: maybe include some voting stats?
 
 \end{section}
-
-
+% --------------------------------------------------------------------------------------
 \begin{section}{Node as a State Machine}
-
 A network participation node can be modeled as a state machine.
-In this section we'll define all primitives and data structures necessary to define a node's
-given state; the rest of the work will be spent on describing the rules and interrelations that
+In this section we will define all primitives and data structures necessary to define the state
+of a node; the rest of the work will be spent on describing the rules and interrelations that
 make nodes transition from and into different states.
 
-Let round and period number, $r$ and $p$, be unsigned 64 bit integers. Let the 
-step number, $s$, be an unsigned 8 bit integer.
+Let round and period number, $r$ and $p$, be unsigned 64-bits integers. Let the 
+step number, $s$, be an unsigned 8 bits integer.
 For convenience and readability, we define the following enumeration for step number:
-\begin{itemize}
-    \item $s=0 \equiv proposal$
-    \item $s=1 \equiv soft$
-    \item $s=2 \equiv cert$
-    \item $s \in [3,252] \equiv next_{s-3}$
-    \item $s=253 \equiv late$
-    \item $s=254 \equiv redo$
-    \item $s=255 \equiv down$
-\end{itemize}
+$$
+\left\{    
+    \begin{array}{ll}
+        \mathsf{proposal}&\mbox{if }s=0 \\
+        \mathsf{soft}&\mbox{if }s=1 \\
+        \mathsf{cert}&\mbox{if }s=2\\
+        \mathsf{next}\;s-3&\mbox{if }s\in [3, 252]\\
+        \mathsf{late}&\mbox{if }s=253\\
+        \mathsf{redo}&\mbox{if }s=254\\
+        \mathsf{down}&\mbox{if }s=255
+    \end{array}
+\right.
+$$
 
-A $\bold{ledger}$ is a sequence of states which comprise the common information established by some instantiation 
-of the Algorand protocol.
-It is identified
-by a string called the genesis identifier, as well as a genesis hash that cryptographically commits to the 
-starting state of the ledger.
+A ${\sf ledger}$ is a sequence of states which comprise the common information established by some instantiation 
+of the Algorand protocol.\index{ledger}
+It is identified by a string called the genesis identifier, as well as a genesis hash that cryptographically 
+commits to the starting state of the ledger.
 Besides the already defined round number $r$, which indexes into the Ledger's sequence of states,
 a Ledger's state is defined by the following components:
 \begin{itemize}
     \item Genesis identifier and genesis hash, unambiguously defining the ledger 
-    to which the state belongs
-    \item Protocol version and update state
-    \item Timestamp (in miliseconds since genesis block), identifying when the state was first proposed
-    \item A 64 byte seed, source of randmoness for the consensus algorithm
+    to which the state belongs.
+    \item Protocol version and update state.
+    \item Timestamp (in milliseconds since genesis block), identifying when the state was first proposed.
+    \item A 64 byte seed, source of randomness for the consensus algorithm.
     \item The current reward state, which describes the policy at which incentives
-    are distributed to participants
+    are distributed to participants.
     \item The current box state, which holds mappings from (app id, name) tuples
     to box contents of arbitrary bytes.
 \end{itemize}
 
 A Ledger's state is completed by a Balance table, $BT$, a mapping of addresses to account records.
-An account record is comprised of a 64 bit unsigned integer raw balance, a 3-state flag status (can be 
-"online", "offline", or "non-participating"), its registered voting keys (more info on the keys subsection) and 
-two 64 bit unsigned integers $r_start$ and $r_last$, which represent the validity interval (in rounds)
-of the participation key (which acts as the root voting key for the merkle tree).
+An account record comprises a 64-bits unsigned integer raw balance, a 3-state flag status (can be 
+"online", "offline", or "non-participating"), its registered voting keys (more info on subsection~\ref{sect:keys}, keys) and 
+two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
+of the participation key (which acts as the root voting key for the Merkle tree).\marginpar{Cu\'al merkle t. no se definio!}
 A node may query the current state of a particular account by indexing the balance table by address, or it might
 query a previous round's account state by adding a round indexing. Note that past account states are 
 always computable by iterating over the Ledger sequence of blocks and reverting transaction updates. Internally
 however, certain past records might be cached and maintained to improve performance.
 
-For convenience we assume the existance of a locally maintained online account list, where a node
-has easy iteration access to all updated balance records of the accounts it manages that are flagged
-as online and have a valid participation key registered on this node. This array is named $A$ from now on,
-and each entry $a$ has an account address $a.I$, and all of the information in its mapped balance record,
-$BT[a.I]$, exposed and accesible.
+For convenience, we assume that each node maintains an account list that provide easy iteration access to all 
+updated balance records for the accounts it manages which are flagged as online and have a valid participation 
+key registered on this node. 
+This array is named $A$ from now on, and each entry $a$ has an account address $a.I$, and all the information
+in its mapped balance record, $BT[a.I]$, exposed and accessible.
 
-Furthermore, a node posesses a Transaction pool, $TP$, which is a set of live unconfirmed transactions, $txn_k$, (where 
+Furthermore, a node possesses a Transaction pool, $TP$, which is a set of live unconfirmed transactions, $txn_k$, (where 
 $k$ is an account's address, the creator and sender of the transaction), either
 sent by accounts that are managed by the node itself or obtained from the network (broadcast by other nodes).
 For the purpose of this report, transactions are an otherwise opaque object, with the attribution of modifying
@@ -212,7 +200,7 @@ A block header holds the following data:
     \item The block's seed, which matches the seed of the state it transitions into.
     \item The block's reward updates, which results in the new reward state. The
     block also duplicates the reward state of the state it transitions into.
-    \item A cryptographic commitment to the block's transaction sequence (a vector commitment).
+    \item A cryptographic commitment to the block's transaction sequence (a vector commitment).\marginpar{En qu\'e se distinguen los cmt?}
     \item A cryptographic commitment, using SHA256 hash function, to the block's
     transaction sequence (useful for compatibility with systems where SHA512/256 is not supported)
     \item The block's previous hash, which is the cryptographic hash of the previous
@@ -232,7 +220,7 @@ A block header holds the following data:
     accounts in the slice and may even omit the slice completely
 \end{itemize}
 While a block's body is the block's transaction sequence, which describes the sequence
-of updates to the account state and box state
+of updates to the account state and box state.\marginpar{Y los local states? los global states de los contratos, etc?}
 
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
@@ -1712,5 +1700,6 @@ observed stake.\\
 \bibliographystyle{alpha}
 \bibliography{bibliography}
 
-
+% ----------------------------------------------------------------------------------------------
+\printindex
 \end{document}
