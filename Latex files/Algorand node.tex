@@ -113,7 +113,7 @@ In order for an account to participate in consensus, it needs to switch its stat
 That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
 which registers a participation key for the account and creates a two-level ephemeral key tree.
 It is important to note that the registered account will only start participating in consensus
-$\delta_r$ rounds after the key registration transaction is approved.
+$\delta_b$ rounds after the key registration transaction is approved.
 Any account participating in consensus does so with their full balance. There is no risk
 associated to participation, nor there are any rewards for running a node.
 
@@ -559,7 +559,7 @@ output in its filtering step.
             \If{$\mathsf{IsCommitable}(v) \land s \leq cert$}
                 \For{$a \in A$}
                     \State $cred \gets 
-                    \mathsf{Sortition}(a_{sk}, cert)$
+                    \mathsf{Sortition}(a, cert)$
                     \If{$cred.j > 0$}
                         \State $\mathsf{Broadcast}(Vote(a.I, r, p, cert, v,  cred))$
                     \EndIf
@@ -668,7 +668,7 @@ the current proposal value is cast.
                 %check if cert bundle has been achieved
                 \If{$\exists v | Bundle(vt.round,vt.period,cert,v) \subset V$}
                     \If{$Proposal(v) \notin P$}
-                        \State $\mathsf{RequestProposal}(v)$ //waits until proposal is obtained
+                        \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
                     \State $r_{old} \gets r$
@@ -1078,13 +1078,13 @@ Otherwise returns undefined. Here we ignore the theoretical posibility of a coll
     \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ e$}
 
     //pack and hash
-    \State $proposal_{value} v \gets (I, p, Digest(e), Hash(Encoding(e)))$
+    \State $proposal_{value} v \gets (I, p, \mathsf{H}(e), \mathsf{H}(Encoding(e)))$
 
     \State $\mathsf{return} \ v$
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{Proposal}}
+    \caption{\underline{Proposal-value}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\ 
@@ -1093,10 +1093,10 @@ Otherwise returns undefined. Here we ignore the theoretical posibility of a coll
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifyProposal}$}{$Proposal \ pp$}
+    \Function{$\mathsf{VerifyProposal}$}{$ProposalPayload \ pp$}
 
-    \State $valid \gets ValidEntry(pp.e, L)$
-    \State $valid \gets valid \land VerifySignature(pp.y)$
+    \State $valid \gets \mathsf{ValidEntry}(pp.e, L)$
+    \State $valid \gets valid \land \mathsf{VerifySignature}(pp.y)$
 
     \EndFunction
     \end{algorithmic}
@@ -1196,17 +1196,17 @@ bundle in the previous period, it would not be starting a new period and it woul
 the relevant entry and subsequently start a new round). If such bundle for a proposal-value $v$ exists, the pinned 
 value is updated to $v$.
 Otherwise, and assuming implicitly in this case that the bundle that caused the period switch is of value $\bot$,
-a check for the special $sigma(r,p)$ value is performed on line 6, where $p$ is the period that was being executed 
-by the node up until a new period was observed. If $sigma(r,p)$ is a valid non-empty proposal-value, the pinned 
+a check for the special $\sigma(r,p)$ value is performed on line 6, where $p$ is the period that was being executed 
+by the node up until a new period was observed. If $\sigma(r,p)$ is a valid non-empty proposal-value, the pinned 
 value $\bar{v}$ is set to this (line 7).
 Finally, if none of the above conditions were met, the pinned value remains unchanged going into the new period.
-Finally, we update $p$ to match the period to start.
+Finally, the node updates $p$ to match the period to start.
 
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{GarbageCollect}$}{}
+    \Function{$\mathsf{GarbageCollect}$}{$r, p$}
 
     \State $V_{(r,p-1)} \gets \{ vt \in V | vt.r < r \lor (vt.r=r \land vt.p + 1 < p) \}$
     \State $P_{(r,p-1)} \gets \{ pp \in P | pp.r < r \lor (pp.r=r \land pp.p + 1 < p) \}$
@@ -1220,7 +1220,7 @@ Finally, we update $p$ to match the period to start.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Garbage collection algorithm for the freshly started period or round.
+Garbage collection algorithm, for the finished $(r,p)$ context.
 The procedure discards all votes in $V$ and proposals in $P$ where the round of emmision is less than the
 new round, or the round of emmision is equal to the new round and the period of emmision is below the period
 directly before the current one.
@@ -1422,8 +1422,8 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
         \State $seed \gets L[r - \delta_s].seed$
         //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
-        \State $w \gets a.balance$ //$BT[a.address][r-\delta_s-\delta_r].balance$
-        \State $W \gets \sum_{a \in A_{r-\delta_s-\delta_r}}a.balance$
+        \State $w \gets a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
+        \State $W \gets \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
         \State $\tau \gets \mathsf{CommitteeThreshold}(p)$
         \State $ \langle hash, \pi \rangle \gets \mathsf{VRF_{a_{sk}}}(seed||step)$
         \State $t \gets \frac{\tau}{W}$
@@ -1449,11 +1449,12 @@ The Sortition procedure is one of the most important subroutines in the main alg
 used in multiple stages and contexts.
 Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random 
 Function) select a user with probability proportional
-to their weight (i.e., stake) by returning a j parameter, which indicates the number of times that 
+to their weight (i.e., stake) by returning a $j$ parameter, which indicates the number of times that 
 specific user was chosen.
 Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one 
 of them is selected with probability $p = \frac{\tau}{W}$,
-where $\tau$ is the expected amount of users to be selected for the given role.
+where $\tau$ is the expected amount of users to be selected for the given role, and $W$ is the total
+stake online for the relevant round.
 The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated 
 binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
 belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.\\
@@ -1524,16 +1525,14 @@ observed stake.\\
     \item $j$, an unsigned 64 bit integer, representing the weight of a given account's vote inside a specific committee
     (for a given round, period and step).
     Usually wrapped inside a $credentials$ structure.
-    \item $\lambda$, time interval for the node to accept block proposals, after which it 
+    \item $\lambda_0$, time interval for the node to accept block proposals (when $p=0$), after which it 
     chooses the observed block with the highest priority (lowest hash).
+    \item $\lambda$, same as $\lambda_0$ but for $p > 0$.
+    \item $\delta_s$, sortition seed renewal rate, in number of rounds. Set to $2$ in 
+    \href{https://github.com/algorandfoundation/specs}{specs.} as of July 2023.
+    \item $\delta_b$, balance lookback interval, in number of rounds. Set to $320$ in 
+    \href{https://github.com/algorandfoundation/specs}{specs.}
 
-    % \item $R$ = sortition seed renewal rate (in number of rounds). 
-    % Set to 2 in the \href{https://github.com/algorandfoundation/specs}{specs.}
-    % as of December 2022
-    % \item $\lambda$ = time interval for the node to accept block proposals, after
-    % which it chooses the observed block with the highest priority (lowest hash).
-    % \item $SL$ = the account balances lookback interval, in number of rounds (integer). 
-    % Set to 320 in \href{https://github.com/algorandfoundation/specs}{specs.}
     % \item Public keys $a_{pk}$ for every account linked to the node (doubles as their respective addresses)
     % \item Public participation keys $a_{p\_partkey}$ for all accounts registered as online (private participation keys are kept
     % securely by respective users and should not be directly accesible by the node)
