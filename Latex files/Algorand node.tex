@@ -477,11 +477,11 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \State $v \gets \bot$ 
 
 
-    \For{$vote \in V | vote.step = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, vote.cred.j)} \{ \mathsf{H}(vote.cred.sh || i)\}$
+    \For{$vt \in V \textfractionsolidus vote.step = proposal$}
+        \State $priorityHash \gets \min_{i \in [0, vote.cred.j)} \{ \mathsf{H}(vt.cred.sh || i)\}$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
-            \State $v \gets vote.v$
+            \State $v \gets vt.v$
         \EndIf    
     \EndFor
 
@@ -505,12 +505,22 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 \noindent \textbf{Description:}\\
 The soft vote stage (also known as "filtering") is run after a timeout of $FilterTimeout(p)$
 (where $p$ is the node's currently executing period) is observed by the node. That is to say, filtering
-is triggered after either a X or X timeout is observed according to whether $p=0$ or $p>0$ respectively.
+is triggered after either a $2\lambda_0$ or $2\lambda$ timeout is observed according to whether $p=0$ or $p>0$ respectively.
 Let $V*$ be all proposal votes received. By a priority hash function, this stage performas a filtering action,
 keeping the lowest hashed value observed.
-The priority function (line X) can be read as...
-Then, it proceeds to broadcast this value, running sortition for each managed online account.
-If the associated proposal, $Proposal(v)$, is in $P$, then it is subsequently broadcast too.
+The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
+Given the sortition hash $sh$ output by the $\mathsf{VRF}$ for the proposer account, and for each sub-user unit $i$ 
+in the interval from $0$ (inclusive) to the vote weight (exclusive; the $j$ output of $\mathsf{Sortition}()$ inside 
+the $cred$ credentials structure), the node hashes the concatenation of $sh$ and $i$, $\mathsf{H}(sh||i)$ 
+(where $\mathsf{H}()$ is the node's general cryptographic hashing function). On lines 6 to 8, 
+then, it keeps track of the proposal-value that minimizes this concatenation and subsequent hashing procedure.
+After running the filtering algorithm for all proposal votes observed, and assuming there was at least one vote
+in $V*$, the broadcasting section of the filtering algorithm is executed (lines 9 to 15).
+For every online managed account selected to be part of the $soft$ voting committee, a $soft$ vote is
+broadcast for the previously found filtered value $v$. If the full proposal has been observed and is available in $P$,
+it is also broadcast. 
+If the previous assumption of non-empty $V*$ does not hold, no broadcasting is performed and the node produces no
+output in its filtering step.
 
 \end{subsection}
 
@@ -541,7 +551,7 @@ If the associated proposal, $Proposal(v)$, is in $P$, then it is subsequently br
                 \State $\mathsf{return}$ //ignore proposal
             \EndIf
 
-            %we need to relay (broadcast to everybody but ourselves), and observe p
+            %we need to relay (broadcast to everybody but ourselves and o.g. sender), and observe p
             \State $\mathsf{Relay}(e)$
             \State $P \gets P \cup e$
 
@@ -567,17 +577,17 @@ The proposal handler is triggered when a node receives a message containing a fu
 It starts by performing a series of checks, after which it will either ignore the received
 proposal, discarding it and emitting no output; or relay, observe and produce an output
 according to the proposal's characteristics and the current context.
-The first check (lines 3:5) is a special case, where if the proposal is from the next round's 
+The first check (lines 3 to 5) is a special case, where if the proposal is from the next round's 
 first period, the node relays it and then ignores it for the purpose of the current round. 
 Whenever the node catches up (observes a round change), and only if necessary, it will request 
 this proposal back from the network.
-Lines 6:7 check if the proposal is invalid, or if it has been observed already. Any one of those
+Lines 6 and 7 check if the proposal is invalid, or if it has been observed already. Any one of those
 conditions are sufficient to discard and ignore the proposal.
-Finally, on lines 8:9 it checks if the associated proposal value is either of the special values for the current
+Finally, on lines 8 and 9 it checks if the associated proposal value is either of the special values for the current
 round and period ($\sigma$, $\mu$, or the pinned proposal value $\bar{v}$). Any proposal whose proposal value does not match
 one of these is ignored.
 Once the checks have been surpassed, the node is ready to relay the proposal and observe it by adding
-it to the observed proposals set, P (lines 10:11).
+it to the observed proposals set, $P$ (lines 10 and 11).
 Once relayed and observed, the proposal is then processed for further output.
 Here, and only if the proposal value has become commitable and the current executing node's step is lower or equal
 to a certification step (it's not yet in a recovery step), the node plays for each account performing sortition
