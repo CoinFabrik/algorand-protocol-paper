@@ -228,36 +228,36 @@ of updates to the account state and box state.\marginpar{Y los local states? los
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
 
-A proposal-value is a tuple $v = (I, p, Hash(e), Hash(Encoding(e)))$ where I is
+A proposal-value is a tuple $v = (I, p, Hash(e), Hash(Encoding(e)))$ where I is\marginpar{Definir e}
 an address (the “original proposer”), p is a period (the “original period”), and
 Hash is some cryptographic hash function (implemented as SHA512/256). The special proposal where all fields
 are the zero-string is called the bottom proposal $\bot$. 
 It also includes the authentication information for the original proposer, that is, a signature and VRF proof of the proposal-value.
 
-For convenience, we define the function $Proposal(v)$ for a given proposal value $v$,
+For convenience, we define the function $Proposal(v)$ for a given proposal value $v$,\marginpar{Pero en el parrafo de arriba v es otra cosa!}
 such that $Proposal(v) = e$ iff e is the proposal that, when hashed, corresponds to the proposal
 value $v$. The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
 $Proposal_{value}(e) = v$ if $Proposal(v) = e$.
 $Proposal()$ is not a biyective function (as hashes can theoretically collide), however we assume the inverse
 exists and has a defined output whenever the relevant proposal has been observed by the node
-(and is such that $e \in P$).
+(and is such that $e \in P$).\marginpar{Que es el cjto P?}
 
-We define an auxiliary structure, $credentials$, useful in voting with the following fields:
+We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
 \begin{itemize}
-    \item $sh$ is the sortition hash (64 byte string)
-    \item $\pi$ is the sortition proof (32 byte string)
-    \item $j$ is a 64 bit unsigned integer that represents the vote's weight
+    \item $sh$ is the sortition hash (64 byte string).
+    \item $\pi$ is the sortition proof (32 byte string).
+    \item $j$ is a 64 bit unsigned integer that represents the vote's weight.
 \end{itemize}
 An object of this type is output by the $\mathsf{Sortition}()$ procedure.
 
 A vote $vt$, constructed as $Vote(I,r,p,s,v,cred)$ is a tuple with the following members:
 \begin{itemize}
-    \item $I$ is a valid Algorand address (in 32 byte format)
-    \item $r$ is the vote's round (64 bit integer)
-    \item $p$ is the vote's period (64 bit integer)
-    \item $s$ is the vote's step (8 bit integer)
-    \item $v$ is the vote's proposal value
-    \item $cred$, of type $credentials$, the committee credentials of the voter
+    \item $I$ is a valid Algorand address (in 32 byte format).
+    \item $r$ is the vote's round (64 bit integer).
+    \item $p$ is the vote's period (64 bit integer).
+    \item $s$ is the vote's step (8 bit integer).
+    \item $v$ is the vote's proposal value.
+    \item $cred$, of type $credentials$, the committee credentials of the voter.
 \end{itemize}
 
 In reality all votes are broadcast wrapped in a structure called $UnauthenticatedVote$, where
@@ -350,16 +350,16 @@ no valid soft bundle has been observed by the node.
 
 On a higher level, we can think of a step as a defined part of the consensus algorithm. The first three steps
 ($proposal$, $soft$ and $cert$)
-are the fundamental parts, and will be the only steps run in normal, "healthy" functioning conditions.
+are the fundamental parts, and will be the only steps run in normal, ``healthy'' functioning conditions.
 The following steps are recovery procedures in case there's no observable consensus before their trigger times.
 $next_{s-3}$ with $s \in [3, 252]$ are recovery steps and the last three ($late$, $redo$ and $down$)
-are special "fast" recovery steps.
+are special ``fast'' recovery steps.
 A period is an execution of a subset of steps, ran in order until one of them achieves 
 a bundle for a specific value. A round always starts with a $proposal$ step and finishes with a $cert$
 step (when a block is certified and commited to the ledger). However, multiple periods might
 be run inside a round until a certification bundle ($Bundle(r,p,s,v) $ where $s = cert$) is observable by the network.
-\\
 
+\medskip
 Events are the only way in which the node state machine is able to both internally transition and produce output.
 In case an event is not identified as misconstrued or malicious in nature, it will certainly produce a state change,
 and it will almost certainly cause a receiving node to produce and then broadcast or relay an output, to be consumed
@@ -388,11 +388,11 @@ $\bold{Timeout \ Events}$ are events that are triggered after a certain time has
 
     \item $next_0$ Timeout: it's the first recovery step, only executed if no consensus for a specific value was observed,
     and no $cert$ bundle is constructible with observed votes. It plays after observing a timeout of $\max\{4\lambda, \Lambda \}$.
-    In it, the node will next vote a value and attempt to reach a consensus for a $next_0$ bundle, that would in turn kickstart
+    In it, the node will next vote a value and attempt to reach a consensus for an $next_0$ bundle, that would in turn kickstart
     a new period.
 
     \item $next_{st}$ Timeout: this family of timeouts runs whenever the elapsed time since the start of the period reaches
-    $max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r$, where $st [4, \in 252]$ and $r \in [0, 2^{st-3}\lambda]$, a random 
+    $\max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r$, where $st\in [4, 252]$ and $r \in [0, 2^{st-3}\lambda]$, a random 
     delta sampled uniformly at random that represents network variability.
     The algorithm run is exactly the same as in the $next_0$ step.
 
