@@ -127,7 +127,7 @@ In this section we will define all primitives and data structures necessary to d
 of a node; the rest of the work will be spent on describing the rules and interrelations that
 make nodes transition from and into different states.
 
-Let round and period number, $r$ and $p$, be unsigned 64-bits integers. Let the 
+Let round and period number, $r$ and $p$, be unsigned 64-bits integers. Let the \marginpar{Define period}
 step number, $s$, be an unsigned 8 bits integer.
 For convenience and readability, we define the following enumeration for step number:
 $$
@@ -272,9 +272,11 @@ save for the proposal value, that is, $v_0 \neq v_1$. We call this pattern an $\
 An equivocation vote is valid if both of its constituent votes are valid.
 It's important to keep in mind that nodes are forbidden from equivocating on any steps $s \neq soft$.
 
-Let set $b$ of votes, $vt_0, vt_1 \in b \implies vt_0.r = vt_1.r \land vt_0.p = vt_1.p \land vt_0.s = vt_1.s$ and for each pair of distinct elements,
-either $vt_0.I \neq vt_1.I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ is an equivocation vote. Also, the number of votes in $b$ is such that
-the sum of weights for each vote in $b$ is greater or equal to the committee threshold of the votes in the set.
+Let  $b$ be a set of votes, and $vt_0, vt_1 \in b$ then $vt_0.r = vt_1.r \land vt_0.p = vt_1.p \land vt_0.s = vt_1.s$ 
+and for each pair of distinct elements, either $vt_0.I \neq vt_1.I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ 
+is an equivocation vote. 
+Also, the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
+committee threshold of the votes in the set.
 A set $b$ with these characteristics is called a $\bold{Bundle}$, constructed $b = Bundle(r,p,s,v)$.
 
 We define a player's state, $S$, as a tuple of values, along with a ledger state $L$ and a balance table $BT$
@@ -405,7 +407,6 @@ $\bold{Timeout \ Events}$ are events that are triggered after a certain time has
 $\bold{Message \ Events}$ Are events triggered after observing a certain message carrying data.
 There are 3 kinds of messages: votes, proposal payloads, and bundles, and each carry
 the corresponding construct (coinciding with their attached data type field).
-\\
 
 % --------------------------------------------------------------------
 \begin{subsection}{Block Proposal}\label{ssect:blockproposal}
