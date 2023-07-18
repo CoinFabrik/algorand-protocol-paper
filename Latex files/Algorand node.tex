@@ -136,7 +136,7 @@ $$
         \mathsf{proposal}&\mbox{if }s=0 \\
         \mathsf{soft}&\mbox{if }s=1 \\
         \mathsf{cert}&\mbox{if }s=2\\
-        \mathsf{next}\;s-3&\mbox{if }s\in [3, 252]\\
+        \mathsf{next}_{s-3}&\mbox{if }s\in [3, 252]\\
         \mathsf{late}&\mbox{if }s=253\\
         \mathsf{redo}&\mbox{if }s=254\\
         \mathsf{down}&\mbox{if }s=255
@@ -315,7 +315,10 @@ no valid soft bundle has been observed by the node.
 \end{section}
 % ------------------------------------------------------------------------
 \begin{section}{Main algorithm}
-
+% Broadcast(e) = Event(type=proposal-payload, data=e, sign=Signature(pk_sender, e))
+% Broadcast(Vote(....)) = Event(type=vote, data=Vote(....), sign=Signature(pk_sender, Vote(....)))
+%
+% Broadcast(Bundle) = Event(type=bundle, data={v for v in Bundle}, sign=Signature(pk_sender, {v for v in Bundle}))
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
@@ -336,11 +339,11 @@ no valid soft bundle has been observed by the node.
         \EndIf
     \Else \ //ev is MessageEvent
         \State $msg \gets ev.msg$
-        \If{$msg \ is \ Proposal \ p$}
+        \If{$msg \ is \ of \ type \ Proposal \ p$}
             \State $\mathsf{HandleProposal}(p)$
-        \ElsIf{$msg\ is \ Vote \ v$}
+        \ElsIf{$msg\ is \ of\ type\  Vote \ v$}
             \State $\mathsf{HandleVote}(v)$
-        \ElsIf{$msg\ is \ Bundle \ b$}
+        \ElsIf{$msg\ is\ of\ type\ Bundle \ b$}
             \State $\mathsf{HandleBundle}(b)$
         \EndIf
     \EndIf
@@ -425,14 +428,15 @@ the corresponding construct (coinciding with their attached data type field).
                 \If{$cred.j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         \State $v \gets Proposal_{value}(e)$
-                        \State $\mathsf{Broadcast}(Vote(I, r, p, proposal, v, cred))$
+                        \State $\mathsf{Broadcast}(Vote(a.I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
                     \Else
                         %VER. Convencerme de que siempre es el pinned value
                         %\State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
-                        \State $\mathsf{Broadcast}(Vote(I, r, p, proposal, \bar{v}, cred))$
+                        \State $\mathsf{Broadcast}(Vote(a.I, r, p, proposal, \bar{v}, cred))$
                         \If{$Proposal(\bar{v}) \in P$}
                             \State $\mathsf{Broadcast}(Proposal(\bar{v}))$
+                            % proposal(\bar v) es un broadcast de un e 
                         \EndIf
                     \EndIf
                 \EndIf
@@ -443,7 +447,7 @@ the corresponding construct (coinciding with their attached data type field).
     \end{algorithm}
 
 \newpage
-
+% porposal = s
 \noindent \textbf{Description:}\\
 Block proposal is the first step, and the starting stage of the algorithm on every period.
 First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). 
