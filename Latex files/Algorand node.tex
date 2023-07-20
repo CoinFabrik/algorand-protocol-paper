@@ -80,6 +80,37 @@ can be in, as well as all kinds of events that cause transitions and network
 output. This work aims to provide a basis for an Algorand blockchain simulator 
 currently in development. 
 
+% ---------------------------------------------------------------------
+% quizas hay que reubicar esta sect. ver luego
+\begin{subsection}{Vanilla run}\label{subsect:vanilla-run}
+Let as assume a genesis block was generated, the blockchain has been running for
+some time, with a set of nodes and accounts. We are now at round $r-1$, meaning
+that $r-1$ blocks have been generated and confirmed by the blockchain.
+Moreover, some nodes have received transactions which have been signed by
+Algorand accounts, and have added them to their memory pool and relayed them
+to other nodes.
+
+% block assembly
+Next, the $\mathsf{BlockProposal}$ algorithm runs (Algorithm~\ref{algo:block-proposal})
+runs. It will ignore the resynchronization attempt call and move directly to the 
+block assembly (Algorithm \ref{algo:assemble-block}), which in short, after receiving 
+an ordered list of transactions, validates the signature of each transaction, executes 
+transactions in the Algorand Virtual Machine (AVM), modifying the state as 
+pertienent,\marginpar{que onda, aca tiene un clon del estado que presenta como candidato?}
+and ending up with an assembled block.
+
+% sortition
+It next loops over all the accounts that are registered to the node. For each account,
+it will run the $\mathsf{Sortition}$ algorithm (Algo.~\ref{algo:sortition}) which basically
+runs the Verifiable Random Function in order to decide whether this account can vote (by
+picking a random value) and provide a proof that the random value was generated according
+to protocol.
+
+% j>0
+If ...
+
+\end{subsection}
+
 \end{section}
 % ---------------------------------------------------------------------
 \begin{section}{Network}
@@ -154,13 +185,14 @@ where
     
     \item 
     $p\in\mathbb{Z}_{\ge 0}$ is the current period within the round and recorded as 
-    a 64-bits integer. When the round starts, $p$ is set to 0 ($p=0$), and it is increased
-    with a logic we follow to explain.
+    a 64-bits integer. When the round starts, $p$ is set to 0 ($p=0$), and it is 
+    increased via the function $\mathcal(F)$ (see \ref{fun:compute-p}).
     
     \item 
     $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step}\index{step} within the round
     and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$), 
-    and it is increased with a logic we follow to explain (see (\ref{table:s})).
+    and it is increased via the function $\mathcal(F)$ (see \ref{fun:compute-s}) and 
+    labeled according to table (see (\ref{table:s})).
     
     \item
     $V$ is the set of all {\sf valid observed votes}\index{valid observed votes} and 
@@ -192,7 +224,7 @@ where
 The first 7 values are the {\sf consensus state parameters},\index{consensus state parameters}
 whereas $L$ and $BT$ are {\sf ledger state parameters}.\index{ledger state parameters}
 
-Let round and period number, $r$ and $p$, be unsigned 64-bits integers. Let the \marginpar{Define period}
+Let round and period number, $r$ and $p$, be unsigned 64-bits integers. 
 step number, $s$, be an unsigned 8 bits integer.
 For convenience and readability, we define the following enumeration for step number:
 \begin{equation}\label{table:s}
@@ -372,7 +404,7 @@ $credentials$ fields.
 
 
 % equivocation vote
-Let $I$ be an address, $r, s, p\in\Z_{\ge 0}$, $cred$ a credential, and $v_0,v_1$ different
+Let $I$ be an address, $r, s, p\in\mathbb{Z}_{\ge 0}$, $cred$ a credential, and $v_0,v_1$ different
 vote proposals.
 An {\sf equivocation vote}\index{equivocation vote} happens when a pair of votes
 $vt_0 = Vote(I, r, p, s, v_0, cred)$ and $vt_1 = Vote(I, r, p, s, v_1, cred)$.
@@ -407,6 +439,10 @@ no valid soft bundle has been observed by the node.
 % Broadcast(Vote(....)) = Event(type=vote, data=Vote(....), sign=Signature(pk_sender, Vote(....)))
 %
 % Broadcast(Bundle) = Event(type=bundle, data={v for v in Bundle}, sign=Signature(pk_sender, {v for v in Bundle}))
+
+The node is reactive. The main algorithm for the node, thus, starts when it receives 
+any input, it makes computations --probably modifying the state of the node-- and 
+may end by broadcasting data to other nodes.
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
@@ -502,7 +538,7 @@ the corresponding construct (coinciding with their attached data type field).
 % --------------------------------------------------------------------
 \begin{subsection}{Block Proposal}\label{ssect:blockproposal}
 
-    \begin{algorithm}
+    \begin{algorithm}\label{algo:block-proposal}
         \begin{algorithmic}[1]
         \Function{$\mathsf{BlockProposal}$}{}
 
@@ -1041,7 +1077,7 @@ Otherwise falls back to $SHA256$.\\
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:assemble-block}
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{}
 
@@ -1054,8 +1090,8 @@ Otherwise falls back to $SHA256$.\\
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Gets a set of transactions out of the transaction pool (prioritizing highest transaction fee if there were any).
-Then, assembles a full ledger entry, setting all of the appropriate fields in a block.
+Gets a set of transactions out of the transaction pool (prioritizing the highest transaction fee if there were any).
+Then, assembles a full ledger entry, setting all the appropriate fields in a block.
 
 % ----------------------------------------------------------------------------------------------
 
