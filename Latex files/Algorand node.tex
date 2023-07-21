@@ -97,7 +97,7 @@ block assembly (Algorithm \ref{algo:assemble-block}), which in short, after rece
 an ordered list of transactions, validates the signature of each transaction, executes 
 transactions in the Algorand Virtual Machine (AVM), modifying the state as 
 pertienent,\marginpar{que onda, aca tiene un clon del estado que presenta como candidato?}
-and ending up with an assembled block.
+and ending up with an assembled block $e$.
 
 % sortition
 It next loops over all the accounts that are registered to the node. For each account,
@@ -107,7 +107,17 @@ picking a random value) and provide a proof that the random value was generated 
 to protocol.
 
 % j>0
-If ...
+If sortition for a particular account returns the zero value, his means the account has
+not been selected for block creation or voting, the algorithm exits and the node will
+no longer participate in this round.
+When it is nonzero, the node participates in the voting representing the account.
+
+If either the period is zero ($p=0$) or the node received a bundle $\matshf{Bundle}(r,p-1,s,\bot)$
+for some number of steps $s\in\Z_{\ge 0}$, then
+the algorithm sets $v$ as the proposal value obtained from the block $e$
+and does two separate broadcasts for $Vote(a.i, r,p, proposal, v, cred)$ and $e$.
+Else, it will broadcast $Vote(a.I, r, p, proposal, \bar v, cred))$\marginpar{De donde sale $\bar v$?}
+
 
 \end{subsection}
 
