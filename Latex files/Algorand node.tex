@@ -90,9 +90,14 @@ Moreover, some nodes have received transactions which have been signed by
 Algorand accounts, and have added them to their memory pool and relayed them
 to other nodes.
 
+% event handler, time = 0
+When the main algorithm starts its timer is set to 0.
+As it acts as an event handler, if the condition $timer=0$ holds then the
+algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
+
 % block assembly
-Next, the $\mathsf{BlockProposal}$ algorithm runs (Algorithm~\ref{algo:block-proposal})
-runs. It will ignore the resynchronization attempt call and move directly to the 
+Next, the $\mathsf{BlockProposal}$ algorithm runs runs. It will ignore the 
+resynchronization attempt call and move directly to the 
 block assembly (Algorithm \ref{algo:assemble-block}), which in short, after receiving 
 an ordered list of transactions, validates the signature of each transaction, executes 
 transactions in the Algorand Virtual Machine (AVM), modifying the state as 
@@ -101,7 +106,7 @@ and ending up with an assembled block $e$.
 
 % sortition
 It next loops over all the accounts that are registered to the node. For each account,
-it will run the $\mathsf{Sortition}$ algorithm (Algo.~\ref{algo:sortition}) which basically
+it will run the $\mathsf{Sortition}(a, proposal)$ algorithm (Algo.~\ref{algo:sortition}) which basically
 runs the Verifiable Random Function in order to decide whether this account can vote (by
 picking a random value) and provide a proof that the random value was generated according
 to protocol.
@@ -116,7 +121,25 @@ If either the period is zero ($p=0$) or the node received a bundle $\matshf{Bund
 for some number of steps $s\in\Z_{\ge 0}$, then
 the algorithm sets $v$ as the proposal value obtained from the block $e$
 and does two separate broadcasts for $Vote(a.i, r,p, proposal, v, cred)$ and $e$.
-Else, it will broadcast $Vote(a.I, r, p, proposal, \bar v, cred))$\marginpar{De donde sale $\bar v$?}
+Else, it will broadcast $Vote(a.I, r, p, proposal, \bar v, cred)$\marginpar{De donde sale $\bar v$?}
+and every $Proposal(\bar v)$ for $Proposal(\bar v)\in P$.\marginpar{Que es P?}
+
+Now, and until the timer reaches $\mathsf{FilterTimeout}(p)$, the node may receive block proposals
+($e$) that are broadcasted from other nodes. In that case, the event handler 
+will call the $\mathsf{HandleProposal}$ algorithm (Algorithm~\ref{algo:handle-proposal}).
+
+The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpack its contents,
+including the XXX $(r,p,s)$
+% que es esto del \sigma(r+1,0)=v??
+It will check if the proposal is valid, by calling the $\mathsf{VerifyProposal}(v)$ algorithm
+on $v=Proposal_{value}(e)$ (see Algorithm~\ref{algo:verify-proposal} for more details) and
+exit without any output if it does not.
+Next it compares $v$ to some values that get computed along the round. It should exit if
+there is an agreement, but will continue as none of these values have been computed.
+Finally it re-broadcasts $e$, adds $e$ to a set $P$ of stored proposals, and if 
+$v$ is committable and the step is smaller than the certification (e.g., $s\le cert$)\marginpar{de donde sale s}
+then  for every account $a$ registered to the node it runs $\mathsf{Sortition}(a, cert)$
+
 
 
 \end{subsection}
