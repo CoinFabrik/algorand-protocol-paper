@@ -90,13 +90,16 @@ Moreover, some nodes have received transactions which have been signed by
 Algorand accounts, and have added them to their memory pool and relayed them
 to other nodes.
 
+The node keeps some values in memory or storage. 
+% V, P, BT, L, $r_{old}$, $p_{old}$
+
 % event handler, time = 0
 When the main algorithm starts its timer is set to 0.
 As it acts as an event handler, if the condition $timer=0$ holds then the
 algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 
 % block assembly
-Next, the $\mathsf{BlockProposal}$ algorithm runs runs. It will ignore the 
+Next, the $\mathsf{BlockProposal}$ algorithm runs. It will ignore the 
 resynchronization attempt call and move directly to the 
 block assembly (Algorithm \ref{algo:assemble-block}), which in short, after receiving 
 an ordered list of transactions, validates the signature of each transaction, executes 
@@ -117,7 +120,7 @@ not been selected for block creation or voting, the algorithm exits and the node
 no longer participate in this round.
 When it is nonzero, the node participates in the voting representing the account.
 
-If either the period is zero ($p=0$) or the node received a bundle $\matshf{Bundle}(r,p-1,s,\bot)$
+If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
 for some number of steps $s\in\Z_{\ge 0}$, then
 the algorithm sets $v$ as the proposal value obtained from the block $e$
 and does two separate broadcasts for $Vote(a.i, r,p, proposal, v, cred)$ and $e$.
@@ -127,18 +130,43 @@ and every $Proposal(\bar v)$ for $Proposal(\bar v)\in P$.\marginpar{Que es P?}
 Now, and until the timer reaches $\mathsf{FilterTimeout}(p)$, the node may receive block proposals
 ($e$) that are broadcasted from other nodes. In that case, the event handler 
 will call the $\mathsf{HandleProposal}$ algorithm (Algorithm~\ref{algo:handle-proposal}).
+These proposals should be for the same round $vt.r=r$ and $vt.s=2$ or $\ge 2$\marginpar{Which is it?}
 
 The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpack its contents,
-including the XXX $(r,p,s)$
-% que es esto del \sigma(r+1,0)=v??
+including the execution state $(r,p,s)$.
 It will check if the proposal is valid, by calling the $\mathsf{VerifyProposal}(v)$ algorithm
 on $v=Proposal_{value}(e)$ (see Algorithm~\ref{algo:verify-proposal} for more details) and
 exit without any output if it does not.
 Next it compares $v$ to some values that get computed along the round. It should exit if
 there is an agreement, but will continue as none of these values have been computed.
-Finally it re-broadcasts $e$, adds $e$ to a set $P$ of stored proposals, and if 
-$v$ is committable and the step is smaller than the certification (e.g., $s\le cert$)\marginpar{de donde sale s}
-then  for every account $a$ registered to the node it runs $\mathsf{Sortition}(a, cert)$
+Finally, it re-broadcasts $e$, adds $e$ to a set $P$ of stored proposals, and if 
+$v$ is committable and the step is the certification or smaller (see table (\ref{table:s}),
+e.g., $s\le cert=2$) then  for every account $a$ registered to the node it runs 
+the sortition algorithm to compute $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$
+extract $cred.j$ and, if it is nonzero, broadcast the vote:
+$$
+    \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
+$$
+
+When the main algorithm receives a broadcasted vote $v$, as those sent by the $\matshf{HandleProposal}$
+algorithm, and none of the time events has kicked in (e.g., because $time<\mathsf{FilterTimeout}$)
+it calls the vote handler with $v$ as input: $\mathsf{HandleVote}(v)$.
+The vote handler will verify the vote; it may return without output if there are equivocation
+votes or other conditions are attained which are out of the vanilla run scenario.
+Next, it adds the vote to the votes set $V$ and broadcasts the vote to other nodes.
+
+Since this is a {\em certification step} $vt.s\ge cert=2$\marginpar{check}
+
+it checks if it can form a bundle $Bundle(vt.round, vt.period, cert, v)$ from the votes
+in $V$.
+
+It will first check if the proposal for $v$ is not in $P$ ($Proposal(v)\notin P$) and request
+it (calling $\mathsf{RequestProposap}(v)$)\marginpar{es request(v) o request(Proposal(v)???)}
+And next it commits $v$ (calling $\mathsf{Commit}(v)$, sets $r_{old}:=r$ and calls
+$\matsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
+
+
+The main algo is called agian...
 
 
 
@@ -427,7 +455,7 @@ A vote $vt$, constructed as $Vote(I,r,p,s,v,cred)$ is a tuple with the following
     \item $cred$, of type $credentials$, the committee credentials of the voter.
 \end{itemize}
 
-In practice, votes are broadcast wrapped in a structure called $UnauthenticatedVote$, 
+In practice, votes are broadcast wrapped in a structure called ``Unauthenticated Vote'', 
 where the $credentials$ field is added, containing only the voter's sortition proof and 
 address.
 The rest of relevant data is reconstructed as part of the verification process, 
