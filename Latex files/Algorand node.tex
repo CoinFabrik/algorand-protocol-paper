@@ -117,20 +117,24 @@ to protocol.
 % j>0
 If sortition for a particular account returns the zero value, his means the account has
 not been selected for block creation or voting, the algorithm exits and the node will
-no longer participate in this round.
+no longer participate in the proposal step. %el nodo sigue participando del round, solo que no propone
 When it is nonzero, the node participates in the voting representing the account.
 
-If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
-for some number of steps $s\in\Z_{\ge 0}$, then
-the algorithm sets $v$ as the proposal value obtained from the block $e$
-and does two separate broadcasts for $Vote(a.i, r,p, proposal, v, cred)$ and $e$.
-Else, it will broadcast $Vote(a.I, r, p, proposal, \bar v, cred)$\marginpar{De donde sale $\bar v$?}
-and every $Proposal(\bar v)$ for $Proposal(\bar v)\in P$.\marginpar{Que es P?}
+%En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
+%If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
+%for some number of steps $s\in\Z_{\ge 0}$, then
+In a vanilla run scenario, the period is zero ($p=0$). The algorithm sets $v$ as 
+the proposal value obtained from the block $e$ and does two separate broadcasts for 
+$Vote(a.i, r,p, proposal, v, cred)$ and $e$.
+
+%\bar v is the pinned value, which will be the special empty proposal value \bot in a 0th period, 
+%or a value for which a soft or recovery (next_s, late or redo) bundle has been observed in the previous period.
+
 
 Now, and until the timer reaches $\mathsf{FilterTimeout}(p)$, the node may receive block proposals
 ($e$) that are broadcasted from other nodes. In that case, the event handler 
 will call the $\mathsf{HandleProposal}$ algorithm (Algorithm~\ref{algo:handle-proposal}).
-These proposals should be for the same round $vt.r=r$ and $vt.s=2$ or $\ge 2$\marginpar{Which is it?}
+These proposals should be for the same round $vt.r=r$ and $vt.s=0$.
 
 The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpack its contents,
 including the execution state $(r,p,s)$.
@@ -148,25 +152,41 @@ $$
     \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
 $$
 
-When the main algorithm receives a broadcasted vote $v$, as those sent by the $\matshf{HandleProposal}$
+
+%cambie la variable de voto a vt para que no se confunda con el proposal value v
+When the main algorithm receives a broadcasted vote $vt$, as those sent by the $\matshf{HandleProposal}$
 algorithm, and none of the time events has kicked in (e.g., because $time<\mathsf{FilterTimeout}$)
-it calls the vote handler with $v$ as input: $\mathsf{HandleVote}(v)$.
+it calls the vote handler with $vt$ as input: $\mathsf{HandleVote}(vt)$.
 The vote handler will verify the vote; it may return without output if there are equivocation
 votes or other conditions are attained which are out of the vanilla run scenario.
 Next, it adds the vote to the votes set $V$ and broadcasts the vote to other nodes.
 
-Since this is a {\em certification step} $vt.s\ge cert=2$\marginpar{check}
+%aca en el medio falta algo. Cuando el event handler recibe un voto, y time < FilterTimeout(p), el handler lo va 
+%a observar y demas.
+%Cuando el event handler recibe un timeout event = FilterTimeout(p), filtra (se queda con el proposal value que 
+%minimice la funcion de prioridad) y emite un soft vote (o sea llama la subrutina softVote()).
+%Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. Aca va a estar
+%recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
+%Si ya observo un soft bundle, emite un cert vote y ahi step \gets 2 (tanto del voto como
+%en el contexto de ejecucion del nodo). Entre FilterTimeout(p) y el primer timeout de next
+%2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
+%ahi viene eso ultimo
+
+Since this is a {\em certification step} $vt.s = cert=2$\marginpar{check}
+%deberiamos estar en step = 2
 
 it checks if it can form a bundle $Bundle(vt.round, vt.period, cert, v)$ from the votes
 in $V$.
 
 It will first check if the proposal for $v$ is not in $P$ ($Proposal(v)\notin P$) and request
-it (calling $\mathsf{RequestProposap}(v)$)\marginpar{es request(v) o request(Proposal(v)???)}
+it (calling $\mathsf{Request}(\mathsf{Proposal}(v))$)\marginpar{es request(v) o request(Proposal(v)???)}
+%el request es por la proposal, asi que seria request(Proposal(v))
 And next it commits $v$ (calling $\mathsf{Commit}(v)$, sets $r_{old}:=r$ and calls
 $\matsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
+%este es el p de periodo
 
 
-The main algo is called agian...
+The main algo is called again...
 
 
 
@@ -181,6 +201,18 @@ Both nodes operate on servers that are connected to the internet and run publicl
 available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
 Participation nodes can connect only to relay nodes, they run an instance
 of the Aglorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
+
+%el voting y demas esta afuera de la avm? Si, todo el mecanismo de consenso corre completamente independiente de la AVM.
+%La AVM solo ejecuta los smart contracts o logicsigs y esto es a nivel de txn, previo a la ejecucion del algoritmo total
+%o sea, es en la validacion de txns (y txn groups), que se da Antes del block assembly.
+%Las txns llegan y las encola un handler, y por lo que entendi del codigo se pasan a la txn pool ya validadas.
+%La txn pool tiene un limite tambien, despues del cual empieza a droppear. Esto parece ser implementativo, en el sim
+%es un parametro y estoy usando 1000 (lo saque del unit test del txn pool).
+%Cuando se ensambla el bloque tambien se valida, pero ya no las txns individuales sino que tenga coherencia el orden.
+%La creacion de bloque tambien tiene un tiempo maximo pero ese parametro no esta especificado en ningun lado, creo que
+%esta dejado a libre implementacion. En el sim por ahora esoy asumiendo creacion instantanea en cuanto a tiempo de
+%simulacion.
+
 They are non-archival in nature, meaning they don't keep\index{archival node}\index{non-archival node}
 the whole ledger in memory at all times. At the time of this writing,
 participation nodes keep the latest 1000 blocks.
@@ -384,10 +416,12 @@ A block header holds the following data:
     block also duplicates the reward state of the state it transitions into.
     
     \item
-    A cryptographic commitment to the block's transaction sequence (a vector commitment).\marginpar{En qu\'e se distinguen los cmt?}
+    A cryptographic vector commitment, using SHA512/256 hash function,
+     to the block's transaction sequence.\marginpar{En qu\'e se distinguen los cmt?}
+     %se distinguen en la funcion de hash que usan, el otro esta para sistemas donde 512/256 no esta soportado
     
     \item
-    A cryptographic commitment, using SHA256 hash function, to the block's
+    A cryptographic vector commitment, using SHA256 hash function, to the block's
     transaction sequence (useful for compatibility with systems where SHA512/256 is not supported)
     
     \item
@@ -413,16 +447,20 @@ A block header holds the following data:
 \end{itemize}
 While a block's body is the block's transaction sequence, which describes the sequence
 of updates to the account state and box state.\marginpar{Y los local states? los global states de los contratos, etc?}
+%tecnicamente los local y global states son account updates, 
+%los local states viven en en el account record y tenes uno por cada app 
+%a la que estes opted in, los global funcionan similar para la cuenta del contrato
+%los boxes los maneja como algo separado por eso estan aparte
 
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
 
-A proposal-value is a tuple $v = (I, p, Hash(e), Hash(Encoding(e)))$ where 
+A proposal-value is a tuple $v = (I, p, H(e), H(Encoding(e)))$ where 
 $I$ is an address (the “original proposer”), 
 $p$ is a period (the “original period”), 
 {\bf Definir e}
 and
-$Hash(\,)$ is a cryptographic hash function (implemented as SHA512/256). 
+$H(\,)$ is a cryptographic hash function (implemented as SHA512/256). 
 The special proposal where all fields are the zero-string is called the bottom 
 proposal $\bot$. 
 It also includes the authentication information for the original proposer, that is, 
@@ -430,12 +468,18 @@ a signature and VRF proof of the proposal-value.
 
 For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
 $v$,\marginpar{Pero en el parrafo de arriba v es otra cosa!}
-such that $Proposal(v) = e$ iff e is the proposal that, when hashed, corresponds to the proposal
+%claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
+
+such that $Proposal(v) = e$ iff e is the proposal that, when hashed, corresponds to the block hash $H(e)$ of the proposal
 value $v$. The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
 $Proposal_{value}(e) = v$ if $Proposal(v) = e$.
 $Proposal()$ is not a bijective function (as hashes can theoretically collide), however we assume the inverse
 exists and has a defined output whenever the relevant proposal has been observed by the node
 (and is such that $e \in P$).\marginpar{Que es el cjto P?}
+
+%where P is the set of all observed proposals in a given round and period (en realidad tenes las del periodo anterior y el
+%siguiente disponibles tambien).
+
 
 We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
 \begin{itemize}
@@ -1324,7 +1368,22 @@ Otherwise returns undefined. Here we ignore the theoretical posibility of a coll
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-
+Procedure used to verify a received Bundle, through a series 
+of checks.
+On line 2, it ensures that all individual constituting $b$
+are individually valid.
+Line 3 checks that the Bundle has no repeat votes.
+Line 4 checks that all votes in $b$ match the same $(r,p,s)$
+execution context.
+Line 5 checks that all votes are towards the same proposal value,
+with the exception of equivocation votes which are interpreted as wildcard
+towards any proposal value.
+%aca: are equiv votes just valid on soft bundles? Preguntar
+Finally, on line 6 it checks that the sum of the weight of all constituting
+votes is greater or equal to the corresponding committee threshold (otherwise, 
+the bundle would not be complete).
+After all aformentioned checks have passed, a boolean true value is returned.
+If any of them failed, a false value is returned instead, and $b$ is deemed invalid.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1439,6 +1498,8 @@ directly before the current one.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+%Encontre en el codigo un key-value map donde podes asignar valores a peers a nivel network, pero
+%tengo que ver mejor para convencerme de si es ahi donde se resuelve esto
 
 % ----------------------------------------------------------------------------------------------
 

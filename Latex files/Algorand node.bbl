@@ -1,0 +1,16 @@
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{GHM{\etalchar{+}}17}
+
+\bibitem[GHM{\etalchar{+}}17]{DBLP:conf/sosp/GiladHMVZ17}
+Yossi Gilad, Rotem Hemo, Silvio Micali, Georgios Vlachos, and Nickolai
+  Zeldovich.
+\newblock Algorand: Scaling byzantine agreements for cryptocurrencies.
+\newblock In {\em Proceedings of the 26th Symposium on Operating Systems
+  Principles, Shanghai, China, October 28-31, 2017}, pages 51--68. {ACM}, 2017.
+
+\bibitem[Mic16]{DBLP:journals/corr/Micali16}
+Silvio Micali.
+\newblock {ALGORAND:} the efficient and democratic ledger.
+\newblock {\em CoRR}, abs/1607.01341, 2016.
+
+\end{thebibliography}
