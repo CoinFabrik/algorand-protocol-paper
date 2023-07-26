@@ -154,7 +154,7 @@ $$
 
 
 %cambie la variable de voto a vt para que no se confunda con el proposal value v
-When the main algorithm receives a broadcasted vote $vt$, as those sent by the $\matshf{HandleProposal}$
+When the main algorithm receives a broadcasted vote $vt$, as those sent by the $\mathsf{HandleProposal}$
 algorithm, and none of the time events has kicked in (e.g., because $time<\mathsf{FilterTimeout}$)
 it calls the vote handler with $vt$ as input: $\mathsf{HandleVote}(vt)$.
 The vote handler will verify the vote; it may return without output if there are equivocation
@@ -182,7 +182,7 @@ It will first check if the proposal for $v$ is not in $P$ ($Proposal(v)\notin P$
 it (calling $\mathsf{Request}(\mathsf{Proposal}(v))$)\marginpar{es request(v) o request(Proposal(v)???)}
 %el request es por la proposal, asi que seria request(Proposal(v))
 And next it commits $v$ (calling $\mathsf{Commit}(v)$, sets $r_{old}:=r$ and calls
-$\matsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
+$\mathsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
 %este es el p de periodo
 
 
