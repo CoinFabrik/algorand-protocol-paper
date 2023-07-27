@@ -41,18 +41,35 @@
 \begin{section}{Introduction}
 We aim to describe how the Algorand protocol works. 
 This document is meant to reflect how the Algorand mainnet is behaving
-today. We relied on Algorand's documents (\cite{DBLP:conf/sosp/GiladHMVZ17},
+today. 
+To our knowledge, there is no accurate and up-to-date technical description 
+of the protocol. 
+
+We relied on Algorand's documents (\cite{DBLP:conf/sosp/GiladHMVZ17},
 \cite{DBLP:journals/corr/Micali16} and
 \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications})
-but consulted the node's code and probed the network when information was unclear or
-unavailable.
+but mostly we consulted the code for the node (in the official repository) and probed 
+the network when information was unclear or unavailable.
 
 Algorand is a proof-of-stake blockchain cryptocurrency protocol 
 using a decentralized By\-zan\-tine Agreement protocol that leverages 
 pure proof of stake for consensus. 
 Protocol parties are represented by accounts, which may represent users
 or smart contracts. 
-The protocol maintains a ledger, which encodes the protocol status,
+
+The Algorand blockchain is operated by nodes. Users register their accounts 
+in nodes. It is the nodes which call the actions. 
+When an account sends a transaction, it sends it to a node. 
+
+The structure of a node is simple: 
+it has a consensus algorithm,
+a virtual machine (the Algorand Virtual Machine or AVM) and 
+XXX.
+Basically, the node receives transactions in its transaction pool,
+validates their signature and processes them (in no protocol-imposed order)
+via the AVM, probably altering the ledger and 
+
+The node maintains a ledger, which encodes the protocol status,
 that is modified via consensus.
 In particular, this ledger encodes how many {\sf ALGO tokens}\index{ALGO token} 
 (the native token) holds each account.
@@ -60,14 +77,19 @@ In particular, this ledger encodes how many {\sf ALGO tokens}\index{ALGO token}
 Blocks encode the status of the ledger. Starting on the genesis\index{blocks}
 block (round 0) that encodes the first state of the network, 
 on each round the participation nodes vote on what will the next
-block be. Algorand is designed so that the voting power is proportional
-to the stake (in ALGO) held by the accounts associated to the node.
+block be. 
+Mainnet runs one blockchain that is univocally identified by the ID of
+the genesis block (i.e. a hash value).
 
-At the genesis of the Algorand blockchain, 10Bn ALGO were minted. 
-As of September 2022, circulating supply is approximately 6.9b ALGO, 
-distributed through different forms of ecosystem support and 
-community incentives. 
-The remaining ALGO tokens are held by the Foundation in secure wallets 
+Algorand blockchain is designed so that the voting power is proportional
+to the stake (in {\sf ALGO}) held by the accounts associated to the node.
+In practice, not all accounts are registered live, so the voting power
+is proportional to the tokens held by (the subset) of online accounts.
+At the genesis of the Algorand blockchain, 10Bn {\sf ALGO} were minted. 
+As of September 2022, circulating supply is approximately 6.9b {\sf ALGO}, 
+distributed through different forms as ecosystem support and community
+incentives.
+The remaining {\sf ALGO} tokens are held by the Foundation in secure wallets 
 assigned to 
 Community and Governance Rewards (\%53), 
 Ecosystem Support (\%36), and 
@@ -83,64 +105,63 @@ currently in development.
 % ---------------------------------------------------------------------
 % quizas hay que reubicar esta sect. ver luego
 \begin{subsection}{Vanilla run}\label{subsect:vanilla-run}
-Let as assume a genesis block was generated, the blockchain has been running for
-some time, with a set of nodes and accounts. We are now at round $r-1$, meaning
+Let as assume a genesis block was generated, the blockchain has been running and
+has already generated blocks, with a set of nodes and accounts. 
+We are now at round $r-1$ ($r>2$), meaning
 that $r-1$ blocks have been generated and confirmed by the blockchain.
 Moreover, some nodes have received transactions which have been signed by
 Algorand accounts, and have added them to their memory pool and relayed them
 to other nodes.
 
-The node keeps some values in memory or storage. 
-% V, P, BT, L, $r_{old}$, $p_{old}$
+The node keeps some values in memory or storage. In particular the 
+timer,\marginpar{como funciona? hay un clock y va en ms? 
+Porque sino como funcionan los = del event handler}
+which we assume is now at $time=0$. We further assume that the node
+has been receiving transactions which it stored in the transaction pool. 
+% calculo e'? BT'? L'?
+% $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
 
 % event handler, time = 0
-When the main algorithm starts its timer is set to 0.
-As it acts as an event handler, if the condition $timer=0$ holds then the
-algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
-
+As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
+then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 % block assembly
-Next, the $\mathsf{BlockProposal}$ algorithm runs. It will ignore the 
-resynchronization attempt call and move directly to the 
-block assembly (Algorithm \ref{algo:assemble-block}), which in short, after receiving 
-an ordered list of transactions, validates the signature of each transaction, executes 
-transactions in the Algorand Virtual Machine (AVM), modifying the state as 
-pertienent,\marginpar{que onda, aca tiene un clon del estado que presenta como candidato?}
-and ending up with an assembled block $e$.
-
+The $\mathsf{BlockProposal}$ algorithm runs, moving directly to the 
+block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
+block $e$ (see Section~\ref{sect:avm})\marginpar{que onda, aca tiene un clon del estado que presenta como candidato?}.
 % sortition
-It next loops over all the accounts that are registered to the node. For each account,
-it will run the $\mathsf{Sortition}(a, proposal)$ algorithm (Algo.~\ref{algo:sortition}) which basically
-runs the Verifiable Random Function in order to decide whether this account can vote (by
-picking a random value) and provide a proof that the random value was generated according
+It next loops over all the accounts that are registered to the node. 
+For each account, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
+which basically runs a Verifiable Random Function in order to decide whether this account 
+can vote (by picking a random value) and provide a proof that the random value was generated according
 to protocol.
-
 % j>0
-If sortition for a particular account returns the zero value, his means the account has
+If sortition for a particular account returns the zero value, this means the account has
 not been selected for block creation or voting, the algorithm exits and the node will
-no longer participate in the proposal step. %el nodo sigue participando del round, solo que no propone
+no longer participate in the proposal step 
+%adp: el nodo sigue participando del round, solo que no propone
+%aw: pero como? Si no propone ni vota! Qué mas hay para hacer?
 When it is nonzero, the node participates in the voting representing the account.
-
 %En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
 %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
 %for some number of steps $s\in\Z_{\ge 0}$, then
 In a vanilla run scenario, the period is zero ($p=0$). The algorithm sets $v$ as 
 the proposal value obtained from the block $e$ and does two separate broadcasts for 
-$Vote(a.i, r,p, proposal, v, cred)$ and $e$.
+$Vote(a.I, r,p, proposal, v, cred)$ and $e$.
 
-%\bar v is the pinned value, which will be the special empty proposal value \bot in a 0th period, 
-%or a value for which a soft or recovery (next_s, late or redo) bundle has been observed in the previous period.
+%\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
+%or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
 
-
-Now, and until the timer reaches $\mathsf{FilterTimeout}(p)$, the node may receive block proposals
-($e$) that are broadcasted from other nodes. In that case, the event handler 
-will call the $\mathsf{HandleProposal}$ algorithm (Algorithm~\ref{algo:handle-proposal}).
-These proposals should be for the same round $vt.r=r$ and $vt.s=0$.
-
-The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpack its contents,
-including the execution state $(r,p,s)$.
-It will check if the proposal is valid, by calling the $\mathsf{VerifyProposal}(v)$ algorithm
-on $v=Proposal_{value}(e)$ (see Algorithm~\ref{algo:verify-proposal} for more details) and
-exit without any output if it does not.
+Assume that some time has passed and now $0<timer<\mathsf{FilterTimeout}(p)$, and that 
+the node received a block proposal ($e^\prime$) which was broadcasted from another node. 
+Then, the event handler runs $\mathsf{HandleProposal}(e)$ (Algorithm~\ref{algo:handle-proposal}).
+The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpacks its contents,
+including the execution state $(r^\prime,p^\prime,s^\prime)$.
+Assume that $r=r^\prime$ and $p=p^\prime$:  the algorithm will relay the proposal if $r^\prime=r+1$ 
+or exit if $r^\prime\notin\{r,r+1\}$.
+The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
+on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details) 
+and exits without it fails.
+In another check, the algorithm exits if the periods differ ($p\neqp^\prime$)xxxxx
 Next it compares $v$ to some values that get computed along the round. It should exit if
 there is an agreement, but will continue as none of these values have been computed.
 Finally, it re-broadcasts $e$, adds $e$ to a set $P$ of stored proposals, and if 
@@ -740,7 +761,7 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 The soft vote stage (also known as "filtering") is run after a timeout of $FilterTimeout(p)$
 (where $p$ is the node's currently executing period) is observed by the node. That is to say, filtering
 is triggered after either a $2\lambda_0$ or $2\lambda$ timeout is observed according to whether $p=0$ or $p>0$ respectively.
-Let $V*$ be all proposal votes received. By a priority hash function, this stage performas a filtering action,
+Let $V*$ be all proposal votes received. By a priority hash function, this stage performs a filtering action,
 keeping the lowest hashed value observed.
 The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
 Given the sortition hash $sh$ output by the $\mathsf{VRF}$ for the proposer account, and for each sub-user unit $i$ 
@@ -759,9 +780,9 @@ output in its filtering step.
 \end{subsection}
 
 % --------------------------------------------------------------------
-\begin{subsection}{HandleProposal}\label{ssect:HandleProposal}
+\begin{subsection}{HandleProposal}\label{ssect:handle-proposal}
 
-    \begin{algorithm}[H]
+    \begin{algorithm}[H]\label{algo:handle-proposal}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleProposal}$}{$Proposal \ e$}
 
