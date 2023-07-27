@@ -109,9 +109,9 @@ Let as assume a genesis block was generated, the blockchain has been running and
 has already generated blocks, with a set of nodes and accounts. 
 We are now at round $r-1$ ($r>2$), meaning
 that $r-1$ blocks have been generated and confirmed by the blockchain.
-Moreover, some nodes have received transactions which have been signed by
-Algorand accounts, and have added them to their memory pool and relayed them
-to other nodes.
+Moreover, the nodes have received transactions which have been signed 
+by Algorand accounts, and has added it to its transaction pool and 
+relayed them to other nodes.
 
 The node keeps some values in memory or storage. In particular the 
 timer,\marginpar{como funciona? hay un clock y va en ms? 
@@ -125,12 +125,13 @@ has been receiving transactions which it stored in the transaction pool.
 As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
 then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 % block assembly
-The $\mathsf{BlockProposal}$ algorithm runs, moving directly to the 
+The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the 
 block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
-block $e$ (see Section~\ref{sect:avm})\marginpar{que onda, aca tiene un clon del estado que presenta como candidato?}.
+block $e$ associated to a proposal $proposal$ (see Section~\ref{sect:avm})\marginpar{que 
+onda, aca tiene un clon del estado que presenta como candidato?}.
 % sortition
 It next loops over all the accounts that are registered to the node. 
-For each account, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
+For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
 which basically runs a Verifiable Random Function in order to decide whether this account 
 can vote (by picking a random value) and provide a proof that the random value was generated according
 to protocol.
@@ -151,47 +152,71 @@ $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
 %\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
 %or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
 
+% main algorithm: Handle Proposal
 Assume that some time has passed and now $0<timer<\mathsf{FilterTimeout}(p)$, and that 
-the node received a block proposal ($e^\prime$) which was broadcasted from another node. 
-Then, the event handler runs $\mathsf{HandleProposal}(e)$ (Algorithm~\ref{algo:handle-proposal}).
-The $\mathsf{HandleProposal}$ algorithm receives a proposal $e$ and unpacks its contents,
+the node received a block proposal $e^\prime$ which was broadcasted from another node. 
+Then, the event handler runs $\mathsf{HandleProposal}(e^\prime)$ (Algorithm~\ref{algo:handle-proposal}).
+This algorithm receives the proposal $e^\prime$ and unpacks its contents,
 including the execution state $(r^\prime,p^\prime,s^\prime)$.
-Assume that $r=r^\prime$ and $p=p^\prime$:  the algorithm will relay the proposal if $r^\prime=r+1$ 
+Assume that $r=r^\prime$ and $p=p^\prime$: the algorithm will relay the proposal if $r^\prime=r+1$ 
 or exit if $r^\prime\notin\{r,r+1\}$.
 The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
 on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details) 
-and exits without it fails.
-In another check, the algorithm exits if the periods differ ($p\neqp^\prime$)xxxxx
-Next it compares $v$ to some values that get computed along the round. It should exit if
-there is an agreement, but will continue as none of these values have been computed.
-Finally, it re-broadcasts $e$, adds $e$ to a set $P$ of stored proposals, and if 
-$v$ is committable and the step is the certification or smaller (see table (\ref{table:s}),
-e.g., $s\le cert=2$) then  for every account $a$ registered to the node it runs 
-the sortition algorithm to compute $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$
+and exits if it fails.
+In another check, the algorithm exits if the periods differ ($p\neq p^\prime$).xxx
+Next it returns if any of the following conditions hold:
+a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
+b) if it agrees with the pinned value proposal, or
+c) if the hash underlying proposal $e^prime$ agrees with the lowest hash seen for this
+context. (EXPLICAR MEJOR)
+Assume that this is the first block received, and hence none of the above conditions are
+attained.
+Next, $\mathsf{HandleProposal}$ re-broadcasts $e^\prime$, 
+adds $e^\prime$ to a set $P$ of stored proposals, and 
+checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
+$\mathsf{IsCommittable}(v^\prime)$ returns {\tt true})
+and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
+Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
+to the node, running the sortition algorithm in each case to compute 
+$cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
 extract $cred.j$ and, if it is nonzero, broadcast the vote:
 $$
     \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
 $$
+else do nothing.
+After this, the algorithm finishes and the event handler is called again.
 
-
-%cambie la variable de voto a vt para que no se confunda con el proposal value v
-When the main algorithm receives a broadcasted vote $vt$, as those sent by the $\mathsf{HandleProposal}$
-algorithm, and none of the time events has kicked in (e.g., because $time<\mathsf{FilterTimeout}$)
-it calls the vote handler with $vt$ as input: $\mathsf{HandleVote}(vt)$.
-The vote handler will verify the vote; it may return without output if there are equivocation
-votes or other conditions are attained which are out of the vanilla run scenario.
+% main algorithm: Handle Vote
+Continue to assume that $0<timer<\mathsf{FilterTimeout}(p)$ and the node received a broadcasted vote 
+$vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ algorithm).
+The event handler for the main algorithm thus calls $\mathsf{HandleVote}(vt)$ (Algorithm~\ref{algo:handle-vote}).
+Many checks follow:
+- it returns without output if the vote cannot be verified ($\mathsf{VerifyVote}(vt)=\mathtt{false}$),
+- it returns without output if the step for the vote is 0 $vt.s=0$ and either $vt\in V$ or it is an equivocation vote, 
+- it returns without output if the step for the vote is positive $vt.s>0$ and $vt$ is a second equivocation vote, 
+- it returns without output if the round for the vote is smaller than the current round $vt.r<r$,
+- it returns without output if the round for the vote is bigger than the current round $vt.r=r+1$
+and either the period is positive $vt.p>0$ or the step is in the open interval $vt.s\in(cert, late)=(2,253)$\marginpar{es int abierto???}
+%% reescribir haciendo algunos assumptions sobre el voto para que pase sin tanta chachara.ponele que vt.s=0 o vt.s=1???
 Next, it adds the vote to the votes set $V$ and broadcasts the vote to other nodes.
+Since $vt.s=0=proposal$, it checks if $Proposal(vt.v)\in P$ and broadcasts this proposal
+if it is, ignoring if it is not.
+% a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
 
 %aca en el medio falta algo. Cuando el event handler recibe un voto, y time < FilterTimeout(p), el handler lo va 
 %a observar y demas.
 %Cuando el event handler recibe un timeout event = FilterTimeout(p), filtra (se queda con el proposal value que 
 %minimice la funcion de prioridad) y emite un soft vote (o sea llama la subrutina softVote()).
-%Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. Aca va a estar
-%recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
+%Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. 
+% Aca va a estar recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
 %Si ya observo un soft bundle, emite un cert vote y ahi step \gets 2 (tanto del voto como
 %en el contexto de ejecucion del nodo). Entre FilterTimeout(p) y el primer timeout de next
 %2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
 %ahi viene eso ultimo
+
+% main algorithm: soft vote
+Eventually, the timer is at $timer=\mathsf{FilterTimeout}(p)$ and the main algorithm calls 
+$\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
 
 Since this is a {\em certification step} $vt.s = cert=2$\marginpar{check}
 %deberiamos estar en step = 2
@@ -551,12 +576,17 @@ committee threshold of the votes in the set.
 
 % highest priority
 For convenience, we define two special values: $\mu(r,p)$ and $\sigma(r,p)$.
-$\mu(r,p)$ is the highest priority observed proposal-value in the current $(r,p)$ context (lowest hashed according to the function outlined
-in the $\mathsf{BlockProposal}$ algorithm), or $\bot$ if no valid proposal vote has been observed by the node.
-$\sigma(r,p)$ is the sole proposal-value for which a soft bundle has been observed (again, in the current $(r,p)$ context), or $\bot$ if
-no valid soft bundle has been observed by the node.
+$\mu(r,p)$ is the highest priority observed proposal-value in the current $(r,p)$ context 
+(lowest hashed according to the function outlined in the $\mathsf{BlockProposal}$ algorithm), 
+or $\bot$ if no valid proposal vote has been observed by the node.
+$\sigma(r,p)$ is the sole proposal-value for which a soft bundle has been observed (again, 
+in the current $(r,p)$ context), or $\bot$ if no valid soft bundle has been observed by the 
+node.
 
-
+% ------------------------------------------------------------------------
+\begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
+    tbd
+\end{subsection}
 
 \end{section}
 % ------------------------------------------------------------------------
@@ -571,6 +601,8 @@ any input, it makes computations --probably modifying the state of the node-- an
 may end by broadcasting data to other nodes.
 
 \begin{algorithm}[H]
+    \caption{\underline{Main node algorithm}}
+    \label{algo:main}
     \begin{algorithmic}[1]
     \Function{$\mathsf{EventHandler}(Event \ ev)$}{}
     
@@ -600,7 +632,6 @@ may end by broadcasting data to other nodes.
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{Main node algorithm}}
 \end{algorithm}
 
 On a higher level, we can think of a step as a defined part of the consensus algorithm. The first three steps
@@ -633,7 +664,7 @@ Internally, we consider the relevant data of an event to be:
     timeout event.
 \end{itemize}
 
-$\bold{Timeout \ Events}$ are events that are triggered after a certain time has elapsed after the start of a new period.
+$\mathbf{Timeout \ Events}$ are events that are triggered after a certain time has elapsed after the start of a new period.
 \begin{itemize}
     \item $soft$ Timeout (aka. Filtering): The filter timeout is run after a timeout of $FilterTimeout(p)$ is observed 
     (where $p$ is the currently running period). Note that it only depends on the period as far as if it's the first
@@ -657,14 +688,16 @@ $\bold{Timeout \ Events}$ are events that are triggered after a certain time has
 \end{itemize}
 
 
-$\bold{Message \ Events}$ Are events triggered after observing a certain message carrying data.
+$\mathbf{Message \ Events}$ Are events triggered after observing a certain message carrying data.
 There are 3 kinds of messages: votes, proposal payloads, and bundles, and each carry
 the corresponding construct (coinciding with their attached data type field).
 
 % --------------------------------------------------------------------
 \begin{subsection}{Block Proposal}\label{ssect:blockproposal}
 
-    \begin{algorithm}\label{algo:block-proposal}
+    \begin{algorithm}
+        \caption{\underline{Block proposal}}
+        \label{algo:block-proposal}
         \begin{algorithmic}[1]
         \Function{$\mathsf{BlockProposal}$}{}
 
@@ -693,7 +726,6 @@ the corresponding construct (coinciding with their attached data type field).
             \EndFor
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{Block proposal}}
     \end{algorithm}
 
 \newpage
@@ -731,9 +763,8 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \State $lowestObservedHash \gets \infty$
     \State $v \gets \bot$ 
 
-
-    \For{$vt \in V \textfractionsolidus vote.step = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, vote.cred.j)} \{ \mathsf{H}(vt.cred.sh || i)\}$
+    \For{$vt^\prime \in V \text{ with } vt^\prime.step = proposal$}
+        \State $priorityHash \gets \min_{i \in [0, vt^\prime.cred.j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
             \State $v \gets vt.v$
@@ -758,10 +789,12 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-The soft vote stage (also known as "filtering") is run after a timeout of $FilterTimeout(p)$
-(where $p$ is the node's currently executing period) is observed by the node. That is to say, filtering
-is triggered after either a $2\lambda_0$ or $2\lambda$ timeout is observed according to whether $p=0$ or $p>0$ respectively.
-Let $V*$ be all proposal votes received. By a priority hash function, this stage performs a filtering action,
+The soft vote stage (also known as ``filtering'') is run after a timeout of $\mathsf{FilterTimeout}(p)$
+(where $p$ is the executing period of the node) is observed by the node. 
+That is to say, filtering is triggered after either a $2\cdot\lambda_0$ or $2\cdot\lambda$ timeout is observed according 
+to whether $p=0$ or $p>0$ respectively.
+Let $V*$ be all proposal votes received. 
+With the aid of a priority hash function, this stage performs a filtering action,
 keeping the lowest hashed value observed.
 The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
 Given the sortition hash $sh$ output by the $\mathsf{VRF}$ for the proposer account, and for each sub-user unit $i$ 
@@ -782,7 +815,9 @@ output in its filtering step.
 % --------------------------------------------------------------------
 \begin{subsection}{HandleProposal}\label{ssect:handle-proposal}
 
-    \begin{algorithm}[H]\label{algo:handle-proposal}
+    \begin{algorithm}[H]
+        \caption{\underline{HandleProposal}}
+        \label{algo:handle-proposal}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleProposal}$}{$Proposal \ e$}
 
@@ -822,7 +857,6 @@ output in its filtering step.
 
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{HandleProposal}}
     \end{algorithm}
     
     
@@ -843,7 +877,7 @@ one of these is ignored.
 Once the checks have been surpassed, the node is ready to relay the proposal and observe it by adding
 it to the observed proposals set, $P$ (lines 10 and 11).
 Once relayed and observed, the proposal is then processed for further output.
-Here, and only if the proposal value has become commitable and the current executing node's step is lower or equal
+Here, and only if the proposal value has become committable and the current executing node's step is lower or equal
 to a certification step (it's not yet in a recovery step), the node plays for each account performing sortition
 to select committee members for the certification step. For each selected member, a corresponding certify vote for
 the current proposal value is cast.
@@ -856,6 +890,8 @@ the current proposal value is cast.
 \begin{subsection}{HandleVote}\label{ssect:HandleVote}
 
     \begin{algorithm}[H]
+        \caption{\underline{HandleVote}}
+        \label{algo:handle-vote}
         \begin{algorithmic}[1]
         \Function{$HandleVote$}{$Vote \ vt$}
 
@@ -870,7 +906,7 @@ the current proposal value is cast.
             % //P*? si el voto es repetido, el nodo lo ignora verdad? Esto no esta especificado asi, pero es quizas un error?
             % \\
 
-            \If{$\lnot \mathsf{VerifyVote}(vt)$}
+            \If{$\mathbf{not}\; \mathsf{VerifyVote}(vt)$}
                 \State $\mathsf{PenalizePeer}(SENDER\_PEER(vt))$ \ //optional
                 \State $\mathsf{return}$ \ //ignore invalid vote
             \EndIf
@@ -939,7 +975,6 @@ the current proposal value is cast.
 
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{HandleVote}}
     \end{algorithm}
     
     
@@ -989,6 +1024,8 @@ then a new period is started and the currently executing period-specific data ga
 \begin{subsection}{HandleBundle}\label{ssect:HandleBundle}
 
     \begin{algorithm}[H]
+        \caption{\underline{HandleBundle}}
+        label{algo:habdle-bundle}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleBundle}$}{$Bundle \ b$}
 
@@ -1013,13 +1050,12 @@ then a new period is started and the currently executing period-specific data ga
 
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{HandleBundle}}
     \end{algorithm}
     
     
     \noindent \textbf{Description:}\\
 The bundle handler is invoked whenever a bundle message is received. 
-If the received bundle is invalid (line 2), its immediately discarded. Optionally, the node may
+If the received bundle is invalid (line 2), it is immediately discarded. Optionally, the node may
 penalize the sending peer (for example, disconnecting from or blacklisting it).
 On line 5 a check is performed. If the bundle's round is the node's current round
 and it's at most one period behind of the node's current period, 
@@ -1027,7 +1063,7 @@ then the bundle is processed, which is simply calling the vote handler for each
 vote constituting it (lines 6:7). If the check on line 5 is not passed by $b$, no output is produced
 and the bundle is ignored and discarded.
 Note that handling each vote separately, if a bundle $b\prime = Bundle(b.r, b.p, b.s, v\prime)$ is observed
-(where $v\prime$ is not necessarily equal to $\b.v$, consider $b$ may contain equivocation votes), then it will be relayed
+(where $v\prime$ is not necessarily equal to $b.v$, consider $b$ may contain equivocation votes), then it will be relayed
 as each vote was relayed individually, and any output or state changes it produces will be made. All leftover votes 
 in $b$ will be processed according to the new state the node is in, e.g. being discarded if $b.r < r$.
     
@@ -1035,9 +1071,12 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
 
 % --------------------------------------------------------------------
 
-\begin{subsection}{Recovery Attempt}\label{ssect:Recovery}
+\begin{subsection}{Recovery Attempt}
+    \label{ssect:Recovery}
 
     \begin{algorithm}[H]
+        \caption{\underline{Recovery}}
+        \label{algo:recovery}
         \begin{algorithmic}[1]
         \Function{$\mathsf{Recovery}$}{$uint64 \ k$}
 
@@ -1058,11 +1097,8 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
                 \EndIf
             \EndIf
         \EndFor
-
-
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{Recovery}}
     \end{algorithm}
     
     
@@ -1086,6 +1122,8 @@ from equivocating in $next$ votes.
 \begin{subsection}{Fast Recovery Attempt}\label{ssect:FastRecovery}
 
     \begin{algorithm}[H]
+        \caption{\underline{FastRecovery}}
+        \label{algo:fast-recovery}
         \begin{algorithmic}[1]
         \Function{$FastRecovery$}{}
 
@@ -1120,7 +1158,6 @@ from equivocating in $next$ votes.
 
         \EndFunction
         \end{algorithmic}
-        \caption{\underline{FastRecovery}}
     \end{algorithm}
     
     
@@ -1144,6 +1181,8 @@ from equivocating in $next$ votes.
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
+    \caption{\underline{FilterTimeout}}
+    \label{algo:filter-timeout}
     \begin{algorithmic}[1]
     \Function{$\mathsf{FilterTimeout}$}{$uint64 \ p$}
         \If{$p = 0$}
@@ -1153,7 +1192,6 @@ from equivocating in $next$ votes.
         \EndIf
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{FilterTimeout}}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
@@ -1175,6 +1213,7 @@ If no consensus was achieved, this timeout constant is relaxed in all subsequent
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
+    \caption{\underline{General Purpose Hashing Function}}
     \begin{algorithmic}[1]
     \Function{$\mathsf{H}$}{$Hashable \ in$}
         \If{$SHA512/256 \ is \ supported$}
@@ -1184,7 +1223,6 @@ If no consensus was achieved, this timeout constant is relaxed in all subsequent
         \EndIf
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{General Purpose Hashing Function}}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
@@ -1203,7 +1241,9 @@ Otherwise falls back to $SHA256$.\\
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:assemble-block}
+\begin{algorithm}[H]
+    \caption{\underline{AssembleBlock}}    
+    \label{algo:assemble-block}
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{}
 
@@ -1212,7 +1252,6 @@ Otherwise falls back to $SHA256$.\\
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{AssembleBlock}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -1222,6 +1261,8 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
+    \caption{\underline{IsCommitable}}
+    \label{algo:is-commitable}
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
@@ -1229,7 +1270,6 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{IsCommitable}}
 \end{algorithm}
 
 
@@ -1279,7 +1319,7 @@ Afterwards, updates the balance table with all state changes called for in the c
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:verify-vote}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyVote}$}{$Vote \ vt$}
         \State $valid \gets vt.round \leq r+2$
@@ -1323,11 +1363,11 @@ Afterwards, updates the balance table with all state changes called for in the c
 \end{algorithm}
 
 \noindent \textbf{Description:}\\ Gets the proposal associated to a given value, if it has been observed.
-Otherwise returns undefined. Here we ignore the theoretical posibility of a collision
+Otherwise returns undefined. Here we ignore the theoretical possibility of a collision
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{proposal-value}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ e$}
 
@@ -1346,6 +1386,8 @@ Otherwise returns undefined. Here we ignore the theoretical posibility of a coll
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
+    \caption{\underline{VerifyProposal}}
+    \label{algo:verify-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyProposal}$}{$ProposalPayload \ pp$}
 
@@ -1354,14 +1396,13 @@ Otherwise returns undefined. Here we ignore the theoretical posibility of a coll
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{VerifyProposal}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:verify-bundle}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyBundle}$}{$Bundle \ b$}
 
@@ -1408,7 +1449,7 @@ If any of them failed, a false value is returned instead, and $b$ is deemed inva
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:start-new-round}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewRound}$}{$uint64 \ newRound$}
 
@@ -1432,7 +1473,7 @@ Period and step number are set to $0$ and $proposal$ respectively.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:start-new-period}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewPeriod}$}{$uint64 \ newPeriod$}
 
@@ -1459,7 +1500,7 @@ Note that we start a new period on observing a recovery bundle for a proposal-va
 an actual value or the special empty value $\bot$.
 On lines 2 and 3, the node sets the last finished step to the currently executing step when a new period's
 start was observed, and the current step to $proposal$.
-Then it checks for the existance of a non-$cert$ step bundle in the period immediately before the new one (line 4), 
+Then it checks for the existence of a non-$cert$ step bundle in the period immediately before the new one (line 4), 
 for a proposal-value that's anything but the empty value $\bot$ (note that if the node had observed a $cert$
 bundle in the previous period, it would not be starting a new period and it would be instead attempting to commit
 the relevant entry and subsequently start a new round). If such bundle for a proposal-value $v$ exists, the pinned 
@@ -1473,7 +1514,7 @@ Finally, the node updates $p$ to match the period to start.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:garbage-collect}
     \begin{algorithmic}[1]
     \Function{$\mathsf{GarbageCollect}$}{$r, p$}
 
@@ -1489,14 +1530,14 @@ Finally, the node updates $p$ to match the period to start.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Garbage collection algorithm, for the finished $(r,p)$ context.
-The procedure discards all votes in $V$ and proposals in $P$ where the round of emmision is less than the
-new round, or the round of emmision is equal to the new round and the period of emmision is below the period
+Garbage collection algorithm, for the finished $(r,p)\in\mathbb{Z}_{\ge 0}^2$ context.
+The procedure discards all votes in $V$ and proposals in $P$ where the round of emission is less than the
+new round, or the round of emission is equal to the new round and the period of emission is below the period
 directly before the current one.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:request-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
         //ver como hacer el request...como lo resuelve el nodo?
@@ -1509,7 +1550,7 @@ directly before the current one.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:penalize-peer}
     \begin{algorithmic}[1]
     \Function{$\mathsf{PenalizePeer}$}{$PEER\_NETWORK\_ID$}
         //ver como resuelve el nodo la desconexion o blacklist de un peer
@@ -1524,7 +1565,7 @@ directly before the current one.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:resynchronization-attempt}
     \begin{algorithmic}[1]
     \Function{$\mathsf{ResynchronizationAttempt}$}{}
 
@@ -1563,7 +1604,7 @@ if it has been observed.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:compute-seed}
     \begin{algorithmic}[1]
     \Function{$ComputeSeed$}{$b$}
         \If{$B \neq empty\_block$} 
@@ -1598,7 +1639,7 @@ and $b$ is the upper bound for the maximum ammount of time that the network migh
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:get-sortition-seed}
     \begin{algorithmic}[1]
         \Function{$getSortitionSeed$}{$ctx, r, a_{pk}$}
         
@@ -1628,7 +1669,7 @@ Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, ref
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:get-sortition-weight}
     \begin{algorithmic}[1]
         \Function{$getSortition_w$}{$ctx, round, a_{pk}$}
 
@@ -1660,7 +1701,7 @@ with public key $a_{pk}$
 % ----------------------------------------------------------------------------------------------
 
 
-\begin{algorithm}[H]
+\begin{algorithm}[H]\label{algo:get-sortition-W}
     \begin{algorithmic}[1]
         \Function{$getSortition_W$}{$ctx, r$}
         
@@ -1689,6 +1730,8 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
+    \caption{Sortition}
+    \label{algo:sortition}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
         \State $seed \gets L[r - \delta_s].seed$
