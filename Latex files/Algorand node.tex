@@ -116,9 +116,27 @@ relayed them to other nodes.
 The node keeps some values in memory or storage. In particular the 
 timer,\marginpar{como funciona? hay un clock y va en ms? 
 Porque sino como funcionan los = del event handler}
+%La unidad de todas las constantes temporales en lo que escribí estan en segundos.
+%Esta librado a la implementacion, pero los specs. asumen un clock, que es el del sistema de cada nodo.
+%(Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
+%Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
+%y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
+%"similar" segun los viejos papers).
+%El 0 es un decir, en realidad hay un tiempo inicial. Seria mas bien time=ZeroedTime() o time=CurrentTime() si queremos ser mas rigurosos, y todo
+%Son deltas respecto de este, pero me parecio razonable plantearlo asi por una cuestion de legibilidad
+%En el sim esta implementado asi, como incrementos desde un tiempo inicial medido al principio de proposal
+
 which we assume is now at $time=0$. We further assume that the node
 has been receiving transactions which it stored in the transaction pool. 
 % calculo e'? BT'? L'?
+%En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
+%Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
+%luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
+%un bloque vacio.
+%Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
+%y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK +
+%porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
+
 % $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
 
 % event handler, time = 0
@@ -129,6 +147,32 @@ The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the
 block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
 block $e$ associated to a proposal $proposal$ (see Section~\ref{sect:avm})\marginpar{que 
 onda, aca tiene un clon del estado que presenta como candidato?}.
+%Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
+%En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
+%son de funcionamiento del consenso en si -p,s,V,P,etc.-) se aplican sobre el nodo al confirmar un bloque.
+%El nodo puede cachear algunos de estos valores por performance (ej, tener un cache de los cambios de balance
+%ya que ya los calculo) pero no esta enforceado. 
+%Un caso especial es la avm. Esta ejecuta codigo en dos momentos distintos potencialmente: 
+%cuando recibe una txn o cuando recibe un bloque, como parte de la validacion de ambos respectivamente.
+
+%En recepcion de txn:
+%Cuando recibe una txn, si es una logicsig, ejecuta ese codigo (como parte de la verif. de la firma) y como
+%las logicsig son stateless, ese nodo ya no va a ejecutar ese codigo mas, la encola en la txn pool y ya esta.
+%Cabe aclarar aca que toda txn pusheada en la txnPool esta YA validada individualmente (aplica para grupos tambien).
+%Si la transaccion era una appcall, corre el codigo. Si falla obviamente se descarta, pero si aprueba la txn
+%esta validada INDIVIDUALMENTE nada mas, pero como depende del contexto, si la txn no entra al proximo bloque
+%el codigo se tiene que correr de nuevo en el proximo round.
+
+%En recepcion/armado de bloque:
+%cuando recibe un bloque, valida individualmente todas las txns que no figuren en la txn pool en orden.
+%Miro el txnPool. Si ya la tengo me ahorro todo chequeo de validacion que no sea contexto-dependiente (verif. de firmas
+%es uno en particular importante porque es caro). Esto implica que si tiene una logicsig, no la ejecuto.
+%Ahora si es una appCall, no importa, la tengo que volver a correr, ya que la appCall es dependiente del ctx. y
+%aca parte de la validacion es que el orden sea coherente. Aplica tambien para los pays, los transfers, en fin,
+%cualquier cosa contextual.
+%(Ver: https://forum.algorand.org/t/which-protocol-steps-have-teal-execution/8860/2)
+
+
 % sortition
 It next loops over all the accounts that are registered to the node. 
 For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
@@ -137,17 +181,37 @@ can vote (by picking a random value) and provide a proof that the random value w
 to protocol.
 % j>0
 If sortition for a particular account returns the zero value, this means the account has
-not been selected for block creation or voting, the algorithm exits and the node will
-no longer participate in the proposal step 
+not been selected for block proposal. %block creation or voting,
+If after running sortition for every online account managed by the node, no positive integer value is returned,
+the algorithm exits and the node will no longer be a proposer in the proposal step.
 %adp: el nodo sigue participando del round, solo que no propone
 %aw: pero como? Si no propone ni vota! Qué mas hay para hacer?
-When it is nonzero, the node participates in the voting representing the account.
+%adp: en realidad se me habia pasado que decía block creation _or voting_, 
+    %aca estamos corriendo sortition solo para block proposal (el step que estoy corriendo, s=0). 
+    %Sortition es dependiente del contexto r,p,s en el que corremos (eso garantiza 
+    %que no haya previsibilidad, ej. soy un atacante y veo que salieron las cuentas 
+    %A_0...A_t como committee members en el soft vote para el primer periodo. 
+    %Logro forzar un segundo periodo -o espero a que se de "naturalmente"- y despues solo 
+    %necesito comprometer una cantidad muy pequeña de cuentas para controlar el softvote, y ya esta puedo colgar todo para siempre)
+    %Entonces que un nodo no participe de un step no garantiza que no participe de otros steps del mismo periodo (ni de otros periodos, 
+    %pero eso no importa para la vanilla run).
+    %Incluso si no participa *proponiendo* un bloque, e incluso si tampoco sale nadie sorteado para votar soft o cert, 
+    %va a participar en el sentido de que va a recibir proposal votes, va a hacer un filtering, va a recibir soft votes,
+    %va a armar un soft bundle, va a recibir cert votes y va a armar un cert bundle. Cuando reciba la propuesta (bloque completo) ademas,
+    %la va a reenviar ya que esto no depende de la pertenencia al comité.
+
+When it is nonzero, the node participates in the proposal voting representing the account.
 %En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
 %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
 %for some number of steps $s\in\Z_{\ge 0}$, then
 In a vanilla run scenario, the period is zero ($p=0$). The algorithm sets $v$ as 
 the proposal value obtained from the block $e$ and does two separate broadcasts for 
 $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
+
+%Cabe aclarar aca que si tenes dos o mas cuentas seleccionadas para participar, queda a discreción de la impl.
+%si jugar por las dos cuentas, o tratar de optimizar el comportamiento de la red mandando solo la de mejor prioridad
+%y descartando la/s otra/s (que serian votos por la misma propuesta pero con los valores account dependientes -vrf output,
+%proposer address- de las otras cuentas)
 
 %\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
 %or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
@@ -179,6 +243,13 @@ and if the step is the certification or smaller (it is, because $s=0$ and $cert=
 Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
 to the node, running the sortition algorithm in each case to compute 
 $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
+%aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
+%cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
+%podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
+%Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
+%y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
+%no es necesario sortition porque es simplemente forwardear.
+
 extract $cred.j$ and, if it is nonzero, broadcast the vote:
 $$
     \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
@@ -197,11 +268,29 @@ Many checks follow:
 - it returns without output if the round for the vote is smaller than the current round $vt.r<r$,
 - it returns without output if the round for the vote is bigger than the current round $vt.r=r+1$
 and either the period is positive $vt.p>0$ or the step is in the open interval $vt.s\in(cert, late)=(2,253)$\marginpar{es int abierto???}
+%adp: si, es int abierto
+
 %% reescribir haciendo algunos assumptions sobre el voto para que pase sin tanta chachara.ponele que vt.s=0 o vt.s=1???
 Next, it adds the vote to the votes set $V$ and broadcasts the vote to other nodes.
 Since $vt.s=0=proposal$, it checks if $Proposal(vt.v)\in P$ and broadcasts this proposal
 if it is, ignoring if it is not.
-% a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
+%aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
+%adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), solo observa (aka
+    %agrega el voto a V) y broadcastea ese voto.
+    %Condicionalmente broadcastea la propuesta completa (el bloque que corresponde al vt.v), si la tiene.
+    %Aca voy a estar potencialmente recibiendo un monton de propuestas y sus respectivos votos, 
+    %no puedo garantizar el orden de los mensajes (incluso en una vanilla run).
+    %En el handler, quizas se podrian obviar todos los chequeos en un vanilla run, porque:
+        %asumimos honestidad de los nodos (todos los votos son correctos y verifican OK)
+        %asumimos por lo mismo de arriba que no hay equivocations
+        %el step no es mayor que 0 en esta porcion que estamos describiendo(vt.s=0),
+        %asumimos que todos los nodos estan en el mismo round, luego vt.r = r
+        %mismo caso que arriba
+    %Hay complicaciones posibles. Podria ser que mi nodo este desactualizado y reciba votos para steps futuros, que tiene que reconsiderar mas adelante.
+    %Podemos agregar el caveat de que vanilla run asume cierta sincronizacion de los clocks de todos los nodos, para que todos esten
+    %mas o menos en el mismo momento.
+    %TODO: implementar desync en la simulacion! Puede ser un caso interesante para simular.
+
 
 %aca en el medio falta algo. Cuando el event handler recibe un voto, y time < FilterTimeout(p), el handler lo va 
 %a observar y demas.
@@ -230,6 +319,10 @@ it (calling $\mathsf{Request}(\mathsf{Proposal}(v))$)\marginpar{es request(v) o 
 And next it commits $v$ (calling $\mathsf{Commit}(v)$, sets $r_{old}:=r$ and calls
 $\mathsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
 %este es el p de periodo
+
+%agrego esto que por ahi es importante aclarar
+After commiting the block, the node makes all changes outlined by it to its state, appending the new block to $L$,
+updating affected records in the balance table $BT$, and box states.
 
 
 The main algo is called again...
