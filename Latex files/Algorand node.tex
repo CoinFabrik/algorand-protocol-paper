@@ -333,6 +333,33 @@ The main algo is called again...
 
 \end{section}
 % ---------------------------------------------------------------------
+\begin{section}{Strutcture}
+The Algorand protocol is implemented in a network over the Internet, where nodes 
+form a peer-to-peer network. More explicitly, a set of whitelisted relay nodes 
+interact with participation nodes where the latter receive transactions and
+implement the protocol while the latter simply relay whatever they receive from
+the nodes.
+
+A relay node includes:
+\begin{itemize}
+    \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
+order. It will record the current time when reset is called (e.g., by querying
+the OS where the node runs) and will report the elapsed time since the last reset
+in the latter case.
+    \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
+etc etc
+    \item a network interface
+    \item A XX implementing the consensus algorithm
+    \item A database engine including at least the following tables:
+\end{itemize}
+
+
+Algorand protocols make use of two hash functions of the SHA-2 family
+as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
+
+    
+\end{section}
+% ---------------------------------------------------------------------    
 \begin{section}{Network}
 A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
 and {\sf participation nodes}\index{participation nodes}. 
@@ -365,7 +392,8 @@ They function as network level facilitators, collecting messages sent by partici
 nodes or other relay nodes and distributing them across the network.
 
 Currently, any individual or entity is able to run a participation node, 
-but relay nodes are permissioned. They must be {\em whitelisted} by Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
+but relay nodes are permissioned. They must be {\em whitelisted} by 
+Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
 
 When a participation node is booted up, it establishes a peer-to-peer (P2P) 
 channel with at least one relay (4 on average), using a phone book which is included
@@ -452,6 +480,10 @@ where
     
     \item
     $TP$ is the node's transaction pool
+
+    \item 
+    The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
+    time reset was called.
 \end{itemize}
 The first 7 values are the {\sf consensus state parameters},\index{consensus state parameters}
 whereas $L$ and $BT$ are {\sf ledger state parameters}.\index{ledger state parameters}
@@ -544,7 +576,7 @@ A block header holds the following data:
     \item
     The block's timestamp, which matches the timestamp of the state it transitions into. 
     The timestamp is decided by the proposer of the block using their own internal clock. 
-    To be valid, a timestamp must be greater than the last commited block's timestamp 
+    To be valid, a timestamp must be greater than the last committed block's timestamp 
     and must not be more than 25 seconds away from said time.
     
     \item
@@ -556,16 +588,16 @@ A block header holds the following data:
     
     \item
     A cryptographic vector commitment, using SHA512/256 hash function,
-     to the block's transaction sequence.\marginpar{En qu\'e se distinguen los cmt?}
-     %se distinguen en la funcion de hash que usan, el otro esta para sistemas donde 512/256 no esta soportado
+    to the block's transaction sequence.
     
     \item
     A cryptographic vector commitment, using SHA256 hash function, to the block's
-    transaction sequence (useful for compatibility with systems where SHA512/256 is not supported)
+    transaction sequence (useful for compatibility with systems where SHA512/256 
+    is not supported).
     
     \item
     The block's previous hash, which is the cryptographic hash of the previous
-    block in the sequence. (The previous hash of the genesis block is 0).
+    block in the sequence. (The previous hash of the genesis block is 0).\marginpar{cual de los dos hashes? sha256 o sha512/256?}
     
     \item
     The block's transaction counter, which is the total number of transactions
