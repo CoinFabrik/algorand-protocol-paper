@@ -112,34 +112,43 @@ that $r-1$ blocks have been generated and confirmed by the blockchain.
 Moreover, the nodes have received transactions which have been signed 
 by Algorand accounts, and has added it to its transaction pool and 
 relayed them to other nodes.
+For this section, we assume that all nodes behave according to protocol
+and that they are in synch (e.g., the context $(r,s,p)$ for all nodes is 
+the same).
 
 The node keeps some values in memory or storage. In particular the 
-timer,\marginpar{como funciona? hay un clock y va en ms? 
-Porque sino como funcionan los = del event handler}
-%La unidad de todas las constantes temporales en lo que escribí estan en segundos.
-%Esta librado a la implementacion, pero los specs. asumen un clock, que es el del sistema de cada nodo.
-%(Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
-%Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
-%y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
-%"similar" segun los viejos papers).
-%El 0 es un decir, en realidad hay un tiempo inicial. Seria mas bien time=ZeroedTime() o time=CurrentTime() si queremos ser mas rigurosos, y todo
-%Son deltas respecto de este, pero me parecio razonable plantearlo asi por una cuestion de legibilidad
-%En el sim esta implementado asi, como incrementos desde un tiempo inicial medido al principio de proposal
-
-which we assume is now at $time=0$. We further assume that the node
+timer,
+which we assume is now at $timer=0$. We further assume that the node
 has been receiving transactions which it stored in the transaction pool. 
-% calculo e'? BT'? L'?
-%En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
-%Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
-%luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
-%un bloque vacio.
-%Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
-%y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK +
-%porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
+% adp: La unidad de todas las constantes temporales en lo que escribí estan en segundos.
+% Esta librado a la implementacion, pero los specs. asumen un clock, que es el del sistema de cada nodo.
+% (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
+% Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
+% y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
+% "similar" segun los viejos papers).
+% El 0 es un decir, en realidad hay un tiempo inicial. Seria mas bien time=ZeroedTime() o time=CurrentTime() si queremos ser mas rigurosos, y todo
+% Son deltas respecto de este, pero me parecio razonable plantearlo asi por una cuestion de legibilidad
+% En el sim esta implementado asi, como incrementos desde un tiempo inicial medido al principio de proposal
+%
+% DUDA:
+% pero el clock del sistema va en ms! y en algun lugar me parecio ver que miraba milisegundos.
+% Mi duda es que el event handler labura con = y claro, es raro que justo hagas un query al timer en el momento en 
+% el que da FilterTimeout(p) o 4\lambda
+%
+%
+% aw: calculo e'? BT'? L'?
+% adp: En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
+% Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
+% luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
+% un bloque vacio.
+% Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
+% y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK +
+% porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
 
 % $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
 
-% event handler, time = 0
+% timer = 0
+% event handler
 As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
 then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 % block assembly
@@ -147,6 +156,7 @@ The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the
 block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
 block $e$ associated to a proposal $proposal$ (see Section~\ref{sect:avm})\marginpar{que 
 onda, aca tiene un clon del estado que presenta como candidato?}.
+%adp
 %Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
 %En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
 %son de funcionamiento del consenso en si -p,s,V,P,etc.-) se aplican sobre el nodo al confirmar un bloque.
@@ -154,7 +164,7 @@ onda, aca tiene un clon del estado que presenta como candidato?}.
 %ya que ya los calculo) pero no esta enforceado. 
 %Un caso especial es la avm. Esta ejecuta codigo en dos momentos distintos potencialmente: 
 %cuando recibe una txn o cuando recibe un bloque, como parte de la validacion de ambos respectivamente.
-
+%
 %En recepcion de txn:
 %Cuando recibe una txn, si es una logicsig, ejecuta ese codigo (como parte de la verif. de la firma) y como
 %las logicsig son stateless, ese nodo ya no va a ejecutar ese codigo mas, la encola en la txn pool y ya esta.
@@ -162,7 +172,7 @@ onda, aca tiene un clon del estado que presenta como candidato?}.
 %Si la transaccion era una appcall, corre el codigo. Si falla obviamente se descarta, pero si aprueba la txn
 %esta validada INDIVIDUALMENTE nada mas, pero como depende del contexto, si la txn no entra al proximo bloque
 %el codigo se tiene que correr de nuevo en el proximo round.
-
+%
 %En recepcion/armado de bloque:
 %cuando recibe un bloque, valida individualmente todas las txns que no figuren en la txn pool en orden.
 %Miro el txnPool. Si ya la tengo me ahorro todo chequeo de validacion que no sea contexto-dependiente (verif. de firmas
@@ -171,8 +181,10 @@ onda, aca tiene un clon del estado que presenta como candidato?}.
 %aca parte de la validacion es que el orden sea coherente. Aplica tambien para los pays, los transfers, en fin,
 %cualquier cosa contextual.
 %(Ver: https://forum.algorand.org/t/which-protocol-steps-have-teal-execution/8860/2)
-
-
+%
+% aw:
+% no me queda claro si ademas de ejecutar las tranasacciones stateful, tambien aplica cambios. como quien cuando?
+%
 % sortition
 It next loops over all the accounts that are registered to the node. 
 For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
@@ -199,85 +211,66 @@ the algorithm exits and the node will no longer be a proposer in the proposal st
     %va a participar en el sentido de que va a recibir proposal votes, va a hacer un filtering, va a recibir soft votes,
     %va a armar un soft bundle, va a recibir cert votes y va a armar un cert bundle. Cuando reciba la propuesta (bloque completo) ademas,
     %la va a reenviar ya que esto no depende de la pertenencia al comité.
-
 When it is nonzero, the node participates in the proposal voting representing the account.
 %En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
 %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
 %for some number of steps $s\in\Z_{\ge 0}$, then
-In a vanilla run scenario, the period is zero ($p=0$). The algorithm sets $v$ as 
-the proposal value obtained from the block $e$ and does two separate broadcasts for 
-$Vote(a.I, r,p, proposal, v, cred)$ and $e$.
+In a vanilla run scenario and at this point, the period is zero ($p=0$). 
+The algorithm sets $v$ as the proposal value obtained from the block $e$ and does two separate 
+broadcasts for $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
 
+% adp:
 %Cabe aclarar aca que si tenes dos o mas cuentas seleccionadas para participar, queda a discreción de la impl.
 %si jugar por las dos cuentas, o tratar de optimizar el comportamiento de la red mandando solo la de mejor prioridad
 %y descartando la/s otra/s (que serian votos por la misma propuesta pero con los valores account dependientes -vrf output,
 %proposer address- de las otras cuentas)
+%
+% aw: interesante. Yo lo omitiria en la vanilla run, y lo aclararia luego
 
 %\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
 %or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
 
+% 0 < timer < FilterTimeout(p)
 % main algorithm: Handle Proposal
 Assume that some time has passed and now $0<timer<\mathsf{FilterTimeout}(p)$, and that 
 the node received a block proposal $e^\prime$ which was broadcasted from another node. 
 Then, the event handler runs $\mathsf{HandleProposal}(e^\prime)$ (Algorithm~\ref{algo:handle-proposal}).
 This algorithm receives the proposal $e^\prime$ and unpacks its contents,
 including the execution state $(r^\prime,p^\prime,s^\prime)$.
-Assume that $r=r^\prime$ and $p=p^\prime$: the algorithm will relay the proposal if $r^\prime=r+1$ 
-or exit if $r^\prime\notin\{r,r+1\}$.
+Per assumptions, we have that $r=r^\prime$ and $p=p^\prime=0$.
 The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
-on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details) 
-and exits if it fails.
-In another check, the algorithm exits if the periods differ ($p\neq p^\prime$).xxx
-Next it returns if any of the following conditions hold:
-a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
-b) if it agrees with the pinned value proposal, or
-c) if the hash underlying proposal $e^prime$ agrees with the lowest hash seen for this
-context. (EXPLICAR MEJOR)
-Assume that this is the first block received, and hence none of the above conditions are
-attained.
-Next, $\mathsf{HandleProposal}$ re-broadcasts $e^\prime$, 
-adds $e^\prime$ to a set $P$ of stored proposals, and 
-checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
-$\mathsf{IsCommittable}(v^\prime)$ returns {\tt true})
-and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
-Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
-to the node, running the sortition algorithm in each case to compute 
-$cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
-%aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
-%cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
-%podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
-%Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
-%y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
-%no es necesario sortition porque es simplemente forwardear.
+on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details),
+it also checks if periods differ ($p\neq p^\prime$), exiting if not. However, both checks pass per 
+the vanilla run assumptions.
+%Next it returns if any of the following conditions hold:
+%a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
+%b) if it agrees with the pinned value proposal, or
+%c) if the hash underlying proposal $e^prime$ agrees with the lowest hash seen for this
+%context. (EXPLICAR MEJOR)
+%Assume that this is the first block received, and hence none of the above conditions are
+%attained.
+Next, if $e^\prime\in P$, it returns; else $\mathsf{HandleProposal}$ re-broadcasts $e^\prime$, 
+adds $e^\prime$ to a set $P$ of stored proposals, and exits.
 
-extract $cred.j$ and, if it is nonzero, broadcast the vote:
-$$
-    \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
-$$
-else do nothing.
-After this, the algorithm finishes and the event handler is called again.
+% revisar: porque broadcastea e y recibe vt?
 
+
+% 0 < timer < FilterTimeout(p)
 % main algorithm: Handle Vote
-Continue to assume that $0<timer<\mathsf{FilterTimeout}(p)$ and the node received a broadcasted vote 
-$vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ algorithm).
+Let us say that the node received a broadcasted vote $vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ 
+algorithm) and assume that $0<timer<\mathsf{FilterTimeout}(p)$ still holds.
 The event handler for the main algorithm thus calls $\mathsf{HandleVote}(vt)$ (Algorithm~\ref{algo:handle-vote}).
-Many checks follow:
-- it returns without output if the vote cannot be verified ($\mathsf{VerifyVote}(vt)=\mathtt{false}$),
-- it returns without output if the step for the vote is 0 $vt.s=0$ and either $vt\in V$ or it is an equivocation vote, 
-- it returns without output if the step for the vote is positive $vt.s>0$ and $vt$ is a second equivocation vote, 
-- it returns without output if the round for the vote is smaller than the current round $vt.r<r$,
-- it returns without output if the round for the vote is bigger than the current round $vt.r=r+1$
-and either the period is positive $vt.p>0$ or the step is in the open interval $vt.s\in(cert, late)=(2,253)$\marginpar{es int abierto???}
-%adp: si, es int abierto
-
-%% reescribir haciendo algunos assumptions sobre el voto para que pase sin tanta chachara.ponele que vt.s=0 o vt.s=1???
-Next, it adds the vote to the votes set $V$ and broadcasts the vote to other nodes.
-Since $vt.s=0=proposal$, it checks if $Proposal(vt.v)\in P$ and broadcasts this proposal
-if it is, ignoring if it is not.
+The algorithm exits on checks which are passed with the vanilla run assumptions.
+It also exits if the vote received has already been recorded in the votes set $V$.
+If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
+to other nodes.
+Since nodes are synchronized, it holds that $vt.s=0=proposal$, the algorithm checks if 
+$Proposal(vt.v)\in P$ and broadcasts this proposal if it is, ignoring if it is not.
 %aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
-%adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), solo observa (aka
-    %agrega el voto a V) y broadcastea ese voto.
+%adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
+    % solo observa (aka agrega el voto a V) y broadcastea ese voto.
     %Condicionalmente broadcastea la propuesta completa (el bloque que corresponde al vt.v), si la tiene.
+    %
     %Aca voy a estar potencialmente recibiendo un monton de propuestas y sus respectivos votos, 
     %no puedo garantizar el orden de los mensajes (incluso en una vanilla run).
     %En el handler, quizas se podrian obviar todos los chequeos en un vanilla run, porque:
@@ -303,9 +296,15 @@ if it is, ignoring if it is not.
 %2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
 %ahi viene eso ultimo
 
+% timer = FilterTimeout(p)
 % main algorithm: soft vote
 Eventually, the timer is at $timer=\mathsf{FilterTimeout}(p)$ and the main algorithm calls 
 $\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
+The soft vote is about selecting a priority block and voting it in, and it proceeds as follows.
+At this point, the 
+It initializes to an empty vote $v=\bot$ and with the lowest observed hash at infinity ($lowestObservedhash:=\infty$).
+The node will go through all the votes $vt^\prime\in V$ in its voteXXX for which
+
 
 Since this is a {\em certification step} $vt.s = cert=2$\marginpar{check}
 %deberiamos estar en step = 2
@@ -326,6 +325,27 @@ updating affected records in the balance table $BT$, and box states.
 
 
 The main algo is called again...
+
+
+% handle proposal con p++
+checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
+$\mathsf{IsCommittable}(v^\prime)$ returns {\tt true}), 
+and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
+Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
+to the node, running the sortition algorithm in each case to compute 
+$cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
+%aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
+%cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
+%podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
+%Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
+%y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
+%no es necesario sortition porque es simplemente forwardear.
+extract $cred.j$ and, if it is nonzero, broadcast the vote:
+$$
+    \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
+$$
+else do nothing.
+After this, the algorithm finishes and the event handler is called again.
 
 
 
@@ -515,7 +535,7 @@ a Ledger's state is defined by the following components:
     to which the state belongs.
     \item Protocol version and update state.
     \item Timestamp (in milliseconds since genesis block), identifying when the state was first proposed.
-    \item A 64 byte seed, source of randomness for the consensus algorithm.
+    \item A 64-byte seed, source of randomness for the consensus algorithm.
     \item The current reward state, which describes the policy at which incentives
     are distributed to participants.
     \item The current box state, which holds mappings from (app id, name) tuples
@@ -525,12 +545,13 @@ a Ledger's state is defined by the following components:
 % balance
 A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to 
 account records where an {\sf account record}\index{account record} comprises 
-a 64-bits unsigned integer raw balance, 
-a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
-its registered voting keys (more info on subsection~\ref{sect:keys}, keys) and 
-two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
-validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
-for the participation key (which acts as the root voting key for the Merkle tree).\marginpar{Cu\'al merkle t. no se definio!}
+ a 64-bits unsigned integer raw balance, 
+ a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
+ its registered voting keys (more info on subsection~\ref{sect:keys}, keys) and 
+ two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
+   validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
+   for the participation key (which acts as the root voting key for the Merkle 
+   tree).\marginpar{Cu\'al merkle t. no se definio!}
 
 A node may query the current state of a particular account by indexing the balance 
 table by address, or it might query a previous round's account state by adding a 
@@ -617,11 +638,14 @@ A block header holds the following data:
     accounts in the slice and may even omit the slice completely
 \end{itemize}
 While a block's body is the block's transaction sequence, which describes the sequence
-of updates to the account state and box state.\marginpar{Y los local states? los global states de los contratos, etc?}
-%tecnicamente los local y global states son account updates, 
+of updates to the account state and box state.\marginpar{los account records no tienen states!}
+%adp: tecnicamente los local y global states son account updates, 
 %los local states viven en en el account record y tenes uno por cada app 
 %a la que estes opted in, los global funcionan similar para la cuenta del contrato
 %los boxes los maneja como algo separado por eso estan aparte
+%
+% aw: pero fijate que en la definicion de account record, solo tiene keys y alguna
+% cosa mas pero nada de memoria de este tipo.
 
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
@@ -637,12 +661,12 @@ proposal $\bot$.
 It also includes the authentication information for the original proposer, that is, 
 a signature and VRF proof of the proposal-value.
 
-For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
-$v$,\marginpar{Pero en el parrafo de arriba v es otra cosa!}
-%claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
 
-such that $Proposal(v) = e$ iff e is the proposal that, when hashed, corresponds to the block hash $H(e)$ of the proposal
-value $v$. The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
+%claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
+For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
+$v$,  such that $Proposal(v) = e$ if, and only if, $e$ is the proposal that, when hashed, corresponds 
+to the block hash $H(e)$ of the proposal value $v$. \marginpar{ENtonces $H(e)=v$?}
+The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
 $Proposal_{value}(e) = v$ if $Proposal(v) = e$.
 $Proposal()$ is not a bijective function (as hashes can theoretically collide), however we assume the inverse
 exists and has a defined output whenever the relevant proposal has been observed by the node
@@ -654,18 +678,18 @@ exists and has a defined output whenever the relevant proposal has been observed
 
 We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
 \begin{itemize}
-    \item $sh$ is the sortition hash (64 byte string).
-    \item $\pi$ is the sortition proof (32 byte string).
-    \item $j$ is a 64 bit unsigned integer that represents the vote's weight.
+    \item $sh$ is the sortition hash (64-byte string).
+    \item $\pi$ is the sortition proof (32-byte string).
+    \item $j$ is a 64-bit unsigned integer that represents the vote's weight.
 \end{itemize}
 An object of this type is output by the $\mathsf{Sortition}()$ procedure.
 
 A vote $vt$, constructed as $Vote(I,r,p,s,v,cred)$ is a tuple with the following members:
 \begin{itemize}
-    \item $I$ is a valid Algorand address (in 32 byte format).
-    \item $r$ is the vote's round (64 bit integer).
-    \item $p$ is the vote's period (64 bit integer).
-    \item $s$ is the vote's step (8 bit integer).
+    \item $I$ is a valid Algorand address (in 32-byte format).
+    \item $r$ is the vote's round (64-bit integer).
+    \item $p$ is the vote's period (64-bit integer).
+    \item $s$ is the vote's step (8-bit integer).
     \item $v$ is the vote's proposal value.
     \item $cred$, of type $credentials$, the committee credentials of the voter.
 \end{itemize}
@@ -883,6 +907,8 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 \begin{subsection}{Soft Vote}\label{ssect:softvote}
 
 \begin{algorithm}[H]
+    \caption{\underline{Soft Vote}}
+    \label{algo:soft-vote}
     \begin{algorithmic}[1]
     \Function{$\mathsf{SoftVote}$}{}
     \State $lowestObservedHash \gets \infty$
@@ -910,7 +936,6 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{Soft Vote}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -1325,9 +1350,10 @@ from equivocating in $next$ votes.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-Provides the timeout constant for the filtering (a.k.a. "soft" or "soft vote") stage.
+The function $\mathsf{FilterTimeout}(\;)$\index{$\mathsf{FilterTimeout}(\;)$} provides the timeout 
+constant for the filtering (i.e., "soft" or "soft vote") stage.
 This timeout depends on the period value; the first period has a special, faster timeout.
-If no consensus was achieved, this timeout constant is relaxed in all subsequent periods. \\
+If no consensus was achieved, this timeout constant is relaxed in all subsequent periods. 
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -1957,11 +1983,11 @@ observed stake.\\
 \begin{itemize}
     \item $credentials$, a data structure containing the results of running the sortition algorithm 
     for a specified account
-    \item $sh$, the 64 byte sortition hash output by running $VRF_{a_{sk}}$ algorithm over a desired input.
+    \item $sh$, the 64-byte sortition hash output by running $VRF_{a_{sk}}$ algorithm over a desired input.
     Usually wrapped inside a $credentials$ structure.
-    \item $\pi$, the 32 byte sortition proof output by running $VRF_{a_{sk}}$ algorithm over a desired input.
+    \item $\pi$, the 32-byte sortition proof output by running $VRF_{a_{sk}}$ algorithm over a desired input.
     Usually wrapped inside a $credentials$ structure.
-    \item $j$, an unsigned 64 bit integer, representing the weight of a given account's vote inside a specific committee
+    \item $j$, an unsigned 64-bit integer, representing the weight of a given account's vote inside a specific committee
     (for a given round, period and step).
     Usually wrapped inside a $credentials$ structure.
     \item $\lambda_0$, time interval for the node to accept block proposals (when $p=0$), after which it 
