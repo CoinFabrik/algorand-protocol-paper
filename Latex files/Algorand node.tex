@@ -117,9 +117,19 @@ and that they are in synch (e.g., the context $(r,s,p)$ for all nodes is
 the same).
 
 The node keeps some values in memory or storage. In particular the 
-timer,
-which we assume is now at $timer=0$. We further assume that the node
+timer, which we assume is now at $timer=0$,
+a round number $r\in\mathbb{Z}_{\ge 0}$, 
+a step $s:=0\in\mathbb{Z}_{\ge 0}$,
+a period $p:=0\in\mathbb{Z}_{\ge 0}$, 
+a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
+a pinned vote $v:=\bot$.
+
+We further assume that the node
 has been receiving transactions which it stored in the transaction pool. 
+
+The main algorithm for consensus is an event handler that receives two
+types of input from the node. It receives messages, and it is also able
+to read the timer.
 % adp: La unidad de todas las constantes temporales en lo que escribí estan en segundos.
 % Esta librado a la implementacion, pero los specs. asumen un clock, que es el del sistema de cada nodo.
 % (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
@@ -134,7 +144,6 @@ has been receiving transactions which it stored in the transaction pool.
 % pero el clock del sistema va en ms! y en algun lugar me parecio ver que miraba milisegundos.
 % Mi duda es que el event handler labura con = y claro, es raro que justo hagas un query al timer en el momento en 
 % el que da FilterTimeout(p) o 4\lambda
-%
 %
 % aw: calculo e'? BT'? L'?
 % adp: En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
@@ -254,13 +263,12 @@ adds $e^\prime$ to a set $P$ of stored proposals, and exits.
 
 % revisar: porque broadcastea e y recibe vt?
 
-
 % 0 < timer < FilterTimeout(p)
 % main algorithm: Handle Vote
 Let us say that the node received a broadcasted vote $vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ 
 algorithm) and assume that $0<timer<\mathsf{FilterTimeout}(p)$ still holds.
 The event handler for the main algorithm thus calls $\mathsf{HandleVote}(vt)$ (Algorithm~\ref{algo:handle-vote}).
-The algorithm exits on checks which are passed with the vanilla run assumptions.
+The algorithm exits on checks --which are passed with the vanilla run assumptions.
 It also exits if the vote received has already been recorded in the votes set $V$.
 If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
 to other nodes.
@@ -296,56 +304,85 @@ $Proposal(vt.v)\in P$ and broadcasts this proposal if it is, ignoring if it is n
 %2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
 %ahi viene eso ultimo
 
+Until $timer\ge \mathsf{FilterTimeout}(p)$ the main algorithm will execute the above steps
+whenever a vote or a proposal are received, always recording new events and this happens.
+
 % timer = FilterTimeout(p)
 % main algorithm: soft vote
 Eventually, the timer is at $timer=\mathsf{FilterTimeout}(p)$ and the main algorithm calls 
 $\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
 The soft vote is about selecting a priority block and voting it in, and it proceeds as follows.
-At this point, the 
 It initializes to an empty vote $v=\bot$ and with the lowest observed hash at infinity ($lowestObservedhash:=\infty$).
-The node will go through all the votes $vt^\prime\in V$ in its voteXXX for which
+The node will go through all the votes $vt^\prime\in V$ in its votes set that are in the
+proposal step ($vt^\prime.s=0$).
+Given the credentials for the vote $vt^\prime.credential=(sh,\pi, j)$, where $sh$ is the hash,
+$\pi$ is the proof and $j\in\mathbb{Z}_{ge 0}$, the algorithm computes the priority hash
+$$
+priorityHash:=\min\{\mathsf{Hash}(sh\| i): 0\le i<j\},
+$$
+and whenever this value (as an integer) is lower than the recorded 
+$lowestObservedHash$ it sets 
+$lowestObservedHash:=priorityHash$ and $v:=vt^\prime.v$.
+Next, if there was at least one vote in $V$, for every registered account $a\in A$
+it computes \marginpar{fix notation!}
+$$
+(sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
+$$
+and, if $j>0$ it broadcasts $Vote(r,p,soft,v,credential^{\prime\prime})$.
+Moreover, if the proposal $p:=Proposal(v)$ is in $P$, it also broadcasts $p$.
 
+% timer > FilterTimeout(p), s=1=proposal. handle-poposal
+When the main algorithm receives a message of type vote 
+$Proposal(Vote(r,p,soft,v,credential))$ as above, it will
+run the handle proposal algorithm as before.
 
-Since this is a {\em certification step} $vt.s = cert=2$\marginpar{check}
-%deberiamos estar en step = 2
+% timer > FilterTimeout(p), s=1=proposal. handle-vote
+When the main algorithm receives a message of type vote 
+$Vote(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
+votes set (if it is new) and checks whether it can form a bundle from the 
+votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
+$vt\in V$ with round $vt.r=r, vt.p=0, vt.s=proposal$ that have the same vote $vt.v$ 
+and such that the sum of its weights is bigger than the committee 
+threshold. \marginpar{improve expl.}
+It will broadcast the proposal if it is not in the proposal set $P$,
+and then commit $v$, calling $\mathsf{Commit}(v)$, set $r_{old}:=r$,
+and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
+ending the round.
+Calling the new round algorithm (Algo.~\ref{algo:start-new-round}) will
+reset variables as: $\bar s:=s$, $\bar{v}:=\bot$, $r:=r+1$, $p:=0$ and
+$s:=proposal=1$;
+and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect}) 
+will compute 
+$$
+\begin{array}{rl}
+V_{(r,p-1)} & :=\{vt\in V : vt.r < r \text{ or } (vt.r = r \text{ and } vt.p+1 < p)\}\\
+P_{(r,p-1)} & :=\{pr\in PP: pr.r < r \text{ or } (pr.r = r \text{ and } pr.p + 1 < p)\}
+\end{array}
+$$\marginpar{esto es $pr_{p+1}$ o $pr_p+1$?}
+and then remove these sets from the votes and participation sets: $V:=V\setminus V_{(r,p-1)}$,
+$P = P\setminus P_{(r,p-1)}$.
 
-it checks if it can form a bundle $Bundle(vt.round, vt.period, cert, v)$ from the votes
-in $V$.
-
-It will first check if the proposal for $v$ is not in $P$ ($Proposal(v)\notin P$) and request
-it (calling $\mathsf{Request}(\mathsf{Proposal}(v))$)\marginpar{es request(v) o request(Proposal(v)???)}
-%el request es por la proposal, asi que seria request(Proposal(v))
-And next it commits $v$ (calling $\mathsf{Commit}(v)$, sets $r_{old}:=r$ and calls
-$\mathsf{StartNewRound}(vt.round + 1)$ and $\mathsf{GarbageCollect}(r_{old}, p)$\marginpar{que  p es este?}
-%este es el p de periodo
-
-%agrego esto que por ahi es importante aclarar
-After commiting the block, the node makes all changes outlined by it to its state, appending the new block to $L$,
-updating affected records in the balance table $BT$, and box states.
-
-
-The main algo is called again...
 
 
 % handle proposal con p++
-checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
-$\mathsf{IsCommittable}(v^\prime)$ returns {\tt true}), 
-and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
-Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
-to the node, running the sortition algorithm in each case to compute 
-$cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
-%aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
-%cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
-%podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
-%Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
-%y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
-%no es necesario sortition porque es simplemente forwardear.
-extract $cred.j$ and, if it is nonzero, broadcast the vote:
-$$
-    \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
-$$
-else do nothing.
-After this, the algorithm finishes and the event handler is called again.
+% checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
+% $\mathsf{IsCommittable}(v^\prime)$ returns {\tt true}), 
+% and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
+% Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
+% to the node, running the sortition algorithm in each case to compute 
+% $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
+% %aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
+% %cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
+% %podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
+% %Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
+% %y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
+% %no es necesario sortition porque es simplemente forwardear.
+% extract $cred.j$ and, if it is nonzero, broadcast the vote:
+% $$
+%     \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
+% $$
+% else do nothing.
+% After this, the algorithm finishes and the event handler is called again.
 
 
 
@@ -490,7 +527,7 @@ where
     $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}\index{last finished step}
     
     \item
-    $L$ is the {\sf ledger} is a structure that holds a sequence of states comrising the common
+    $L$ is the {\sf ledger} is a structure that holds a sequence of states comprising the common
     information established by the current instantiation of the Algorand protocol.
     \footnote{Note that, thanks to the genesis hash and previous 
     hash components, a ledger state unambiguously defines the whole history of state changes.}. 
@@ -1601,18 +1638,17 @@ If any of them failed, a false value is returned instead, and $b$ is deemed inva
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]\label{algo:start-new-round}
+    \caption{\underline{StartNewRound}}
+    \label{algo:start-new-round}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewRound}$}{$uint64 \ newRound$}
-
     \State $\bar{s} \gets s$
     \State $\bar{v} \gets \bot$
     \State $r \gets newRound$
     \State $p \gets 0$
     \State $s \gets proposal$
-
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{StartNewRound}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -1909,6 +1945,7 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \item $uint64 \ step$, the step to run sortition for
 \end{itemize}
 
+%A_0,..., A_algo are the committee members.... que es eso?
 \noindent \textbf{Description:}\\
 The Sortition procedure is one of the most important subroutines in the main algorithm, as it is 
 used in multiple stages and contexts.
@@ -1916,13 +1953,13 @@ Generally, it manages to pseudo-randomly but verifiably (through the use of a Ve
 Function) select a user with probability proportional
 to their weight (i.e., stake) by returning a $j$ parameter, which indicates the number of times that 
 specific user was chosen.
-Algorithmically, every monetary unit the user has is considered a "sub-user", and then each one 
+Algorithmically, every monetary unit the user has is considered a ``sub-user'', and then each one 
 of them is selected with probability $p = \frac{\tau}{W}$,
 where $\tau$ is the expected amount of users to be selected for the given role, and $W$ is the total
 stake online for the relevant round.
 The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated 
 binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
-belongs to the interval, that's the ammount of chosen sub-users for the subroutine caller.\\
+belongs to the interval, that's the amount of chosen sub-users for the subroutine caller.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
