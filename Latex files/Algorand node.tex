@@ -394,10 +394,10 @@ $P = P\setminus P_{(r,p-1)}$.
 The Algorand protocol is implemented in a network over the Internet, where nodes 
 form a peer-to-peer network. More explicitly, a set of whitelisted relay nodes 
 interact with participation nodes where the latter receive transactions and
-implement the protocol while the latter simply relay whatever they receive from
+implement the protocol while the former simply relay whatever they receive from
 the nodes.
 
-A relay node includes:
+A participation node includes:
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
 order. It will record the current time when reset is called (e.g., by querying
@@ -411,13 +411,31 @@ etc etc
 \end{itemize}
 
 
+
+A participation node keeps a transaction pool. Whenever a transaction arrives, its signature
+is verified, and it is stored in the transaction pool. Nodes do have a limit, e.g, they will
+keep 1,000 transactions and ignore the rest.\marginpar{is this ok?}
+These transactions are processed by the node as follows.
+\begin{itemize}
+    \item The node orders the transactions as they arrive.
+    \item The node verifies the signature of the transaction (i.e., the transaction has an 
+    address as its source, this address also identifies a public key that may be used to 
+    verify the signature).
+    \item Once verified, the transaction is interpreted by the AVM. It will either succeed or
+    fail. If it succeeds, it may alter the ledger and balances for the next block. These 
+    changes are recorded.
+    \item Once a timeout is reached, the node will collect all the changes into a block 
+    proposal.
+\end{itemize}
+
+
+{\bf Standards and Conventions:}
 Algorand protocols make use of two hash functions of the SHA-2 family
 as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
 
     
-\end{section}
 % ---------------------------------------------------------------------    
-\begin{section}{Network}
+\begin{subsection}{Network}
 A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
 and {\sf participation nodes}\index{participation nodes}. 
 Both nodes operate on servers that are connected to the internet and run publicly
@@ -468,11 +486,29 @@ $\delta_b$ rounds after the key registration transaction is approved.
 Any account participating in consensus does so with their full balance. There is no risk
 associated to participation, nor there are any rewards for running a node.
 
+
 TODO: maybe include some voting stats?
 
-\end{section}
+\end{subsection}
+% ------------------------------------------------------------------------
+\begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
+    
+    \begin{quote} 
+        {\em``The Algorand virtual machine (AVM) runs on every node in the Algorand blockchain. 
+    This virtual machine contains a stack engine that evaluates smart contracts and smart 
+    signatures against the transactions they're called with. These programs either fail 
+    and reject the transaction or succeed and apply changes according to the logic and 
+    contents of the transactions.''} From \href{https://developer.algorand.org/docs/get-details/dapps/avm/}{Algorand.org}
+    \end{quote}
+    
+The AVM receives signed transactions that may or may not alter the 
+state of the blockchain and interprets TEAL, or the Transaction Execution 
+Approval Language, an assembly-like language designed by Algorand 
+for the blockchain.,
+
+\end{subsection}
 % --------------------------------------------------------------------------------------
-\begin{section}{Node as a State Machine}
+\begin{subsection}{Node as a State Machine}
 A network participation node can be modeled as a state machine.
 In this section we will define all primitives and data structures necessary to define the state
 of a node; the rest of the work will be spent on describing the rules and interrelations that
@@ -768,10 +804,6 @@ or $\bot$ if no valid proposal vote has been observed by the node.
 $\sigma(r,p)$ is the sole proposal-value for which a soft bundle has been observed (again, 
 in the current $(r,p)$ context), or $\bot$ if no valid soft bundle has been observed by the 
 node.
-
-% ------------------------------------------------------------------------
-\begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
-    tbd
 \end{subsection}
 
 \end{section}
