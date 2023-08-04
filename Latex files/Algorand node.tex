@@ -420,13 +420,21 @@ These transactions are processed by the node as follows.
     \item The node orders the transactions as they arrive.
     \item The node verifies the signature of the transaction (i.e., the transaction has an 
     address as its source, this address also identifies a public key that may be used to 
-    verify the signature).
-    \item Once verified, the transaction is interpreted by the AVM. It will either succeed or
+    verify the signature); if it is a logicsig, it is verified; if it is an app call, then
+    the run is simulated.
+    \item At some point, the node starts assembling the node. It will now rerun all transactions
+    (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
     fail. If it succeeds, it may alter the ledger and balances for the next block. These 
-    changes are recorded.
+    changes are recorded.. Changes to the balances and ledger are temporary recorded and
+    checked for inconsistencies (e.g., local to the block creation)
     \item Once a timeout is reached, the node will collect all the changes into a block 
-    proposal.
+    proposal. e.
 \end{itemize}
+
+During consensus, a node that receives an e it will validate same as above.
+
+Once consensus accepted a block, e, it needs to run all transactions again
+but now modifies de ledger and balances. 
 
 
 {\bf Standards and Conventions:}
@@ -720,12 +728,19 @@ of updates to the account state and box state.\marginpar{los account records no 
 % aw: pero fijate que en la definicion de account record, solo tiene keys y alguna
 % cosa mas pero nada de memoria de este tipo.
 
+% hashmap: address\mapsto 
+% ( balance, 
+% online/offline/nonparticipating, 
+% lista de ASA IDs a los que estes optinieado y sus balances, 
+% apps IDs a las que estes optineado y los local states,
+% ) en el caso de que sea un smart contract es el globarl state y los boxes
+
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
 
 A proposal-value is a tuple $v = (I, p, H(e), H(Encoding(e)))$ where 
-$I$ is an address (the “original proposer”), 
-$p$ is a period (the “original period”), 
+$I$ is an address (the ``original proposer''), 
+$p$ is a period (the ``original period''), 
 {\bf Definir e}
 and
 $H(\,)$ is a cryptographic hash function (implemented as SHA512/256). 
