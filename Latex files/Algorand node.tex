@@ -29,14 +29,30 @@
 \setlength{\parskip}{4pt}%
 \setlength{\parindent}{0pt}%
 
+
+
+\begin{document}
+
+
 % ---------------------------------------------------------------------------------------
 \author{Argimiro, CoinFabrik}
 \title{Algorand Protocol Description}
 
-\begin{document}
 \maketitle
 \tableofcontents
 
+
+\begin{abstract}
+    Algorand is a pure proof-of-stake blockchain protocol, designed by Silvio Micali,
+    that has been implemented and deployed in 2019. Micali and co-authors designed 
+    the basic blocks of the protocol and implementors published some design details.
+    None of these cover the full protocol and many details are left undefined, moreover,
+    many protocol decisions have changed from design to implementation. The security
+    implications of this design should be studied. In our attempt to provide such a 
+    study we have analyzed the source code for the node and probed the blockchain for 
+    answers. To our account this is the first and only complete description of the 
+    protocol. 
+\end{abstract}
 % ---------------------------------------------------------------------------------------
 \begin{section}{Introduction}
 We aim to describe how the Algorand protocol works. 
