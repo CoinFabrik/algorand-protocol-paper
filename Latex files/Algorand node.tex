@@ -97,7 +97,7 @@ Foundation endowment (\%11).
 
 In the following document we present a detailed pseudocode interpretation 
 of the program run by an Algorand node managing at least one online (i.e., 
-participating) account. We attempt to explain the different states the node 
+participating) account. We attempt to explain the different states the node x
 can be in, as well as all kinds of events that cause transitions and network 
 output. This work aims to provide a basis for an Algorand blockchain simulator 
 currently in development. 
@@ -516,6 +516,54 @@ for the blockchain.,
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
+\begin{subsection}{Keys}
+    Algorand nodes interact with 3 types of keys:
+    Root or spending keys,
+    Voting or participation keys and
+    VRF selection keys.
+
+    %comentario general sobre como funciona un esquema de firma publica/privada
+    %podria estar mejor
+    Generally all keys will be in pairs, in a public / private cryptographic scheme.
+    This scheme supports a signing procedure, which uses the private key and outputs a signature, 
+    and a verification procedure, which uses a public key and outputs a boolean value, and allows
+    a node to certify that the data was indeed signed by the specified participant.
+
+    Spending keys are 32 byte keys used by accounts to sign and verify transactions
+    on behalf of accounts. Nodes interact only with public spending keys, out of which
+    Algorand addresses are derived. Private spending keys are used to sign transactions
+    and should be kept privately by the user managing the relevant account, unless the account
+    is rekeyed in which case the private key of the account designated by the rekeying operation
+    is the key authorized to sign transactions on behalf of this account.
+
+    Participation keys are used to sign all consensus messages. They are organized in a tree scheme.
+    %(generated through the goal addpartkey command). 
+    The private keys in the scheme are stored as secrets by the node,
+    while their public keys are a mandatory part of online account records.
+    They correspond to the ed25119 eliptic curve cryptographic standard (TODO: CITAR standard).
+    Previous to online account registration, the node generates a root participation key, a batch of subkeys
+    of size n, and n sub-batches of ephemeral keys (each one of size k), according to the key dilution field.
+    A keyreg transaction needs the root public participation key as a valid field.
+    Ephemeral keys are leaves of the two level tree, and are used to sign consensus messages for a given round.
+    They are deleted after the succesful advancement of a round.
+    An agreement vote message is valid only when it is signed with the correct voting key.
+
+    %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
+
+    Selection or VRF keys are keys used for committee membership selection and verification.
+    VRF public keys are kept inside account records (in the $BT$),
+    and are needed in order for an account to vote, as they will be
+    used to verify committee membership by nodes receiving votes.
+    They make use of an Algorand fork of the Sodium C library (citar!), implementing VRF signing, verification and
+    key generation functions.
+    The account's private keys are kept as secrets by the node, and are guaranteed to be non-persistant in memory.
+
+    %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/vrf.go
+
+
+
+\end{subsection}
+% --------------------------------------------------------------------------------------
 \begin{subsection}{Node as a State Machine}
 A network participation node can be modeled as a state machine.
 In this section we will define all primitives and data structures necessary to define the state
@@ -571,7 +619,7 @@ where
     $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}\index{last finished step}
     
     \item
-    $L$ is the {\sf ledger} is a structure that holds a sequence of states comprising the common
+    $L$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
     information established by the current instantiation of the Algorand protocol.
     \footnote{Note that, thanks to the genesis hash and previous 
     hash components, a ledger state unambiguously defines the whole history of state changes.}. 
@@ -628,7 +676,7 @@ A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to
 account records where an {\sf account record}\index{account record} comprises 
  a 64-bits unsigned integer raw balance, 
  a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
- its registered voting keys (more info on subsection~\ref{sect:keys}, keys) and 
+ its registered voting keys (more info on subsection~\ref{sect:Keys}, keys) and 
  two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
    validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
    for the participation key (which acts as the root voting key for the Merkle 
@@ -936,13 +984,12 @@ the corresponding construct (coinciding with their attached data type field).
 
             \State $\mathsf{ResynchronizationAttempt}()$
 
-            \State $e \gets \mathsf{AssembleBlock}()$
-
             \For{$a \in A$}
                 \State $cred \gets 
                 \mathsf{Sortition}(a, proposal)$
                 \If{$cred.j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
+                        \State $e \gets \mathsf{AssembleBlock}()$
                         \State $v \gets Proposal_{value}(e)$
                         \State $\mathsf{Broadcast}(Vote(a.I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
@@ -966,14 +1013,14 @@ the corresponding construct (coinciding with their attached data type field).
 \noindent \textbf{Description:}\\
 Block proposal is the first step, and the starting stage of the algorithm on every period.
 First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). 
-This only has any effect on periods $p > 0$. On line 3, a block is assembled.
+This only has any effect on periods $p > 0$.
 Afterwards, the node loops through all of its managed online accounts, Functionally
 "playing" for each of the accounts. This is a pattern that we'll see in every other
 main algorithm subroutine that performs any form of committee voting.
 
-Lines 7 to 15 are the core proposal algorithm. On lines 7 to 10, 
+Lines 6 to 14 are the core proposal algorithm. On lines 6 to 10, 
 if the node's on a first period, or it observed a bundle for the bottom proposal on the previous 
-period (meaning there is no valid pinned value), then it will compute the proposal-value for the 
+period (meaning there is no valid pinned value), then it will assemble a block, compute the proposal-value for the 
 previously assembled block, broadcast a proposal vote by the selected account for this value, and 
 broadcast the full block in a proposal payload message.
 Otherwise, the node is at least on a second period and it has a pinned value available, supported by a 
@@ -1572,6 +1619,7 @@ Afterwards, updates the balance table with all state changes called for in the c
             \State $valid \gets valid \land vt.v = \bot$
         \EndIf
 
+
         //TODO: verificacion de firmas, VRFs y rounds de validez
 
         \State $\mathsf{return} \ valid$
@@ -1581,6 +1629,9 @@ Afterwards, updates the balance table with all state changes called for in the c
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+Vote verification gets an unauthenticated vote and returns an authenticated vote and a
+boolean indicating whether authentication succeeded or failed.
+
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1781,6 +1832,8 @@ directly before the current one.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+%The Ledger.Wait function (and its variants) seem to be used to wait for the block
+% https://github.com/algorand/go-algorand/blob/51f5314422b568526d09fdb74c4c87cfaaa0b4e2/ledger/ledger.go#L747
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2020,8 +2073,8 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, role, w, W$}
-        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||role)$}{$\mathsf{return} \ 0$}
+    \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, round, period, step, w, W$}
+        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||round||period||step)$}{$\mathsf{return} \ 0$}
         \State $p \gets \frac{t}{W}$
         \State $j \gets 0$
         \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
@@ -2095,6 +2148,15 @@ observed stake.\\
 \end{itemize}
 
 \end{section}
+
+
+%makeCredential: Makes unauthenticated credential (aka. calls VRF using secrets.Prove(sel)).
+%https://github.com/algorand/go-algorand/blob/f155addc1c522d1464bca71da9af495ed71ce820/data/committee/credential.go#L125
+%The selector contains Seed, round, period, step, in a hashable struct
+%Prove(hashable h) outputs a VRF proof 
+%then Verify() https://github.com/algorand/go-algorand/blob/master/data/committee/credential.go#L75
+%is called to obtain weight and VRF hash. In order to decorrelate accounts that might have the same VRF keypair,
+%the VRFHash is computed as H(VRFOutputHash || AccountAddress)
 
 % ----------------------------------------------------------------------------------------------
 
