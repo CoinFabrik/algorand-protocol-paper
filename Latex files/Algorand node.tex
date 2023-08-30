@@ -178,13 +178,15 @@ to read the timer.
 
 % timer = 0
 % event handler
-As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
+% As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
+As the main algorithm starts a round, it receives a self message with $timer=0$.
 then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 % block assembly
 The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the 
 block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
 block $e$ associated to a proposal $proposal$ (see Section~\ref{sect:avm})\marginpar{que 
 onda, aca tiene un clon del estado que presenta como candidato?}.
+\marginpar{preguntar por que la avm aca}.
 %adp
 %Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
 %En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
