@@ -44,7 +44,7 @@
 
 \begin{abstract}
     Algorand is a pure proof-of-stake blockchain protocol, designed by Silvio Micali,
-    that has been implemented and deployed in 2019. Micali and co-authors designed 
+    that has been implemented and deployed since 2019. Micali and co-authors designed 
     the basic blocks of the protocol and implementors published some design details.
     None of these cover the full protocol and many details are left undefined, moreover,
     many protocol decisions have changed from design to implementation. The security
@@ -79,18 +79,22 @@ When an account sends a transaction, it sends it to a node.
 
 The structure of a node is simple: 
 it has a consensus algorithm,
-a virtual machine (the Algorand Virtual Machine or AVM) and 
-XXX.
+a virtual machine (the Algorand Virtual Machine or AVM) and networking
+capabilities.
+%XXX.
+
+%no siempre se validan en la AVM, solo cuando hay codigo asociado (smart signatures, smart contracts)
 Basically, the node receives transactions in its transaction pool,
-validates their signature and processes them (in no protocol-imposed order)
-via the AVM, probably altering the ledger and 
+validates their signature and processes them (in no protocol-imposed order), leveraging the
+AVM if there was bytecode associated to them, with the goal of an eventual commitment of the transactions
+to a block in the Ledger and the subsequent observation of their consequences in the state of the network.
 
 The node maintains a ledger, which encodes the protocol status,
 that is modified via consensus.
 In particular, this ledger encodes how many {\sf ALGO tokens}\index{ALGO token} 
 (the native token) holds each account.
 
-Blocks encode the status of the ledger. Starting on the genesis\index{blocks}
+Blocks encode status updates in the ledger. Starting on the genesis\index{blocks}
 block (round 0) that encodes the first state of the network, 
 on each round the participation nodes vote on what will the next
 block be. 
@@ -115,22 +119,22 @@ In the following document we present a detailed pseudocode interpretation
 of the program run by an Algorand node managing at least one online (i.e., 
 participating) account. We attempt to explain the different states the node x
 can be in, as well as all kinds of events that cause transitions and network 
-output. This work aims to provide a basis for an Algorand blockchain simulator 
-currently in development. 
+output. This work will provide a basis for an Algorand blockchain simulator 
+currently in development.
 
 % ---------------------------------------------------------------------
 % quizas hay que reubicar esta sect. ver luego
 \begin{subsection}{Vanilla run}\label{subsect:vanilla-run}
-Let as assume a genesis block was generated, the blockchain has been running and
+Let us assume a genesis block was generated, the blockchain has been running and
 has already generated blocks, with a set of nodes and accounts. 
 We are now at round $r-1$ ($r>2$), meaning
 that $r-1$ blocks have been generated and confirmed by the blockchain.
-Moreover, the nodes have received transactions which have been signed 
-by Algorand accounts, and has added it to its transaction pool and 
-relayed them to other nodes.
+Moreover, the node has received transactions which have been verified to 
+be correctly signed by Algorand accounts and validated according to Ledger context, 
+and has added them to its transaction pool and relayed them to other nodes.
 For this section, we assume that all nodes behave according to protocol
-and that they are in synch (e.g., the context $(r,s,p)$ for all nodes is 
-the same).
+and that they are in sync (e.g., the context $(r,s,p)$ for all nodes is 
+the same and their internal clocks are synchronized).
 
 The node keeps some values in memory or storage. In particular the 
 timer, which we assume is now at $timer=0$,
@@ -140,14 +144,9 @@ a period $p:=0\in\mathbb{Z}_{\ge 0}$,
 a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
 a pinned vote $v:=\bot$.
 
-We further assume that the node
-has been receiving transactions which it stored in the transaction pool. 
-
 The main algorithm for consensus is an event handler that receives two
 types of input from the node. It receives messages, and it is also able
 to read the timer.
-% adp: La unidad de todas las constantes temporales en lo que escribí estan en segundos.
-% Esta librado a la implementacion, pero los specs. asumen un clock, que es el del sistema de cada nodo.
 % (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
 % Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
 % y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
@@ -160,14 +159,19 @@ to read the timer.
 % pero el clock del sistema va en ms! y en algun lugar me parecio ver que miraba milisegundos.
 % Mi duda es que el event handler labura con = y claro, es raro que justo hagas un query al timer en el momento en 
 % el que da FilterTimeout(p) o 4\lambda
-%
+
+% adp: en realidad el igual es un decir. Esa variabilidad, asi como otras (conexion por ejemplo) estan representadas en un valor aleatorio agregado,
+%a todos los timeouts, sampleado de una distribucion uniforme (es el ultimo valor) con un rango bastante amplio
+%igual la logica no es de estar polleando hasta que te de el timeout, es al reves, son interrupciones representadas en mensajes enviados a mi mismo.
+%La comparacion se hace una vez que me llego un mensaje. Y como es de interrupcion, que tipo de interrupcion es? Entonces ahi miro el timer
+
 % aw: calculo e'? BT'? L'?
 % adp: En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
 % Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
 % luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
 % un bloque vacio.
 % Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
-% y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK +
+% y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK
 % porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
 
 % $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
