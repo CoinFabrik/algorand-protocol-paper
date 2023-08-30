@@ -541,16 +541,20 @@ for the blockchain.,
     %comentario general sobre como funciona un esquema de firma publica/privada
     %podria estar mejor
     Generally all keys will be in pairs, in a public / private cryptographic scheme.
-    This scheme supports a signing procedure, which uses the private key and outputs a signature, 
-    and a verification procedure, which uses a public key and outputs a boolean value, and allows
-    a node to certify that the data was indeed signed by the specified participant.
+    This scheme supports a signing procedure, which takes a private key and a message and outputs a signature, 
+    and a verification procedure, which takes a public key, a message and a signature, and outputs a boolean value.
+    A true output certifies that the signature was indeed produced by signing the relevant message with the private key of the 
+    claimed address.
+    We now make a brief description of each of the three key types and their relevance in the protocol.
+
 
     Spending keys are 32 byte keys used by accounts to sign and verify transactions
     on behalf of accounts. Nodes interact only with public spending keys, out of which
     Algorand addresses are derived. Private spending keys are used to sign transactions
-    and should be kept privately by the user managing the relevant account, unless the account
-    is rekeyed in which case the private key of the account designated by the rekeying operation
-    is the key authorized to sign transactions on behalf of this account.
+    and should be kept privately by the user managing the relevant account for security
+    concerns. This is, unless the account has undergone a process called "rekeying", in which case 
+    the private key of the account designated by the rekeying transaction is the key authorized 
+    to sign transactions on behalf of this account.
 
     Participation keys are used to sign all consensus messages. They are organized in a tree scheme.
     %(generated through the goal addpartkey command). 
@@ -558,11 +562,15 @@ for the blockchain.,
     while their public keys are a mandatory part of online account records.
     They correspond to the ed25119 eliptic curve cryptographic standard (TODO: CITAR standard).
     Previous to online account registration, the node generates a root participation key, a batch of subkeys
-    of size n, and n sub-batches of ephemeral keys (each one of size k), according to the key dilution field.
+    of size n, and a sub-batch of ephemeral keys of size $k$, where $k = keyDillution$ (which defaults to the square
+    root of the round range; e.g. for a 3e+06 round range a 1712 sub-batch of ephemeral keys is generated).
+    
+        according to the key dilution field.
     A keyreg transaction needs the root public participation key as a valid field.
     Ephemeral keys are leaves of the two level tree, and are used to sign consensus messages for a given round.
     They are deleted after the succesful advancement of a round.
     An agreement vote message is valid only when it is signed with the correct voting key.
+    When generated, a validity range is specified.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
@@ -575,6 +583,20 @@ for the blockchain.,
     The account's private keys are kept as secrets by the node, and are guaranteed to be non-persistant in memory.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/vrf.go
+
+
+    On a key generation command, a node takes an address, a range of rounds and a 64
+    bit integer key dilution parameter. The round range has a maximum of $2^{24} - 1$, and a recommended
+    value of $3e06$. It then uses a function in the Algorand sodium library fork (LINK TO GITHUB),
+    to produce a public VRF key, and a private VRF key that will be kept as a secret by the node.
+    
+    Once these are created and associated with the given address, a keyreg transaction will take the account
+    online and have it start participating. An account record will be created for this account (if it did not
+    already exist in the Balance table $BT$), the VRF public key registered, as well as the public participation
+    key, the created intermediate batch keys and the first sub-batch of ephemeral keys. All private counterparts of 
+    these will be kept as secrets by the node and used extensively in succesive voting rounds, 
+    starting $\delta$ rounds after the keyreg transaction is committed inside a block (currently $\delta = 320$).
+
 
 
 
