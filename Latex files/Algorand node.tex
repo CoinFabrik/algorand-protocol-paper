@@ -2070,41 +2070,41 @@ if it has been observed.
 
 \begin{algorithm}[H]\label{algo:compute-seed}
     \begin{algorithmic}[1]
-    \Function{$ComputeSeedAndProof$}{$b, Address \ I$}
+    \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
         \If {$p = 0$}
-             \State $y \gets mathsf{VRF.Prove}(Ledger[r-\delta_s].Seed, I_{sk})$
-             \State $\alpha \gets \mathsf{H}(VRF.ProofToHash(y), I)$
-        \EndIf
-
-
-        \If{$B \neq empty\_block$} 
-            \State $\mathsf{return} \ VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
+             \State $y \gets \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
+             \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a.I)$
         \Else
-            \State $\mathsf{return} \ \mathsf{Hash}(ctx.LastBlock.seed||r)$
+            \State $y \gets 0$
+            \State $\alpha \gets \mathsf{H}(L[r-\delta_s].Seed)$
         \EndIf
+
+        \If{$r \mod \delta_s \delta_r < \delta_s$}
+            \State $Q \gets \mathsf{H}(\alpha||\mathsf{H}(L[r-\delta_s\delta_r]))$
+        \Else
+            \State $Q \gets \mathsf{H}(\alpha)$
+        \EndIf
+
+         \State $\mathsf{return} \ (Q, y)$
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{ComputeSeed}}
+    \caption{\underline{Compute Seed And Proof}}
 \end{algorithm}
 
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $b$ = the block whose seed is being computed
+    \item $Account \ I$
   \end{itemize}
 
 
 \noindent \textbf{Description:}\\
-This subroutine computes the required sortition seed for the given round number, 
-which goes in the proposed block's metadata.
-If the block is empty, the seed is a hash of the previous block's seed.
-The $get_{SK_a}(ctx, r)$ helper function gets the relevant account's secret ephemeral keys (according to the signing scheme described in specs, the keys 160 rounds prior to $r$).
-This roughly corresponds to the secret key from a round $b$ time before block $r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the current round's number,
-and $b$ is the upper bound for the maximum ammount of time that the network might be compromised.\\
+
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item the computed seed for the given block, ledger context and round
+    \item the computed seed for the given block, ledger context and round, as well as the sortition proof
+    to validate it
   \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
