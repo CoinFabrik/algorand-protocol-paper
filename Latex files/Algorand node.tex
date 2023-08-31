@@ -383,12 +383,13 @@ $Vote(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
 $vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j$) is bigger than the committee 
+and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge CommitteeThreshold(soft)$) is bigger than the committee 
 threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
 Imagine that the first time this happens, it cannot form a bundle. 
 
-Eventually it will and 
-It will broadcast the proposal if it is not in the proposal set $P$,
+Eventually it basically adds the accepted block to the ledger, modifies the state according
+to the new block, garbage collects and sets the new round.
+That is, it will broadcast the proposal if it is not in the proposal set $P$,
 and then commit $v$, calling $\mathsf{Commit}(v)$, set $r_{old}:=r$,
 and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
 ending the round.
@@ -448,16 +449,48 @@ order. It will record the current time when reset is called (e.g., by querying
 the OS where the node runs) and will report the elapsed time since the last reset
 in the latter case.
     \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
-etc etc
-    \item a network interface
-    \item A XX implementing the consensus algorithm
+etc etc.
+    \item a network interface.
+    \item A XX implementing the consensus algorithm.
     \item A database engine including at least the following tables:
 \end{itemize}
 
 
+There are currently seven transaction types on Algorand 
+ (Payment, 
+ Key Registration, 
+ Asset Configuration, 
+ Asset Freeze, 
+ Asset Transfer, 
+ Application Call, 
+ State Proof).
+A participation node keeps a transaction pool. 
+Whenever a transaction arrives, 
+  its signature is verified (if this is a smart signature, then it is checked against the AVM); those
+    which not pass are discarded, and the result is cached by those which do pass.
+  It checks that current round is inside the first valid (round) and last valid (round) included in the
+    transaction fields.
+  It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
+    transaction type and go as follows.
+  It checks that the genesis hash included in the transaction is the same as the one configured in the node.
+  If this is a payment transaction, it checks that the sender has sufficient funds for transfer and fee.
+  If this is a key  registration transaction, it checks the current round is inside the first valid (round) 
+    and last valid (round) defined in key registration transaction fields for the validity of the key.
+  If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
+    as the manager for this asset, and that this asset is not frozen among other checks.
+  If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
+    cases which include an opt in, in which a user technically "transfer an asset" to himself and in this
+    case it is only checked that the asset ID exists, 
+    a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
+    receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
+  If this is an application call, it runs the code against the AVM and may either discard the transaction or 
+    accept it (balance or state changes are not applied at this time).
+  If this is a state proof transaction, checks that the last attesting round is bigger than the current 
+    round for the node, and it also checks the structure of the state proof message.
+  Readers interested in more details should check the specifications (\cite{algorand:specs}).
+  Finally, the transaction is stored in the transaction pool. 
 
-A participation node keeps a transaction pool. Whenever a transaction arrives, its signature
-is verified, and it is stored in the transaction pool. Nodes do have a limit, e.g, they will
+Nodes do have a limit, e.g, they will
 keep 1,000 transactions and ignore the rest.\marginpar{is this ok?}
 These transactions are processed by the node as follows.
 \begin{itemize}
@@ -469,7 +502,7 @@ These transactions are processed by the node as follows.
     \item At some point, the node starts assembling the node. It will now rerun all transactions
     (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
     fail. If it succeeds, it may alter the ledger and balances for the next block. These 
-    changes are recorded.. Changes to the balances and ledger are temporary recorded and
+    changes are recorded. Changes to the balances and ledger are temporary recorded and
     checked for inconsistencies (e.g., local to the block creation)
     \item Once a timeout is reached, the node will collect all the changes into a block 
     proposal. e.
@@ -672,17 +705,17 @@ where
     \item
     $V$ is the set of all {\sf valid observed votes}\index{valid observed votes} and 
     {\sf equivocation votes}\index{equivocation votes} in the current execution state
-    ($(r,p,s)$)
+    ($(r,p,s)$).
     
     \item
     $P$ is the set of all {\sf valid observed proposals}\index{valid observed proposals}
-    in the current execution state ($(r,p,s)$)
+    in the current execution state ($(r,p,s)$).
     
     \item
-    $\bar{v}$ is the pinned proposal-value
+    $\bar{v}$ is the pinned proposal-value.
     
     \item
-    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}\index{last finished step}
+    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}\index{last finished step}.
     
     \item
     $L$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
@@ -691,10 +724,22 @@ where
     hash components, a ledger state unambiguously defines the whole history of state changes.}. 
     
     \item
-    $BT$ is the current balance table as described above.
-    
+    $BT$ is the current balance table that includes 
+      the ALGO owned by each account, 
+      the ASA owned by each account (when an account opts-in to an ASA, an entry is created within his records for
+        this ASA--and he must have a minimum balance for this to happen),
+      the local storage for all the applications that the account has opted in (same as above, he needs a minumum
+        ALGO balance for this),
+      the global storage for this account--in case it belongs to a smart contract,
+      the consensus participation status of this account (e.g., if this account is online and voting or not),
+      in case the account is online and voting, it also includes 
+        the public VRF key (selection key),
+        a public participation key, 
+        a set of public batch participation keys, 
+        and a set of public sub-batch ephemeral keys.
+
     \item
-    $TP$ is the node's transaction pool
+    $TP$ is the node's transaction pool.
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -705,7 +750,7 @@ whereas $L$ and $BT$ are {\sf ledger state parameters}.\index{ledger state param
 
 Let round and period number, $r$ and $p$, be unsigned 64-bits integers. 
 step number, $s$, be an unsigned 8 bits integer.
-For convenience and readability, we define the following enumeration for step number:
+For convenience and readability, we define the following step name - step enumeration assignment:
 \begin{equation}\label{table:s}
 \left\{    
     \begin{array}{ll}
@@ -867,12 +912,12 @@ a signature and VRF proof of the proposal-value.
 %claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
 For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
 $v$,  such that $Proposal(v) = e$ if, and only if, $e$ is the proposal that, when hashed, corresponds 
-to the block hash $H(e)$ of the proposal value $v$. \marginpar{ENtonces $H(e)=v$?}
+to the block hash $H(e)$ of the proposal value $v$. 
 The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
 $Proposal_{value}(e) = v$ if $Proposal(v) = e$.
-$Proposal()$ is not a bijective function (as hashes can theoretically collide), however we assume the inverse
-exists and has a defined output whenever the relevant proposal has been observed by the node
-(and is such that $e \in P$).\marginpar{Que es el cjto P?}
+Every time the function $Proposal()$ is called, both input and output are stored
+in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
+by a table lookup--and no inconsistencies on bijectivity happen by construction.
 
 %where P is the set of all observed proposals in a given round and period (en realidad tenes las del periodo anterior y el
 %siguiente disponibles tambien).
@@ -960,9 +1005,9 @@ may end by broadcasting data to other nodes.
         \ElsIf{$time = \mathsf{FilterTimeout}(p)$}
             \State $s:=2$; $\mathsf{SoftVote}()$
         \ElsIf{$time = \max\{4\lambda, \Lambda \}$}
-            \State $\mathsf{Recovery}(next_0)$
-        \ElsIf{$time = \max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r, st \in [4, 252], r \in U[0, 2^{st-3}\lambda]$}
-            \State $\mathsf{Recovery}(next_{st-3})$
+            \State $s:=3$; $\mathsf{Recovery}()$
+        \ElsIf{$time\in[\max\{4\lambda, \Lambda \} + 2^{s_t-3}\lambda, \max\{4\lambda, \Lambda \} + 2^{s_t-2}\lambda)$ for some $s\le s_t \le 252$}
+            \State $s:=s_t $; $\mathsf{Recovery}()$
         \ElsIf{$time = k\lambda_f + r, k \in \mathbb{Z} \land k>0, r \in U[0, \lambda_f]$}
             \State $\mathsf{FastRecovery}()$
         \EndIf
@@ -1316,7 +1361,7 @@ the current proposal value is cast.
             \ElsIf{$vt.step > cert$}
                 \If{$\exists v | Bundle(vt.round,vt.period,vt.step,v) \subset V$}
                     \State $p_{old} \gets p$
-                    \State $\mathsf{StartNewPeriod}(vt.period)$
+                    \State $\mathsf{StartNewPeriod}(vt.period + 1)$
                     \State $\mathsf{GarbageCollect}(r, p_{old})$
                 \EndIf
             \EndIf
@@ -1426,22 +1471,21 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
         \caption{\underline{Recovery}}
         \label{algo:recovery}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{Recovery}$}{$uint64 \ k$}
+        \Function{$\mathsf{Recovery}$}{}
 
         \State $\mathsf{ResynchronizationAttempt}()$
-        \State $s \gets next_k$
     
         \For{$Account \ a \in A$}
             \State $cred \gets 
-            \mathsf{\mathsf{Sortition}}(a_{sk}, next_k)$
+            \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
             \If{$cred.j > 0$}
-                \If{$\exists v | \mathsf{IsCommitable}(v)$}
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, next_k, v, cred))$
+                \If{$\exists v=Proposal_{value}(e) $ for some $e\in P | \mathsf{IsCommitable}(v)$}
+                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, v, cred))$
                 \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.65cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, next_k, \bar{v}, cred))$
+                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, \bar{v}, cred))$
                 \Else
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, next_k, \bot, cred))$
+                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, \bot, cred))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1451,7 +1495,7 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
     
     
     \noindent \textbf{Description:}\\
-The recovery algorithm that is executed periodically every X seconds, 
+The recovery algorithm that is executed every X seconds, 
 whenever a $cert$ bundle has not been observed before $\mathsf{FilterTimeout}(p)$ for a given period $p$. \\
 On line 2 it starts by making a resynchronization attempt. Then on line 3 the node's step is updated.\\
 Afterwards, the node plays for each managed account. For each account that is selected to be a part of the voting committee for the current
@@ -1624,12 +1668,12 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Proposal_{value} \ v$, a value to check for commitability
+    \item $Proposal_{value} \ v$, a value to check for committability.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-Checks that the value $v$ is commitable in the current node's context.
-To be commitable, the two conditions outlined in line 2 have to be met.
+Checks that the value $v$ is committable in the current node's context.
+To be committable, the two conditions outlined in line 2 have to be met.
 That is, the corresponding proposal that the value refers to has to be
 available (have been observed in the current round), and there must
 be a valid bundle of soft votes for $v$ observed during the current round and
@@ -1637,7 +1681,7 @@ period. \\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item A boolean value indicating commitability of the argument $v$
+    \item A boolean value indicating committability of the argument $v$.
   \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
@@ -1657,14 +1701,16 @@ period. \\
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Proposal_{value} \ v$, a proposal-value to be commited
+    \item $Proposal_{value} \ v$, a proposal-value to be committed.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-Commits the corresponding proposal for the value passed by parameter into the ledger.
-As a precondition, the value is commitable (which implies validity and availability of the full
+Commits the corresponding block for the proposal value received into the ledger.
+The proposal value must be committable (which implies validity and availability of the full
 ledger entry and seed).
-Afterwards, updates the balance table with all state changes called for in the commited entry.
+Line 2 means the algorithm will append the proposal that is retrieved by calling $Proposal(v)$ and
+includes the block $e$, the seed $\pi$, the period $p$, and the address $I$ for the received proposal value.
+Afterwards, it updates the balance table $BT$ with all state changes called for the committed entry.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1814,7 +1860,7 @@ and the hash of the msgpack encoding of the block.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Procedure used to verify a received Bundle, through a series 
+This procedure verifies a received Bundle, through a series 
 of checks.
 On line 2, it ensures that all individual constituting $b$
 are individually valid.
@@ -1831,9 +1877,34 @@ the bundle would not be complete).
 After all aformentioned checks have passed, a boolean true value is returned.
 If any of them failed, a false value is returned instead, and $b$ is deemed invalid.
 
-Define *******
-$CommitteeThreshold(b.s)=5$
-*****
+Here
+$$
+CommitteeSize(s):= \left\{
+\begin{array}{rl}
+     20 & \text{ if }s = Proposal \\
+   2990 & \text{ if }s = Soft \\
+   1500 & \text{ if }s = Cert \\
+    500 & \text{ if }s = Late \\
+   2400 & \text{ if }s = Redo \\
+   6000 & \text{ if }s = Down \\
+   5000 & \text{otherwise}
+\end{array}
+\right.
+$$
+Committee Threshold: $CommitteeThreshold(s)$ is a 64-bit integer defined as follows:
+$$
+CommitteeThreshold(s):= \left\{
+\begin{array}{rl}
+     0 &  \text{ if }s = Proposal \\
+  2267 &  \text{ if }s = Soft \\
+  1112 &  \text{ if }s = Cert \\
+   320 &  \text{ if }s = Late \\
+  1768 &  \text{ if }s = Redo \\
+  4560 &  \text{ if }s = Down \\
+  3838 &  \text{otherwise}
+\end{array}
+\right.
+$$
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1847,6 +1918,7 @@ $CommitteeThreshold(b.s)=5$
     \State $r \gets newRound$
     \State $p \gets 0$
     \State $s \gets proposal$
+    \State Reset $time$.
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -1856,7 +1928,7 @@ Procedure used to set all state variables necessary to start a new round.
 Last finished step is set to the step where the previous round culminated.
 Pinned proposal-value is set to the empty proposal-value as the round is just starting.
 The current round number gets updated to the freshly started round.
-Period and step number are set to $0$ and $proposal$ respectively.
+Period and step number are set to $0$ and $proposal=0$ respectively.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1867,7 +1939,7 @@ Period and step number are set to $0$ and $proposal$ respectively.
     \State $\bar{s} \gets s$
     \State $s \gets proposal$
 
-    \If{$\exists v,s^\prime \ | \ v \neq \bot \land (s^\prime = soft \lor s^\prime > cert)  
+    \If{$\exists v=Proposal_{value}(e),s^\prime \ | e\in P, \ v \neq \bot \land (s^\prime = soft \lor s^\prime > cert)  
     \land Bundle(r, newPeriod-1, s, v) \subset V$}
         \State $\bar{v} \gets v$
     \ElsIf{$\sigma(r,p) \neq \bot$}
@@ -1875,7 +1947,7 @@ Period and step number are set to $0$ and $proposal$ respectively.
     \EndIf
 
     \State $p \gets newPeriod$
-
+    \State Reset $time$.
     \EndFunction
     \end{algorithmic}
     \caption{\underline{StartNewPeriod}}
@@ -1921,6 +1993,9 @@ Garbage collection algorithm, for the finished $(r,p)\in\mathbb{Z}_{\ge 0}^2$ co
 The procedure discards all votes in $V$ and proposals in $P$ where the round of emission is less than the
 new round, or the round of emission is equal to the new round and the period of emission is below the period
 directly before the current one.
+In particular, when starting a new round both $V$ and $P$ are set to the empty set,
+if this is a new period for the same round, it keeps votes and proposals for the current round
+and both the current and previous periods.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2280,3 +2355,5 @@ observed stake.\\
 
 % misssing
 % falta explicar como las accounts hacen online / offline
+% falta hablar de state proofs
+% transaction reference
