@@ -266,7 +266,7 @@ In a vanilla run scenario and at this point, the period is zero ($p=0$).
 The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
 sets $v$ as the proposal value obtained from the block $e$ and does two separate 
 broadcasts for $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
-
+Also, we enter the "soft vote" step setting $s:=1$.
 
 
 % adp:
@@ -382,9 +382,12 @@ When the main algorithm receives a message of type vote
 $Vote(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
-$vt\in V$ with round $vt.r=r, vt.p=0, vt.s=proposal$ that have the same vote $vt.v$ 
-and such that the sum of its weights is bigger than the committee 
-threshold. \marginpar{improve expl.}
+$vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
+and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j$) is bigger than the committee 
+threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
+Imagine that the first time this happens, it cannot form a bundle. 
+
+Eventually it will and 
 It will broadcast the proposal if it is not in the proposal set $P$,
 and then commit $v$, calling $\mathsf{Commit}(v)$, set $r_{old}:=r$,
 and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
@@ -953,9 +956,9 @@ may end by broadcasting data to other nodes.
     \If{$ev \ is \ TimeoutEvent$}
         \State $time \gets ev.time$
         \If{$time = 0$}
-            \State $\mathsf{BlockProposal}()$
+            \State $\mathsf{BlockProposal}()$; $s:=1$
         \ElsIf{$time = \mathsf{FilterTimeout}(p)$}
-            \State $\mathsf{SoftVote}()$
+            \State $s:=2$; $\mathsf{SoftVote}()$
         \ElsIf{$time = \max\{4\lambda, \Lambda \}$}
             \State $\mathsf{Recovery}(next_0)$
         \ElsIf{$time = \max\{4\lambda, \Lambda \} + 2^{st-3}\lambda + r, st \in [4, 252], r \in U[0, 2^{st-3}\lambda]$}
@@ -1137,7 +1140,7 @@ The soft vote stage (also known as ``filtering'') is run after a timeout of $\ma
 (where $p$ is the executing period of the node) is observed by the node. 
 That is to say, filtering is triggered after either a $2\cdot\lambda_0$ or $2\cdot\lambda$ timeout is observed according 
 to whether $p=0$ or $p>0$ respectively.
-Let $V*$ be all proposal votes received. 
+Let $V*$ be all proposal votes received, e.g., $V*=\{vt^\prime\in V : vt^\prime.step = proposal\}$.
 With the aid of a priority hash function, this stage performs a filtering action,
 keeping the lowest hashed value observed.
 The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
@@ -1267,14 +1270,15 @@ the current proposal value is cast.
                 \State $\mathsf{return}$ \ //ignore vote of past round
             \EndIf
 
-            \If{$vt.round = r+1 \land (vt.period > 0 \lor vt.step \in (cert, late))$}
+            \If{$vt.round = r+1 \land (vt.period > 0 \lor vt.step \in \{next_0,\ldots, next_{249}\})$}
                 \State $\mathsf{return}$ \ //ignore vote of next round if non-zero period or $next_k$ step
             \EndIf
 
-            \If{$vt.round = r \land (vt.period \notin [p-1, p+1] \lor$ \\
-            $(vt.period = p+1 \land vt.step \in (next_0, late)) \lor$ \\
-            $(vt.period = p \land vt.step \in (next_0, late) \land vt.step \notin [s-1, s+1]) \lor$ \\
-            $(vt.period = p-1 \land vt.step \in (next_0, late) \land vt.step \notin [\bar{s}-1, \bar{s}+1]))$}
+            % cambiar parentesis y corchetes por \{ \}
+            \If{$vt.round = r \land (vt.period \notin \{p-1,p, p+1\} \lor$ \\
+            $(vt.period = p+1 \land vt.step \in \{next_1,\ldots, next_{249}\}) \lor$ \\
+            $(vt.period = p \land vt.step \in \{next_1,\ldots, next_{249}\} \land vt.step \notin \{s-1,s, s+1\}) \lor$ \\
+            $(vt.period = p-1 \land vt.step \in \{next_1,\ldots, next_{249}\} \land vt.step \notin \{\bar{s}-1, \bar{s},\bar{s}+1\}))$}
                 \State $return$ \ //ignore vote
             \EndIf
 
@@ -1826,6 +1830,10 @@ votes is greater or equal to the corresponding committee threshold (otherwise,
 the bundle would not be complete).
 After all aformentioned checks have passed, a boolean true value is returned.
 If any of them failed, a false value is returned instead, and $b$ is deemed invalid.
+
+Define *******
+$CommitteeThreshold(b.s)=5$
+*****
 
 % ----------------------------------------------------------------------------------------------
 
