@@ -216,6 +216,22 @@ iterates over all the accounts that are registered in the node.
 % aw:
 % no me queda claro si ademas de ejecutar las tranasacciones stateful, tambien aplica cambios. como quien cuando?
 %
+% adp: Ah, esto internamente funciona asi. Una proposal es un bloque junto con todo lo necesario para validarlo.
+% https://github.com/algorand/go-algorand/blob/2670e9493688696b3649dd67ccff5dbb353bf6e8/ledger/ledgercore/validatedBlock.go#L27
+%Basicamente, adentro de una proposal tenes una unauthenticatedProposal (donde vas a tener el bloque pelado, la VRFProof de la semilla, 
+%el periodo original y la address del propositor original). Ademas, tenes un validatedBlock, que contiene adentro el delta de estado que resultaria
+%de aplicar el bloque (logicamente solo los campos relevantes). Igual esto es completamente opcional, y si hubiese en el medio ponele un corte de luz,
+%eso no queda guardado a long term storage (como si los votos y bloques). Entonces, cuando esto va vacio por h o por b, el fallback es computar
+%esos cambios on commitment. Pero rigurosamente tiene un cache para acelerar las cosas.
+
+%Como este tiene algunos otros truquitos, no se hasta que punto incluirlos y ser riguroso y hasta que punto empantanan el entendimiento del 
+%protocolo como tal. Deberiamos:
+%describirlos en detalle igual y considerarlos en todo momento
+%describirlos brevemente con algun nivel de formalidad/informalidad y despues abstraerlos
+%obviarlos para este paper (no asi el simulador) porque son opcionales y no afectan la logica per se del sistema
+%Yo votaria por la segunda pero opinion?
+
+%
 % sortition
 
 For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
@@ -1707,8 +1723,11 @@ block fields are zeroes).
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{MakeProposal}$}{$Block \ e, VRFProof, uint64 \ p_{orig}, Address \ I_{orig}$}
+    \Function{$\mathsf{MakeProposal}$}{$Block \ e, \pi_{seed}, uint64 \ p_{orig}, Address \ I_{orig}$}
     %el bloque se asume ya validado
+
+    \State $proposal prop \gets (e, \pi_{seed}, p_{orig}, I_{orig})$
+    \State $\mathsf{return} \ prop$
 
     
 
@@ -1719,7 +1738,10 @@ block fields are zeroes).
 
 % https://github.com/algorand/go-algorand/blob/master/agreement/proposal.go#L104
 
-\noindent \textbf{Description:}\\ 
+\noindent \textbf{Description:}\\ This function takes a block (which should have been validated by the node),
+a VRF proof of the seed in the block header, the original period in which it was created and the address of the
+original proposer (creator) of said block. It then packages the block, and all the other data which corresponds
+with everything needed to validate it, into a $proposal$ structure.
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]\label{proposal-value}
@@ -1965,7 +1987,13 @@ if it has been observed.
 
 \begin{algorithm}[H]\label{algo:compute-seed}
     \begin{algorithmic}[1]
-    \Function{$ComputeSeed$}{$b$}
+    \Function{$ComputeSeedAndProof$}{$b, Address \ I$}
+        \If {$p = 0$}
+             \State $y \gets mathsf{VRF.Prove}(Ledger[r-\delta_s].Seed, I_{sk})$
+             \State $\alpha \gets \mathsf{H}(VRF.ProofToHash(y), I)$
+        \EndIf
+
+
         \If{$B \neq empty\_block$} 
             \State $\mathsf{return} \ VRF_{get_{SK_a}(ctx, r)}(ctx.LastBlock.seed||r$)
         \Else
