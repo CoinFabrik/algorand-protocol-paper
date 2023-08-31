@@ -181,12 +181,12 @@ to read the timer.
 % As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
 As the main algorithm starts a round, it receives a self message with $timer=0$.
 then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
-% block assembly
-The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the 
-block assembly step (Algorithm \ref{algo:assemble-block}), which in short, computes a 
-block $e$ associated to a proposal $proposal$ (see Section~\ref{sect:avm})\marginpar{que 
-onda, aca tiene un clon del estado que presenta como candidato?}.
-\marginpar{preguntar por que la avm aca}.
+
+
+
+The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the main loop. Said loop
+iterates over all the accounts that are registered in the node.
+
 %adp
 %Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
 %En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
@@ -217,7 +217,7 @@ onda, aca tiene un clon del estado que presenta como candidato?}.
 % no me queda claro si ademas de ejecutar las tranasacciones stateful, tambien aplica cambios. como quien cuando?
 %
 % sortition
-It next loops over all the accounts that are registered to the node. 
+
 For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
 which basically runs a Verifiable Random Function in order to decide whether this account 
 can vote (by picking a random value) and provide a proof that the random value was generated according
@@ -247,8 +247,11 @@ When it is nonzero, the node participates in the proposal voting representing th
 %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
 %for some number of steps $s\in\Z_{\ge 0}$, then
 In a vanilla run scenario and at this point, the period is zero ($p=0$). 
-The algorithm sets $v$ as the proposal value obtained from the block $e$ and does two separate 
+The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
+sets $v$ as the proposal value obtained from the block $e$ and does two separate 
 broadcasts for $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
+
+
 
 % adp:
 %Cabe aclarar aca que si tenes dos o mas cuentas seleccionadas para participar, queda a discreción de la impl.
@@ -1683,8 +1686,8 @@ boolean indicating whether authentication succeeded or failed.
     \begin{algorithmic}[1]
     \Function{$\mathsf{Proposal}$}{$Proposal_{value} \ v$}
 
-    \If{$\exists e \in P | Proposal_{value}(e) = v$}
-        
+    \If{$\exists e \in P \ | \ Proposal_{value}(e) = v$}
+        \State $\mathsf{return} \ \mathsf{Proposal}(\bot) $
     \EndIf
 
     \EndFunction
@@ -1692,17 +1695,38 @@ boolean indicating whether authentication succeeded or failed.
     \caption{\underline{Proposal}}
 \end{algorithm}
 
-\noindent \textbf{Description:}\\ Gets the proposal associated to a given value, if it has been observed.
-Otherwise returns undefined. Here we ignore the theoretical possibility of a collision
+\noindent \textbf{Description:}\\ Gets the proposal associated to a given proposal-value, 
+if it has been observed in the current context.
+Otherwise returns $\mathsf{Proposal}(\bot)$, defined as the "empty block" (special value where all
+block fields are zeroes).
+%esto no esta en una sola referencia de codigo, sino que abstrae varias cosas
+%internamente hay una tabla que matchea proposal votes (que contienen el proposal value)
+%con bloques. Esto es porque la validacion es asincronica y necesitas, si llegas a validar la proposal,
+%saber que contas con el voto para no descartarla y desperdiciar todo ese computo (que es caro)
+% ----------------------------------------------------------------------------------------------
 
+\begin{algorithm}[H]
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{MakeProposal}$}{$Block \ e, VRFProof, uint64 \ p_{orig}, Address \ I_{orig}$}
+    %el bloque se asume ya validado
+
+    
+
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{Make Proposal}}
+\end{algorithm}
+
+% https://github.com/algorand/go-algorand/blob/master/agreement/proposal.go#L104
+
+\noindent \textbf{Description:}\\ 
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]\label{proposal-value}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ e$}
 
-    //pack and hash
-    \State $proposal_{value} v \gets (I, p, \mathsf{H}(e), \mathsf{H}(Encoding(e)))$
+    \State $proposal_{value} \ v \gets (e.I_{orig}, e.p_{orig}, \mathsf{H}(e), \mathsf{H}(\mathsf{Encoding}(e)))$
 
     \State $\mathsf{return} \ v$
 
@@ -1711,7 +1735,11 @@ Otherwise returns undefined. Here we ignore the theoretical possibility of a col
     \caption{\underline{Proposal-value}}
 \end{algorithm}
 
-\noindent \textbf{Description:}\\ 
+\noindent \textbf{Description:}\\ Constructs a proposal-value $v$ for the input block $e$.
+The resulting proposal-value is a tuple that contains the address of the original proposer for
+the block, the original period in which it was assembled, the hash of the block (taken as plain bytes) 
+and the hash of the msgpack encoding of the block.
+%https://github.com/algorand/go-algorand/blob/master/agreement/proposal.go#L78C1-L78C6
 
 % ----------------------------------------------------------------------------------------------
 
