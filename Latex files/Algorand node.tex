@@ -265,7 +265,7 @@ When it is nonzero, the node participates in the proposal voting representing th
 In a vanilla run scenario and at this point, the period is zero ($p=0$). 
 The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
 sets $v$ as the proposal value obtained from the block $e$ and does two separate 
-broadcasts for $Vote(a.I, r,p, proposal, v, cred)$ and $e$.
+broadcasts for $\mathsf{Vote}(a.I, r,p, proposal, v, cred)$ and $e$.
 Also, we enter the "soft vote" step setting $s:=1$.
 
 
@@ -314,7 +314,7 @@ It also exits if the vote received has already been recorded in the votes set $V
 If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
 to other nodes.
 Since nodes are synchronized, it holds that $vt.s=0=proposal$, the algorithm checks if 
-$Proposal(vt.v)\in P$ and broadcasts this proposal if it is, ignoring if it is not.
+$\mathsf{Proposal}(vt.v)\in P$ and broadcasts this proposal if it is, ignoring if it is not.
 %aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
 %adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
     % solo observa (aka agrega el voto a V) y broadcastea ese voto.
@@ -369,21 +369,21 @@ it computes \marginpar{fix notation!}
 $$
 (sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
 $$
-and, if $j>0$ it broadcasts $Vote(r,p,soft,v,credential^{\prime\prime})$.
-Moreover, if the proposal $p:=Proposal(v)$ is in $P$, it also broadcasts $p$.
+and, if $j>0$ it broadcasts $\mathsf{Vote}(r,p,soft,v,credential^{\prime\prime})$.
+Moreover, if the proposal $p:=\mathsf{Proposal}(v)$ is in $P$, it also broadcasts $p$.
 
 % timer > FilterTimeout(p), s=1=proposal. handle-poposal
 When the main algorithm receives a message of type vote 
-$Proposal(Vote(r,p,soft,v,credential))$ as above, it will
+$\mathsf{Proposal}(\mathsf{Vote}(r,p,soft,v,credential))$ as above, it will
 run the handle proposal algorithm as before.
 
 % timer > FilterTimeout(p), s=1=proposal. handle-vote
 When the main algorithm receives a message of type vote 
-$Vote(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
+$\mathsf{Vote}(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
 $vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge CommitteeThreshold(soft)$) 
+and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge \mathsf{CommitteeThreshold}(soft)$) 
 is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
 Imagine that the first time this happens, it cannot form a bundle. 
 
@@ -424,7 +424,7 @@ $P = P\setminus P_{(r,p-1)}$.
 % %no es necesario sortition porque es simplemente forwardear.
 % extract $cred.j$ and, if it is nonzero, broadcast the vote:
 % $$
-%     \mathsf{Broadcast}(Vote(a.I,r,p,cert,v,cred))
+%     \mathsf{Broadcast}(\mathsf{Vote}(a.I,r,p,cert,v,cred))
 % $$
 % else do nothing.
 % After this, the algorithm finishes and the event handler is called again.
@@ -911,11 +911,11 @@ a signature and VRF proof of the proposal-value.
 
 %claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
 For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
-$v$,  such that $Proposal(v) = e$ if, and only if, $e$ is the proposal that, when hashed, corresponds 
+$v$,  such that $\mathsf{Proposal}(v) = e$ if, and only if, $e$ is the proposal that, when hashed, corresponds 
 to the block hash $H(e)$ of the proposal value $v$. 
-The $Proposal()$ function has an inverse, $Proposal_{value}(e)$, such that
-$Proposal_{value}(e) = v$ if $Proposal(v) = e$.
-Every time the function $Proposal()$ is called, both input and output are stored
+The $\mathsf{Proposal}()$ function has an inverse, $Proposal_{value}(e)$, such that
+$Proposal_{value}(e) = v$ if $\mathsf{Proposal}(v) = e$.
+Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
 in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
 by a table lookup--and no inconsistencies on bijectivity happen by construction.
 
@@ -931,7 +931,7 @@ We define an auxiliary structure, $credentials$, useful in voting, with the foll
 \end{itemize}
 An object of this type is output by the $\mathsf{Sortition}()$ procedure.
 
-A vote $vt$, constructed as $Vote(I,r,p,s,v,cred)$ is a tuple with the following members:
+A vote $vt$, constructed as $\mathsf{Vote}(I,r,p,s,v,cred)$ is a tuple with the following members:
 \begin{itemize}
     \item $I$ is a valid Algorand address (in 32-byte format).
     \item $r$ is the vote's round (64-bit integer).
@@ -954,7 +954,7 @@ $credentials$ fields.
 Let $I$ be an address, $r, s, p\in\mathbb{Z}_{\ge 0}$, $cred$ a credential, and $v_0,v_1$ different
 vote proposals.
 An {\sf equivocation vote}\index{equivocation vote} happens when a pair of votes
-$vt_0 = Vote(I, r, p, s, v_0, cred)$ and $vt_1 = Vote(I, r, p, s, v_1, cred)$.
+$vt_0 = \mathsf{Vote}(I, r, p, s, v_0, cred)$ and $vt_1 = \mathsf{Vote}(I, r, p, s, v_1, cred)$.
 An equivocation vote is valid if both of its constituent votes are valid.
 It is important to keep in mind that nodes are forbidden from equivocating 
 on any steps $s \neq soft$.\marginpar{What does this mean? How do nodes enforce this?}
@@ -984,7 +984,7 @@ node.
 % ------------------------------------------------------------------------
 \begin{section}{Main algorithm}
 % Broadcast(e) = Event(type=proposal-payload, data=e, sign=Signature(pk_sender, e))
-% Broadcast(Vote(....)) = Event(type=vote, data=Vote(....), sign=Signature(pk_sender, Vote(....)))
+% Broadcast(\mathsf{Vote}(....)) = Event(type=vote, data=\mathsf{Vote}(....), sign=Signature(pk_sender, \mathsf{Vote}(....)))
 %
 % Broadcast(Bundle) = Event(type=bundle, data={v for v in Bundle}, sign=Signature(pk_sender, {v for v in Bundle}))
 
@@ -1102,14 +1102,14 @@ the corresponding construct (coinciding with their attached data type field).
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         \State $e \gets \mathsf{AssembleBlock}()$
                         \State $v \gets Proposal_{value}(e)$
-                        \State $\mathsf{Broadcast}(Vote(a.I, r, p, proposal, v, cred))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
                     \Else
                         %VER. Convencerme de que siempre es el pinned value
                         %\State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
-                        \State $\mathsf{Broadcast}(Vote(a.I, r, p, proposal, \bar{v}, cred))$
-                        \If{$Proposal(\bar{v}) \in P$}
-                            \State $\mathsf{Broadcast}(Proposal(\bar{v}))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, proposal, \bar{v}, cred))$
+                        \If{$\mathsf{Proposal}(\bar{v}) \in P$}
+                            \State $\mathsf{Broadcast}(\mathsf{Proposal}(\bar{v}))$
                             % proposal(\bar v) es un broadcast de un e 
                         \EndIf
                     \EndIf
@@ -1168,9 +1168,9 @@ if the corresponding full proposal has been observed, then it is also broadcast.
         \For{$Account \ a \in A$}
             \State $cred \gets \mathsf{Sortition}(a, soft)$
             \If{$cred.j > 0$}
-                \State $\mathsf{Broadcast}(Vote(r, p, soft, v, cred))$
-                \If{$Proposal(v) \in P$}
-                    \State $\mathsf{Broadcast}(Proposal(v))$
+                \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
+                \If{$\mathsf{Proposal}(v) \in P$}
+                    \State $\mathsf{Broadcast}(\mathsf{Proposal}(v))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1242,7 +1242,7 @@ output in its filtering step.
                     \State $cred \gets 
                     \mathsf{Sortition}(a, cert)$
                     \If{$cred.j > 0$}
-                        \State $\mathsf{Broadcast}(Vote(a.I, r, p, cert, v,  cred))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, cert, v,  cred))$
                     \EndIf
                 \EndFor    
             \EndIf
@@ -1331,9 +1331,9 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             \State $\mathsf{Relay}(vt)$
 
             \If{$vt.step = proposal$}
-                \If{$Proposal(vt.v) \in P$}
+                \If{$\mathsf{Proposal}(vt.v) \in P$}
                     %P*? Que onda el sortition aca?
-                    \State $\mathsf{Broadcast}(Proposal(vt.v))$
+                    \State $\mathsf{Broadcast}(\mathsf{Proposal}(vt.v))$
                 \EndIf
             \ElsIf{$vt.step = soft$}
                 %check if soft bundle has been achieved
@@ -1343,14 +1343,14 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                         \State $cred \gets 
                         \mathsf{Sortition}(a_{sk}, cert)$
                         \If{$cred.j > 0$}
-                            \State $\mathsf{Broadcast}(Vote(a.I, r, p, cert, v, cred))$
+                            \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, cert, v, cred))$
                         \EndIf
                     \EndFor
                 \EndIf
             \ElsIf{$vt.step = cert$}
                 %check if cert bundle has been achieved
                 \If{$\exists v | Bundle(vt.round,vt.period,cert,v) \subset V$}
-                    \If{$Proposal(v) \notin P$}
+                    \If{$\mathsf{Proposal}(v) \notin P$}
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
@@ -1394,14 +1394,14 @@ its step is not within a distance of one away from the node's last finished step
 then the vote is ignored and discarded. \\
 Once finished with the series of validation checks, the vote is observed on line 18, relayed on line 19, and then processed.
 The node will determine the desired output according to its current context and the vote's step.
-If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $Proposal(v)$ is broadcast if it has been observed 
+If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $\mathsf{Proposal}(v)$ is broadcast if it has been observed 
 (that is, the player performs a re-proposal payload broadcast).
 If the vote's step is $soft$ (lines 19 through 24), and a $soft$ Bundle has been observed with the addition of the vote on line 19,
 the $Sortition$ sub-procedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
 the lottery, a $cert$ vote is cast as output (line 25).
 If the vote's step is $cert$ (lines 26 through 32), and observing the vote causes the node to observe a $cert$ Bundle for a proposal-value $v$,
 then it checks if the full proposal associated to the critical value has been observed (line 28). Note that simultaneous observation of a $cert$ Bundle 
-for a value $v$ and of a proposal $e = Proposal(v)$ implies it that the associated entry committed.
+for a value $v$ and of a proposal $e = \mathsf{Proposal}(v)$ implies it that the associated entry committed.
 Had the full proposal not been observed at this point, the node may stall and request the full proposal from the network.
 Once the desired block can be committed, on lines 30:32 the node proceeds to commit, start a new round, and garbage collect all
 transient data from the round it just finished.
@@ -1480,12 +1480,12 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
             \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
             \If{$cred.j > 0$}
                 \If{$\exists v=Proposal_{value}(e) $ for some $e\in P | \mathsf{IsCommitable}(v)$}
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, v, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, v, cred))$
                 \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.65cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, \bar{v}, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, \bar{v}, cred))$
                 \Else
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, s, \bot, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, \bot, cred))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1528,7 +1528,7 @@ from equivocating in $next$ votes.
                 \State $cred \gets 
                 \mathsf{Sortition}(a_{sk}, late)$
                 \If{$cred.j > 0$}
-                    \State $\mathsf{Broadcast}(Vote(a.I, r, p, late, v, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, late, v, cred))$
                 \EndIf
 
             \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
@@ -1536,14 +1536,14 @@ from equivocating in $next$ votes.
                     \State $cred \gets 
                     \mathsf{Sortition}(a_{sk}, redo)$
                     \If{$cred.j > 0$}
-                        \State $\mathsf{Broadcast}(Vote(r,p,redo,\bar{v}, cred))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,redo,\bar{v}, cred))$
                     \EndIf
 
             \Else
                 \State $cred \gets 
                 \mathsf{Sortition}(a_{sk}, down)$
                 \If{$cred.j > 0$}
-                    \State $\mathsf{Broadcast}(Vote(r,p,down,\bot, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,down,\bot, cred))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1659,7 +1659,7 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
-    \State $\mathsf{return} \ Proposal(v) \in P \land Bundle(r,p,soft,v) \subset V$
+    \State $\mathsf{return} \ \mathsf{Proposal}(v) \in P \land Bundle(r,p,soft,v) \subset V$
 
     \EndFunction
     \end{algorithmic}
@@ -1690,8 +1690,8 @@ period. \\
     \begin{algorithmic}[1]
     \Function{$\mathsf{Commit}$}{$Proposal_{value} \ v$}
 
-    \State $L \gets L || Proposal(v)$
-    \State $UpdateBT(Proposal(v))$
+    \State $L \gets L || \mathsf{Proposal}(v)$
+    \State $UpdateBT(\mathsf{Proposal}(v))$
 
     \EndFunction
     \end{algorithmic}
@@ -1708,7 +1708,7 @@ period. \\
 Commits the corresponding block for the proposal value received into the ledger.
 The proposal value must be committable (which implies validity and availability of the full
 ledger entry and seed).
-Line 2 means the algorithm will append the proposal that is retrieved by calling $Proposal(v)$ and
+Line 2 means the algorithm will append the proposal that is retrieved by calling $\mathsf{Proposal}(v)$ and
 includes the block $e$, the seed $\pi$, the period $p$, and the address $I$ for the received proposal value.
 Afterwards, it updates the balance table $BT$ with all state changes called for the committed entry.
 
@@ -2047,8 +2047,8 @@ and both the current and previous periods.
         \State $val = v$
     \EndIf
 
-    \If{$val \neq \bot \land Proposal(v) \in P$}
-        \State $\mathsf{Broadcast}(Proposal(v))$
+    \If{$val \neq \bot \land \mathsf{Proposal}(v) \in P$}
+        \State $\mathsf{Broadcast}(\mathsf{Proposal}(v))$
     \EndIf
 
     \EndFunction
@@ -2063,7 +2063,7 @@ Otherwise, if a recovery step bundle for an empty proposal-value $\bot$ was obse
 It's broadcast.
 Else, if there is a recovery step $s_0$ and a non-empty proposal-value $v$ for which a bundle was observed in the previous
 period, it's broadcast.
-Finally, if any Bundles were broadcast for a proposal-value $v$, the corresponding proposal $Proposal(v)$ is broadcast
+Finally, if any Bundles were broadcast for a proposal-value $v$, the corresponding proposal $\mathsf{Proposal}(v)$ is broadcast
 if it has been observed.
 
 % ----------------------------------------------------------------------------------------------
