@@ -180,7 +180,7 @@ to read the timer.
 % event handler
 % As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
 As the main algorithm starts a round, it receives a self message with $timer=0$.
-then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
+Then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
 
 
 
@@ -383,8 +383,8 @@ $Vote(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
 $vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge CommitteeThreshold(soft)$) is bigger than the committee 
-threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
+and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge CommitteeThreshold(soft)$) 
+is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
 Imagine that the first time this happens, it cannot form a bundle. 
 
 Eventually it basically adds the accepted block to the ledger, modifies the state according
@@ -400,10 +400,10 @@ and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect})
 will compute 
 $$
 \begin{array}{rl}
-V_{(r,p-1)} & :=\{vt\in V : vt.r < r \text{ or } (vt.r = r \text{ and } vt.p+1 < p)\}\\
+V_{(r,p-1)} & :=\{vt\in V : vt.r < r \text{ or } (vt.r = r \text{ and } vt.p + 1 < p)\}\\
 P_{(r,p-1)} & :=\{pr\in PP: pr.r < r \text{ or } (pr.r = r \text{ and } pr.p + 1 < p)\}
 \end{array}
-$$\marginpar{esto es $pr_{p+1}$ o $pr_p+1$?}
+$$%Es $pr_p+1$; no $pr_{p+1}$ 
 and then remove these sets from the votes and participation sets: $V:=V\setminus V_{(r,p-1)}$,
 $P = P\setminus P_{(r,p-1)}$.
 
@@ -1034,7 +1034,7 @@ $next_{s-3}$ with $s \in [3, 252]$ are recovery steps and the last three ($late$
 are special ``fast'' recovery steps.
 A period is an execution of a subset of steps, ran in order until one of them achieves 
 a bundle for a specific value. A round always starts with a $proposal$ step and finishes with a $cert$
-step (when a block is certified and commited to the ledger). However, multiple periods might
+step (when a block is certified and committed to the ledger). However, multiple periods might
 be run inside a round until a certification bundle ($Bundle(r,p,s,v) $ where $s = cert$) is observable by the network.
 
 \medskip
@@ -1134,7 +1134,7 @@ if the node's on a first period, or it observed a bundle for the bottom proposal
 period (meaning there is no valid pinned value), then it will assemble a block, compute the proposal-value for the 
 previously assembled block, broadcast a proposal vote by the selected account for this value, and 
 broadcast the full block in a proposal payload message.
-Otherwise, the node is at least on a second period and it has a pinned value available, supported by a 
+Otherwise, the node is at least on a second period, and it has a pinned value available, supported by a 
 bundle observed in the period immediately before, being the observation of this bundle the event to trigger 
 a period change in the first place. On line 12 the node gets this value explicitly, which coincides with the pinned
 value $\bar{v}$. 
@@ -1271,8 +1271,8 @@ it to the observed proposals set, $P$ (lines 10 and 11).
 Once relayed and observed, the proposal is then processed for further output.
 Here, and only if the proposal value has become committable and the current executing node's step is lower or equal
 to a certification step (it's not yet in a recovery step), the node plays for each account performing sortition
-to select committee members for the certification step. For each selected member, a corresponding certify vote for
-the current proposal value is cast.
+to select committee members for the certification step. 
+For each selected member, a corresponding ``certify vote'' for the current proposal value is cast.
 
 
 \end{subsection}
@@ -1380,7 +1380,7 @@ On line 2, it checks if the vote is valid by itself. If invalid, the node can op
 Equivocation votes on a proposal step are not allowed, so a check for this condition is performed on line 5.
 Furthermore, second equivocations are never allowed (line 7).
 Any votes for rounds prior to the current round are discarded (line 9).
-On the special case that we received a vote for a round immediately after the current round, we observe it only if its a first period,
+On the special case that we received a vote for a round immediately after the current round, we observe it only if it is a first period,
 proposal, soft, cert, late, down or redo vote (discarding votes for further periods or votes for a $next_k$ step).
 Finally, the checks on lines 13 to 16 check that, if the vote's round is the currently executing round, and one of:
 \begin{itemize}
@@ -1395,15 +1395,15 @@ then the vote is ignored and discarded. \\
 Once finished with the series of validation checks, the vote is observed on line 18, relayed on line 19, and then processed.
 The node will determine the desired output according to its current context and the vote's step.
 If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $Proposal(v)$ is broadcast if it has been observed 
-(that is, the player performs a reproposal payload broadcast).
+(that is, the player performs a re-proposal payload broadcast).
 If the vote's step is $soft$ (lines 19 through 24), and a $soft$ Bundle has been observed with the addition of the vote on line 19,
-the $Sortition$ subprocedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
+the $Sortition$ sub-procedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
 the lottery, a $cert$ vote is cast as output (line 25).
 If the vote's step is $cert$ (lines 26 through 32), and observing the vote causes the node to observe a $cert$ Bundle for a proposal-value $v$,
 then it checks if the full proposal associated to the critical value has been observed (line 28). Note that simultaneous observation of a $cert$ Bundle 
-for a value $v$ and of a proposal $e = Proposal(v)$ implies commitability of the associated entry.
+for a value $v$ and of a proposal $e = Proposal(v)$ implies it that the associated entry committed.
 Had the full proposal not been observed at this point, the node may stall and request the full proposal from the network.
-Once the desired block is commitable, on lines 30:32 the node proceeds to commit, start a new round, and garbage collect all
+Once the desired block can be committed, on lines 30:32 the node proceeds to commit, start a new round, and garbage collect all
 transient data from the round it just finished.
 Finally, if the vote is that of a recovery step (lines 33:36), and a Bundle has been observed for a given proposal-value $v$,
 then a new period is started and the currently executing period-specific data garbage collected.
@@ -1450,8 +1450,8 @@ then a new period is started and the currently executing period-specific data ga
 The bundle handler is invoked whenever a bundle message is received. 
 If the received bundle is invalid (line 2), it is immediately discarded. Optionally, the node may
 penalize the sending peer (for example, disconnecting from or blacklisting it).
-On line 5 a check is performed. If the bundle's round is the node's current round
-and it's at most one period behind of the node's current period, 
+On line 5 a check is performed. 
+If the bundle's round is the node's current round and it's at most one period behind of the node's current period, 
 then the bundle is processed, which is simply calling the vote handler for each 
 vote constituting it (lines 6:7). If the check on line 5 is not passed by $b$, no output is produced
 and the bundle is ignored and discarded.
@@ -1500,8 +1500,8 @@ whenever a $cert$ bundle has not been observed before $\mathsf{FilterTimeout}(p)
 On line 2 it starts by making a resynchronization attempt. Then on line 3 the node's step is updated.\\
 Afterwards, the node plays for each managed account. For each account that is selected to be a part of the voting committee for the current
 step $next_k$, one of three different outputs is produced. \\
-If there is a proposal-value $v$ that is commitable in the current context, a $next_k$ vote for $v$ is broadcast by the player. \\
-If no proposal-value is commitable, no recovery step Bundle for the empty proposal-value ($\bot$) was observed in the 
+If there is a proposal-value $v$ that can be committed in the current context, a $next_k$ vote for $v$ is broadcast by the player. \\
+If no proposal-value can be committed, no recovery step Bundle for the empty proposal-value ($\bot$) was observed in the 
 previous period, and a recovery step Bundle for the pinned value was observed in the previous period (note that this implies $\bar{v} \neq \bot$),
 then a $next_k$ vote for $\bar{v}$ is broadcast by the player. \\
 Finally, if none of the above conditions were met, a $next_k$ vote for $\bot$ is broadcast. A player is forbidden
@@ -1557,7 +1557,7 @@ from equivocating in $next$ votes.
     The fast recovery algorithm is executed periodically every integer multiple of $\lambda_f$
     seconds (plus variance).
     Functionally, it's very close to the regular recovery algorithm (outlined in the previous section), 
-    performing the same checks and similar outputs. The sole difference is that it emmits votes 
+    performing the same checks and similar outputs. The sole difference is that it emits votes 
     for any of three different steps ($late$, $redo$ and $down$) according to sortition 
     results for every account.
     It's also important to point out that nodes are forbidden to equivocate for $late$, $redo$ and $down$ votes.
@@ -1625,7 +1625,7 @@ If no consensus was achieved, this timeout constant is relaxed in all subsequent
 
 \noindent \textbf{Description:}\\
 General purpose hashing function. If $SHA512/256$ is supported by the underlying system running the node, it's used.
-Otherwise falls back to $SHA256$.\\
+Otherwise, it falls back to $SHA256$.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -1763,7 +1763,7 @@ boolean indicating whether authentication succeeded or failed.
 
 \noindent \textbf{Description:}\\ Gets the proposal associated to a given proposal-value, 
 if it has been observed in the current context.
-Otherwise returns $\mathsf{Proposal}(\bot)$, defined as the "empty block" (special value where all
+Otherwise, it returns $\mathsf{Proposal}(\bot)$, defined as the "empty block" (special value where all
 block fields are zeroes).
 %esto no esta en una sola referencia de codigo, sino que abstrae varias cosas
 %internamente hay una tabla que matchea proposal votes (que contienen el proposal value)
@@ -2099,7 +2099,16 @@ if it has been observed.
 
 
 \noindent \textbf{Description:}\\
-
+This subroutine computes the required sortition seed for the given round number, 
+which goes in the proposed block's metadata.
+If the block is empty, the seed is a hash of the previous block's seed.
+The $get_{SK_a}(ctx, r)$ helper function gets the relevant account's secret 
+ephemeral keys (according to the signing scheme described in specs, the keys 
+160 rounds prior to $r$).
+This roughly corresponds to the secret key from a round $b$ time before block 
+$r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the 
+current round's number, and $b$ is the upper bound for the maximum amount of 
+time that the network might be compromised.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
@@ -2129,7 +2138,8 @@ if it has been observed.
 
 
 \noindent \textbf{Description:}\\
-This helper function gets the relevant sortition seed for the current round $r$, according to the seed lookback parameter $R$.
+This helper function gets the relevant sortition seed for the current round $r$, according to the seed 
+lookback parameter $R$.
 Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, refreshed every $R$ rounds.
 
 \noindent \textbf{Returns:}
@@ -2154,7 +2164,7 @@ Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, ref
 \begin{itemize}
     \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
     \item $r$ = current round number
-    \item $a_{pk}$ = the account's public key for the look up table
+    \item $a_{pk}$ = the account's public key for the lookup table
   \end{itemize}
 
 
