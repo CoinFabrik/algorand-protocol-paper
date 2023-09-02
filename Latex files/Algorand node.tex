@@ -357,7 +357,7 @@ It initializes to an empty vote $v=\bot$ and with the lowest observed hash at in
 The node will go through all the votes $vt^\prime\in V$ in its votes set that are in the
 proposal step ($vt^\prime.s=0$).
 Given the credentials for the vote $vt^\prime.credential=(sh,\pi, j)$, where $sh$ is the hash,
-$\pi$ is the proof and $j\in\mathbb{Z}_{ge 0}$, the algorithm computes the priority hash
+$\pi$ is the proof and $j\in\mathbb{Z}_{\geq 0}$, the algorithm computes the priority hash
 $$
 priorityHash:=\min\{\mathsf{Hash}(sh\| i): 0\le i<j\},
 $$
@@ -2098,17 +2098,49 @@ if it has been observed.
   \end{itemize}
 
 
-\noindent \textbf{Description:}\\
-This subroutine computes the required sortition seed for the given round number, 
-which goes in the proposed block's metadata.
-If the block is empty, the seed is a hash of the previous block's seed.
-The $get_{SK_a}(ctx, r)$ helper function gets the relevant account's secret 
-ephemeral keys (according to the signing scheme described in specs, the keys 
-160 rounds prior to $r$).
-This roughly corresponds to the secret key from a round $b$ time before block 
-$r-1-(r\;mod\;R)$, where $R$ is the sortition seed's renewal rate, $r$ is the 
-current round's number, and $b$ is the upper bound for the maximum amount of 
-time that the network might be compromised.\\
+\noindent \textbf{Description:}\\ 
+
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item the computed seed for the given block, ledger context and round, as well as the sortition proof
+    to validate it
+  \end{itemize}
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]\label{algo:verify-seed}
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{VerifySeed}$}{$Seed, \pi_s$}
+    %     \If {$p = 0$}
+    %          \State $y \gets \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
+    %          \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a.I)$
+    %     \Else
+    %         \State $y \gets 0$
+    %         \State $\alpha \gets \mathsf{H}(L[r-\delta_s].Seed)$
+    %     \EndIf
+
+    %     \If{$r \mod \delta_s \delta_r < \delta_s$}
+    %         \State $Q \gets \mathsf{H}(\alpha||\mathsf{H}(L[r-\delta_s\delta_r]))$
+    %     \Else
+    %         \State $Q \gets \mathsf{H}(\alpha)$
+    %     \EndIf
+
+    %      \State $\mathsf{return} \ (Q, y)$
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{Compute Seed And Proof}}
+\end{algorithm}
+
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $Account \ I$
+  \end{itemize}
+
+
+\noindent \textbf{Description:}\\ 
+
 
 \noindent \textbf{Returns:}
 \begin{itemize}
