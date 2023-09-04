@@ -2101,32 +2101,31 @@ if it has been observed.
 \noindent \textbf{Description:}\\ 
 
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item the computed seed for the given block, ledger context and round, as well as the sortition proof
+\noindent \textbf{Returns:} \\
+    the computed seed for the given block, ledger context and round, as well as the sortition proof
     to validate it
-  \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]\label{algo:verify-seed}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySeed}$}{$Seed, \pi_s$}
-    %     \If {$p = 0$}
-    %          \State $y \gets \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
-    %          \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a.I)$
-    %     \Else
-    %         \State $y \gets 0$
-    %         \State $\alpha \gets \mathsf{H}(L[r-\delta_s].Seed)$
-    %     \EndIf
+    \Function{$\mathsf{VerifySeed}$}{$Q, \pi_{seed}, Address \ I_{proposer}$}
+        \State $q_0 \gets \mathsf{L}[r-\delta_s]_{seed}$
+            \If {$p = 0$}
+                \If {$\neg \mathsf{VRF.Verify}(\pi_{seed}, q_0, I)$}
+                    \State $\mathsf{return} \ \mathsf{False}$
+                \EndIf
+                \State $q_1 \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I)$
+            \Else
+                \State $q_1 \gets \mathsf{H}(q_0)$
+            \EndIf
 
-    %     \If{$r \mod \delta_s \delta_r < \delta_s$}
-    %         \State $Q \gets \mathsf{H}(\alpha||\mathsf{H}(L[r-\delta_s\delta_r]))$
-    %     \Else
-    %         \State $Q \gets \mathsf{H}(\alpha)$
-    %     \EndIf
 
-    %      \State $\mathsf{return} \ (Q, y)$
+        \If{$r \equiv (r \mod \delta_s) \mod \delta_s\delta_r$}
+            \State $\mathsf{return} \ Q = \mathsf{H}(q_1||\mathsf{H}(\mathsf{L}[r-\delta_s\delta_b]))$
+        \Else
+            \State $\mathsf{return} \ Q = q_1$
+        \EndIf
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Compute Seed And Proof}}
@@ -2139,14 +2138,11 @@ if it has been observed.
   \end{itemize}
 
 
-\noindent \textbf{Description:}\\ 
+\noindent \textbf{Description:}\\ The seed verification procedure certifies the validity of a computed seed $Q$.
 
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item the computed seed for the given block, ledger context and round, as well as the sortition proof
-    to validate it
-  \end{itemize}
+\noindent \textbf{Returns:}\\ A boolean value. $True$ if the seed $Q$, with proof $\pi_{seed}$, computed by $I$,
+    is valid for the current node context, otherwise returns $False$.
 
 % ----------------------------------------------------------------------------------------------
 
