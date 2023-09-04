@@ -127,8 +127,8 @@ currently in development.
 \begin{subsection}{Vanilla run}\label{subsect:vanilla-run}
 Let us assume a genesis block was generated, the blockchain has been running and
 has already generated blocks, with a set of nodes and accounts. 
-We are now at round $r-1$ ($r>2$), meaning
-that $r-1$ blocks have been generated and confirmed by the blockchain.
+We are now at round $r-1$ ($r>2$), meaning that $r-1$ blocks have been 
+generated and confirmed by the blockchain.
 Moreover, the node has received transactions which have been verified to 
 be correctly signed by Algorand accounts and validated according to Ledger context, 
 and has added them to its transaction pool and relayed them to other nodes.
@@ -144,9 +144,9 @@ a period $p:=0\in\mathbb{Z}_{\ge 0}$,
 a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
 a pinned vote $v:=\bot$.
 
-The main algorithm for consensus is an event handler that receives two
-types of input from the node. It receives messages, and it is also able
-to read the timer.
+The main algorithm (Algorithm~\ref{algo:main}) for consensus is an event 
+handler that receives two types of input from the node. 
+It receives messages, and it is also able to read the timer.
 % (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
 % Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
 % y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
@@ -265,7 +265,7 @@ When it is nonzero, the node participates in the proposal voting representing th
 In a vanilla run scenario and at this point, the period is zero ($p=0$). 
 The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
 sets $v$ as the proposal value obtained from the block $e$ and does two separate 
-broadcasts for $\mathsf{Vote}(a.I, r,p, proposal, v, cred)$ and $e$.
+broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
 Also, we enter the "soft vote" step setting $s:=1$.
 
 
@@ -383,7 +383,7 @@ $\mathsf{Vote}(r,p,soft,v,credential)$ as above, it relays the vote, adds it to 
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
 $vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt.cred.j\ge \mathsf{CommitteeThreshold}(soft)$) 
+and such that the sum of its weights ($\sum_{vt\in V} vt.cred_j\ge \mathsf{CommitteeThreshold}(soft)$) 
 is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
 Imagine that the first time this happens, it cannot form a bundle. 
 
@@ -422,9 +422,9 @@ $P = P\setminus P_{(r,p-1)}$.
 % %Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
 % %y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
 % %no es necesario sortition porque es simplemente forwardear.
-% extract $cred.j$ and, if it is nonzero, broadcast the vote:
+% extract $cred_j$ and, if it is nonzero, broadcast the vote:
 % $$
-%     \mathsf{Broadcast}(\mathsf{Vote}(a.I,r,p,cert,v,cred))
+%     \mathsf{Broadcast}(\mathsf{Vote}(a_I,r,p,cert,v,cred))
 % $$
 % else do nothing.
 % After this, the algorithm finishes and the event handler is called again.
@@ -805,7 +805,7 @@ easy iteration access to all updated balance records for the accounts it manages
 which are flagged as online and have a valid participation key registered on this
 node. 
 This array is named $A$ from now on, and each entry $a\in A$ has an account address 
-$a.I$, and all the information in its mapped balance record, $BT[a.I]$.
+$a_I$, and all the information in its mapped balance record, $BT[a_I]$.
 
 % transaction pool
 The Transaction pool, $TP$, which is a set of live unconfirmed transactions, $txn_k$, (where 
@@ -965,7 +965,7 @@ $vt_0, vt_1 \in b$ the following conditions hold:
 a) $vt_0.r = vt_1.r $, 
 b) $vt_0.p = vt_1.p$,
 c) $vt_0.s = vt_1.s$,
-d) for each pair of distinct elements, either $vt_0.I \neq vt_1.I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ 
+d) for each pair of distinct elements, either $(vt_0)_I \neq (vt_1)_I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ 
 is an equivocation vote, and
 e) the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
 committee threshold of the votes in the set.
@@ -1088,26 +1088,26 @@ the corresponding construct (coinciding with their attached data type field).
 \begin{subsection}{Block Proposal}\label{ssect:blockproposal}
 
     \begin{algorithm}
-        \caption{\underline{Block proposal}}
+        \caption{\underline{Block Proposal}}
         \label{algo:block-proposal}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{BlockProposal}$}{}
+        \Function{$\mathsf{BlockProposal}$}{\;}
 
             \State $\mathsf{ResynchronizationAttempt}()$
 
             \For{$a \in A$}
                 \State $cred \gets 
                 \mathsf{Sortition}(a, proposal)$
-                \If{$cred.j > 0$}
+                \If{$cred_j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
                         \State $e \gets \mathsf{AssembleBlock}()$
                         \State $v \gets Proposal_{value}(e)$
-                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, proposal, v, cred))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
                     \Else
                         %VER. Convencerme de que siempre es el pinned value
                         %\State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
-                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, proposal, \bar{v}, cred))$
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, \bar{v}, cred))$
                         \If{$\mathsf{Proposal}(\bar{v}) \in P$}
                             \State $\mathsf{Broadcast}(\mathsf{Proposal}(\bar{v}))$
                             % proposal(\bar v) es un broadcast de un e 
@@ -1126,7 +1126,7 @@ Block proposal is the first step, and the starting stage of the algorithm on eve
 First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). 
 This only has any effect on periods $p > 0$.
 Afterwards, the node loops through all of its managed online accounts, Functionally
-"playing" for each of the accounts. This is a pattern that we'll see in every other
+``playing'' for each of the accounts. This is a pattern that we'll see in every other
 main algorithm subroutine that performs any form of committee voting.
 
 Lines 6 to 14 are the core proposal algorithm. On lines 6 to 10, 
@@ -1157,7 +1157,7 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \State $v \gets \bot$ 
 
     \For{$vt^\prime \in V \text{ with } vt^\prime.step = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, vt^\prime.cred.j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
+        \State $priorityHash \gets \min_{i \in [0, vt^\prime.cred_j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
             \State $v \gets vt.v$
@@ -1167,7 +1167,7 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \If {$lowestObservedHash < \infty$}
         \For{$Account \ a \in A$}
             \State $cred \gets \mathsf{Sortition}(a, soft)$
-            \If{$cred.j > 0$}
+            \If{$cred_j > 0$}
                 \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
                 \If{$\mathsf{Proposal}(v) \in P$}
                     \State $\mathsf{Broadcast}(\mathsf{Proposal}(v))$
@@ -1241,8 +1241,8 @@ output in its filtering step.
                 \For{$a \in A$}
                     \State $cred \gets 
                     \mathsf{Sortition}(a, cert)$
-                    \If{$cred.j > 0$}
-                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, cert, v,  cred))$
+                    \If{$cred_j > 0$}
+                        \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v,  cred))$
                     \EndIf
                 \EndFor    
             \EndIf
@@ -1342,8 +1342,8 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                     \For{$a \in A$}
                         \State $cred \gets 
                         \mathsf{Sortition}(a_{sk}, cert)$
-                        \If{$cred.j > 0$}
-                            \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, cert, v, cred))$
+                        \If{$cred_j > 0$}
+                            \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v, cred))$
                         \EndIf
                     \EndFor
                 \EndIf
@@ -1478,14 +1478,14 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
         \For{$Account \ a \in A$}
             \State $cred \gets 
             \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
-            \If{$cred.j > 0$}
+            \If{$cred_j > 0$}
                 \If{$\exists v=Proposal_{value}(e) $ for some $e\in P | \mathsf{IsCommitable}(v)$}
-                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, v, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, v, cred))$
                 \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.65cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
-                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, \bar{v}, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, \bar{v}, cred))$
                 \Else
-                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, s, \bot, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, \bot, cred))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1527,22 +1527,22 @@ from equivocating in $next$ votes.
             \If{$\mathsf{IsCommitable}(v)$}
                 \State $cred \gets 
                 \mathsf{Sortition}(a_{sk}, late)$
-                \If{$cred.j > 0$}
-                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a.I, r, p, late, v, cred))$
+                \If{$cred_j > 0$}
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, late, v, cred))$
                 \EndIf
 
             \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
                     \State $cred \gets 
                     \mathsf{Sortition}(a_{sk}, redo)$
-                    \If{$cred.j > 0$}
+                    \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,redo,\bar{v}, cred))$
                     \EndIf
 
             \Else
                 \State $cred \gets 
                 \mathsf{Sortition}(a_{sk}, down)$
-                \If{$cred.j > 0$}
+                \If{$cred_j > 0$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,down,\bot, cred))$
                 \EndIf
             \EndIf
@@ -1722,7 +1722,7 @@ Afterwards, it updates the balance table $BT$ with all state changes called for 
         \If{$vt.step = 0$}
             \State $valid \gets valid \land vt.v.p_{orig} \leq vt.period$
             \If{$vt.period = vt.v.p_{orig}$}
-                \State $valid \gets valid \land vt.v.I_{orig} = vt.I$
+                \State $valid \gets valid \land vt.v.I_{orig} = vt_I$
             \EndIf
         \EndIf
         
@@ -2073,7 +2073,7 @@ if it has been observed.
     \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
         \If {$p = 0$}
              \State $y \gets \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
-             \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a.I)$
+             \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
         \Else
             \State $y \gets 0$
             \State $\alpha \gets \mathsf{H}(L[r-\delta_s].Seed)$
