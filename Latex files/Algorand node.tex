@@ -340,7 +340,7 @@ $\mathsf{Proposal}(vt.v)\in P$ and broadcasts this proposal if it is, ignoring i
 %minimice la funcion de prioridad) y emite un soft vote (o sea llama la subrutina softVote()).
 %Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. 
 % Aca va a estar recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
-%Si ya observo un soft bundle, emite un cert vote y ahi step \gets 2 (tanto del voto como
+%Si ya observo un soft bundle, emite un cert vote y ahi step := 2 (tanto del voto como
 %en el contexto de ejecucion del nodo). Entre FilterTimeout(p) y el primer timeout de next
 %2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
 %ahi viene eso ultimo
@@ -999,7 +999,7 @@ may end by broadcasting data to other nodes.
     \Function{$\mathsf{EventHandler}(Event \ ev)$}{}
     
     \If{$ev \ is \ TimeoutEvent$}
-        \State $time \gets ev.time$
+        \State $time := ev.time$
         \If{$time = 0$}
             \State $\mathsf{BlockProposal}()$; $s:=1$
         \ElsIf{$time = \mathsf{FilterTimeout}(p)$}
@@ -1012,7 +1012,7 @@ may end by broadcasting data to other nodes.
             \State $\mathsf{FastRecovery}()$
         \EndIf
     \Else \ //ev is MessageEvent
-        \State $msg \gets ev.msg$
+        \State $msg := ev.msg$
         \If{$msg \ is \ of \ type \ Proposal \ p$}
             \State $\mathsf{HandleProposal}(p)$
         \ElsIf{$msg\ is \ of\ type\  Vote \ v$}
@@ -1096,17 +1096,16 @@ the corresponding construct (coinciding with their attached data type field).
             \State $\mathsf{ResynchronizationAttempt}()$
 
             \For{$a \in A$}
-                \State $cred \gets 
-                \mathsf{Sortition}(a, proposal)$
+                \State $cred :=  \mathsf{Sortition}(a, proposal)$
                 \If{$cred_j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
-                        \State $e \gets \mathsf{AssembleBlock}()$
-                        \State $v \gets Proposal_{value}(e)$
+                        \State $e := \mathsf{AssembleBlock}()$
+                        \State $v := Proposal_{value}(e)$
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(e)$
                     \Else
                         %VER. Convencerme de que siempre es el pinned value
-                        %\State $v \gets v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
+                        %\State $v := v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, \bar{v}, cred))$
                         \If{$\mathsf{Proposal}(\bar{v}) \in P$}
                             \State $\mathsf{Broadcast}(\mathsf{Proposal}(\bar{v}))$
@@ -1122,14 +1121,22 @@ the corresponding construct (coinciding with their attached data type field).
 \newpage
 % porposal = s
 \noindent \textbf{Description:}\\
-Block proposal is the first step, and the starting stage of the algorithm on every period.
-First, on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}). 
-This only has any effect on periods $p > 0$.
-Afterwards, the node loops through all of its managed online accounts, Functionally
-``playing'' for each of the accounts. This is a pattern that we'll see in every other
-main algorithm subroutine that performs any form of committee voting.
+This algorithm is the first called on every round and period. 
+Starting on line 2, the node attempts a resynchronization (described in \ref{sect:soubroutines}), which
+only has any effect on periods $p > 0$.
 
-Lines 6 to 14 are the core proposal algorithm. On lines 6 to 10, 
+The algorithm loops on all of its managed online accounts ($a\in A$). 
+This is a pattern that we'll see in every other main algorithm subroutine 
+that performs any form of committee voting.
+For each account, the sortition algorithm is run to check if the account is allowed 
+to participate in the proposal. 
+If it is selected by sortition (because $cred_j=\mathsf{Sortition}(a, proposal)+j>0$)
+there are two options. 
+If this is a proposal step ($p=0$) or if the node has recorded a bundle 
+$\mathsf{Bundle}(r, p-1, s^\prime, \bot)$, then a block is assembled 
+
+
+The core proposal algorithm is in lines 6 to 14: on lines 6 to 10, 
 if the node's on a first period, or it observed a bundle for the bottom proposal on the previous 
 period (meaning there is no valid pinned value), then it will assemble a block, compute the proposal-value for the 
 previously assembled block, broadcast a proposal vote by the selected account for this value, and 
@@ -1153,20 +1160,20 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \label{algo:soft-vote}
     \begin{algorithmic}[1]
     \Function{$\mathsf{SoftVote}$}{}
-    \State $lowestObservedHash \gets \infty$
-    \State $v \gets \bot$ 
+    \State $lowestObservedHash := \infty$
+    \State $v := \bot$ 
 
     \For{$vt^\prime \in V \text{ with } vt^\prime_s = proposal$}
-        \State $priorityHash \gets \min_{i \in [0, vt^\prime.cred_j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
+        \State $priorityHash := \min_{i \in [0, vt^\prime.cred_j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
         \If{$priorityHash < lowestObservedHash$}
-            \State $lowestObservedHash \gets priorityHash$
-            \State $v \gets vt.v$
+            \State $lowestObservedHash := priorityHash$
+            \State $v := vt.v$
         \EndIf    
     \EndFor
 
     \If {$lowestObservedHash < \infty$}
         \For{$Account \ a \in A$}
-            \State $cred \gets \mathsf{Sortition}(a, soft)$
+            \State $cred := \mathsf{Sortition}(a, soft)$
             \If{$cred_j > 0$}
                 \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
                 \If{$\mathsf{Proposal}(v) \in P$}
@@ -1213,7 +1220,7 @@ output in its filtering step.
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleProposal}$}{$Proposal \ e$}
 
-            \State $v \gets Proposal_{value}(e)$
+            \State $v := Proposal_{value}(e)$
 
             %relays proposal if its for a future round (but does not process it)
             \If{$\sigma(r+1, 0) = v$}
@@ -1234,12 +1241,12 @@ output in its filtering step.
 
             %we need to relay (broadcast to everybody but ourselves and o.g. sender), and observe p
             \State $\mathsf{Relay}(e)$
-            \State $P \gets P \cup e$
+            \State $P := P \cup e$
 
             %all checks passsed, produce output
             \If{$\mathsf{IsCommitable}(v) \land s \leq cert$}
                 \For{$a \in A$}
-                    \State $cred \gets 
+                    \State $cred := 
                     \mathsf{Sortition}(a, cert)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v,  cred))$
@@ -1327,7 +1334,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                 \State $return$ \ //ignore vote
             \EndIf
 
-            \State $V \gets V \cup vt$ \ //observe vote
+            \State $V := V \cup vt$ \ //observe vote
             \State $\mathsf{Relay}(vt)$
 
             \If{$vt_s = proposal$}
@@ -1340,7 +1347,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                 \If{$\exists v | Bundle(vt_r,vt_p,soft,v) \subset V$}
                     %Try to emit a certification vote
                     \For{$a \in A$}
-                        \State $cred \gets 
+                        \State $cred := 
                         \mathsf{Sortition}(a_{sk}, cert)$
                         \If{$cred_j > 0$}
                             \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v, cred))$
@@ -1354,13 +1361,13 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
-                    \State $r_{old} \gets r$
+                    \State $r_{old} := r$
                     \State $\mathsf{StartNewRound}(vt_r+1)$
                     \State $\mathsf{GarbageCollect}(r_{old}, p)$
                 \EndIf
             \ElsIf{$vt_s > cert$}
                 \If{$\exists v | Bundle(vt_r,vt_p,vt_s,v) \subset V$}
-                    \State $p_{old} \gets p$
+                    \State $p_{old} := p$
                     \State $\mathsf{StartNewPeriod}(vt_p + 1)$
                     \State $\mathsf{GarbageCollect}(r, p_{old})$
                 \EndIf
@@ -1477,7 +1484,7 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
         \State $\mathsf{ResynchronizationAttempt}()$
     
         \For{$Account \ a \in A$}
-            \State $cred \gets 
+            \State $cred := 
             \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
             \If{$cred_j > 0$}
                 \If{$\exists v=Proposal_{value}(e) $ for some $e\in P | \mathsf{IsCommitable}(v)$}
@@ -1526,7 +1533,7 @@ from equivocating in $next$ votes.
     
         \For{$Account \ a \in A$}
             \If{$\mathsf{IsCommitable}(v)$}
-                \State $cred \gets 
+                \State $cred := 
                 \mathsf{Sortition}(a_{sk}, late)$
                 \If{$cred_j > 0$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, late, v, cred))$
@@ -1534,14 +1541,14 @@ from equivocating in $next$ votes.
 
             \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
-                    \State $cred \gets 
+                    \State $cred := 
                     \mathsf{Sortition}(a_{sk}, redo)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,redo,\bar{v}, cred))$
                     \EndIf
 
             \Else
-                \State $cred \gets 
+                \State $cred := 
                 \mathsf{Sortition}(a_{sk}, down)$
                 \If{$cred_j > 0$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,down,\bot, cred))$
@@ -1642,7 +1649,7 @@ Otherwise, it falls back to $SHA256$.\\
     \Function{$\mathsf{AssembleBlock}$}{}
 
     \State $Block b$
-    \State $b.body \gets TP[-s]$
+    \State $b.body := TP[-s]$
 
     \EndFunction
     \end{algorithmic}
@@ -1691,7 +1698,7 @@ period. \\
     \begin{algorithmic}[1]
     \Function{$\mathsf{Commit}$}{$Proposal_{value} \ v$}
 
-    \State $L \gets L || \mathsf{Proposal}(v)$
+    \State $L := L || \mathsf{Proposal}(v)$
     \State $UpdateBT(\mathsf{Proposal}(v))$
 
     \EndFunction
@@ -1718,19 +1725,19 @@ Afterwards, it updates the balance table $BT$ with all state changes called for 
 \begin{algorithm}[H]\label{algo:verify-vote}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyVote}$}{$Vote \ vt$}
-        \State $valid \gets vt_r \leq r+2$
+        \State $valid := vt_r \leq r+2$
         
         \If{$vt_s = 0$}
-            \State $valid \gets valid \land vt.v.p_{orig} \leq vt_p$
+            \State $valid := valid \land vt.v.p_{orig} \leq vt_p$
             \If{$vt_p = vt.v.p_{orig}$}
-                \State $valid \gets valid \land vt.v.I_{orig} = vt_I$
+                \State $valid := valid \land vt.v.I_{orig} = vt_I$
             \EndIf
         \EndIf
         
         \If{$vt_s \in \{propose, soft, cert, late, redo\}$}
-            \State $valid \gets valid \land vt.v \neq \bot$
+            \State $valid := valid \land vt.v \neq \bot$
         \ElsIf{$vt_s = down$}
-            \State $valid \gets valid \land vt.v = \bot$
+            \State $valid := valid \land vt.v = \bot$
         \EndIf
 
 
@@ -1777,7 +1784,7 @@ block fields are zeroes).
     \Function{$\mathsf{MakeProposal}$}{$Block \ e, \pi_{seed}, uint64 \ p_{orig}, Address \ I_{orig}$}
     %el bloque se asume ya validado
 
-    \State $proposal prop \gets (e, \pi_{seed}, p_{orig}, I_{orig})$
+    \State $proposal prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
     \State $\mathsf{return} \ prop$
 
     
@@ -1799,7 +1806,7 @@ with everything needed to validate it, into a $proposal$ structure.
     \begin{algorithmic}[1]
     \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ e$}
 
-    \State $proposal_{value} \ v \gets (e.I_{orig}, e.p_{orig}, \mathsf{H}(e), \mathsf{H}(\mathsf{Encoding}(e)))$
+    \State $proposal_{value} \ v := (e.I_{orig}, e.p_{orig}, \mathsf{H}(e), \mathsf{H}(\mathsf{Encoding}(e)))$
 
     \State $\mathsf{return} \ v$
 
@@ -1822,8 +1829,8 @@ and the hash of the msgpack encoding of the block.
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyProposal}$}{$ProposalPayload \ pp$}
 
-    \State $valid \gets \mathsf{ValidEntry}(pp.e, L)$
-    \State $valid \gets valid \land \mathsf{VerifySignature}(pp.y)$
+    \State $valid := \mathsf{ValidEntry}(pp.e, L)$
+    \State $valid := valid \land \mathsf{VerifySignature}(pp.y)$
 
     \EndFunction
     \end{algorithmic}
@@ -1838,20 +1845,20 @@ and the hash of the msgpack encoding of the block.
     \Function{$\mathsf{VerifyBundle}$}{$Bundle \ b$}
 
     //all individual votes are valid
-    \State $valid \gets (\forall vt \in b)(VerifyVote(vt))$
+    \State $valid := (\forall vt \in b)(VerifyVote(vt))$
     
     //no two votes are the same
-    \State $valid \gets valid \land (\forall i,k \in \mathbb{Z})(vt_i \in b \land vt_k \in b \land vt_i = vt_k \implies i=k)$
+    \State $valid := valid \land (\forall i,k \in \mathbb{Z})(vt_i \in b \land vt_k \in b \land vt_i = vt_k \implies i=k)$
 
     //round, period and step must all match
-    \State $valid \gets valid \land (\forall vt \in b)(vt.r = b.r \land vt.p = b.p \land vt.s = b.s)$
+    \State $valid := valid \land (\forall vt \in b)(vt.r = b.r \land vt.p = b.p \land vt.s = b.s)$
   
     %P*? Equivocation vote solo vale para soft bundles. Eso es correcto?
     //all votes should either be for the same value or be equivocation votes
-    \State $valid \gets valid \land (\forall vt \in b)(vt.v = b.v \lor (b.s = soft \land IsEquivocation(vt.v, b)))$
+    \State $valid := valid \land (\forall vt \in b)(vt.v = b.v \lor (b.s = soft \land IsEquivocation(vt.v, b)))$
 
     //summation of weights should surpass the relevant threshold
-    \State $valid \gets valid \land  \sum_{vt \in b}(vt.w) \geq CommitteeThreshold(b.s)$
+    \State $valid := valid \land  \sum_{vt \in b}(vt.w) \geq CommitteeThreshold(b.s)$
 
     \State $\mathsf{return} \ valid$
 
@@ -1914,11 +1921,11 @@ $$
     \label{algo:start-new-round}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewRound}$}{$uint64 \ newRound$}
-    \State $\bar{s} \gets s$
-    \State $\bar{v} \gets \bot$
-    \State $r \gets newRound$
-    \State $p \gets 0$
-    \State $s \gets proposal$
+    \State $\bar{s} := s$
+    \State $\bar{v} := \bot$
+    \State $r := newRound$
+    \State $p := 0$
+    \State $s := proposal$
     \State Reset $time$.
     \EndFunction
     \end{algorithmic}
@@ -1937,17 +1944,17 @@ Period and step number are set to $0$ and $proposal=0$ respectively.
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewPeriod}$}{$uint64 \ newPeriod$}
 
-    \State $\bar{s} \gets s$
-    \State $s \gets proposal$
+    \State $\bar{s} := s$
+    \State $s := proposal$
 
     \If{$\exists v=Proposal_{value}(e),s^\prime \ | e\in P, \ v \neq \bot \land (s^\prime = soft \lor s^\prime > cert)  
     \land Bundle(r, newPeriod-1, s, v) \subset V$}
-        \State $\bar{v} \gets v$
+        \State $\bar{v} := v$
     \ElsIf{$\sigma(r,p) \neq \bot$}
-        \State $\bar{v} \gets \sigma(r,p)$
+        \State $\bar{v} := \sigma(r,p)$
     \EndIf
 
-    \State $p \gets newPeriod$
+    \State $p := newPeriod$
     \State Reset $time$.
     \EndFunction
     \end{algorithmic}
@@ -1978,11 +1985,11 @@ Finally, the node updates $p$ to match the period to start.
     \begin{algorithmic}[1]
     \Function{$\mathsf{GarbageCollect}$}{$r, p$}
 
-    \State $V_{(r,p-1)} \gets \{ vt \in V | vt.r < r \lor (vt.r=r \land vt.p + 1 < p) \}$
-    \State $P_{(r,p-1)} \gets \{ pp \in P | pp.r < r \lor (pp.r=r \land pp.p + 1 < p) \}$
+    \State $V_{(r,p-1)} := \{ vt \in V | vt.r < r \lor (vt.r=r \land vt.p + 1 < p) \}$
+    \State $P_{(r,p-1)} := \{ pp \in P | pp.r < r \lor (pp.r=r \land pp.p + 1 < p) \}$
 
-    \State $V \gets V\diagdown V_{(r,p-1)}$
-    \State $P \gets P\diagdown P_{(r,p-1)}$
+    \State $V := V\diagdown V_{(r,p-1)}$
+    \State $P := P\diagdown P_{(r,p-1)}$
 
     \EndFunction
     \end{algorithmic}
@@ -2073,17 +2080,17 @@ if it has been observed.
     \begin{algorithmic}[1]
     \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
         \If {$p = 0$}
-             \State $y \gets \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
-             \State $\alpha \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
+             \State $y := \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
+             \State $\alpha := \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
         \Else
-            \State $y \gets 0$
-            \State $\alpha \gets \mathsf{H}(L[r-\delta_s].Seed)$
+            \State $y := 0$
+            \State $\alpha := \mathsf{H}(L[r-\delta_s].Seed)$
         \EndIf
 
         \If{$r \mod \delta_s \delta_r < \delta_s$}
-            \State $Q \gets \mathsf{H}(\alpha||\mathsf{H}(L[r-\delta_s\delta_r]))$
+            \State $Q := \mathsf{H}(\alpha||\mathsf{H}(L[r-\delta_s\delta_r]))$
         \Else
-            \State $Q \gets \mathsf{H}(\alpha)$
+            \State $Q := \mathsf{H}(\alpha)$
         \EndIf
 
          \State $\mathsf{return} \ (Q, y)$
@@ -2111,14 +2118,14 @@ if it has been observed.
 \begin{algorithm}[H]\label{algo:verify-seed}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifySeed}$}{$Q, \pi_{seed}, Address \ I_{proposer}$}
-        \State $q_0 \gets \mathsf{L}[r-\delta_s]_{seed}$
+        \State $q_0 := \mathsf{L}[r-\delta_s]_{seed}$
             \If {$p = 0$}
                 \If {$\neg \mathsf{VRF.Verify}(\pi_{seed}, q_0, I)$}
                     \State $\mathsf{return} \ \mathsf{False}$
                 \EndIf
-                \State $q_1 \gets \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I)$
+                \State $q_1 := \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I)$
             \Else
-                \State $q_1 \gets \mathsf{H}(q_0)$
+                \State $q_1 := \mathsf{H}(q_0)$
             \EndIf
 
 
@@ -2243,16 +2250,16 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \label{algo:sortition}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
-        \State $seed \gets L[r - \delta_s].seed$
+        \State $seed := L[r - \delta_s].seed$
         //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
-        \State $w \gets a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
-        \State $W \gets \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
-        \State $\tau \gets \mathsf{CommitteeThreshold}(p)$
-        \State $ \langle hash, \pi \rangle \gets \mathsf{VRF_{a_{sk}}}(seed||step)$
-        \State $t \gets \frac{\tau}{W}$
-        \State $j \gets 0$
+        \State $w := a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
+        \State $W := \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
+        \State $\tau := \mathsf{CommitteeThreshold}(p)$
+        \State $ \langle hash, \pi \rangle := \mathsf{VRF_{a_{sk}}}(seed||step)$
+        \State $t := \frac{\tau}{W}$
+        \State $j := 0$
         \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
-            \State $j \gets j+1$
+            \State $j := j+1$
         \EndWhile
         \Return $credentials(hash, \pi, j)$
     \EndFunction
@@ -2297,8 +2304,8 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, round, period, step, w, W$}
         \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||round||period||step)$}{$\mathsf{return} \ 0$}
-        \State $p \gets \frac{t}{W}$
-        \State $j \gets 0$
+        \State $p := \frac{t}{W}$
+        \State $j := 0$
         \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
             \State $j++$
         \EndWhile
