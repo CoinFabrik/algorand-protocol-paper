@@ -1156,7 +1156,7 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \State $lowestObservedHash \gets \infty$
     \State $v \gets \bot$ 
 
-    \For{$vt^\prime \in V \text{ with } vt^\prime.step = proposal$}
+    \For{$vt^\prime \in V \text{ with } vt^\prime_s = proposal$}
         \State $priorityHash \gets \min_{i \in [0, vt^\prime.cred_j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash \gets priorityHash$
@@ -1185,7 +1185,7 @@ The soft vote stage (also known as ``filtering'') is run after a timeout of $\ma
 (where $p$ is the executing period of the node) is observed by the node. 
 That is to say, filtering is triggered after either a $2\cdot\lambda_0$ or $2\cdot\lambda$ timeout is observed according 
 to whether $p=0$ or $p>0$ respectively.
-Let $V*$ be all proposal votes received, e.g., $V*=\{vt^\prime\in V : vt^\prime.step = proposal\}$.
+Let $V*$ be all proposal votes received, e.g., $V*=\{vt^\prime\in V : vt^\prime_s = proposal\}$.
 With the aid of a priority hash function, this stage performs a filtering action,
 keeping the lowest hashed value observed.
 The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
@@ -1285,11 +1285,11 @@ For each selected member, a corresponding ``certify vote'' for the current propo
         \caption{\underline{HandleVote}}
         \label{algo:handle-vote}
         \begin{algorithmic}[1]
-        \Function{$HandleVote$}{$Vote \ vt$}
+        \Function{$\mathsf{HandleVote}$}{$Vote \ vt$}
 
             % //P*? como funciona la penalizacion del jugador en este caso (funcion PenalizePeer())?
             
-            % //P*? que pasa si vt.round $>$ r+1? Crash? Hay algun mecanismo de bootstrapping a ese punto?
+            % //P*? que pasa si vt_r $>$ r+1? Crash? Hay algun mecanismo de bootstrapping a ese punto?
             
             % //P*? cómo funciona la operación de relay? Sólo reenvía, o es un broadcast?
             
@@ -1303,41 +1303,41 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                 \State $\mathsf{return}$ \ //ignore invalid vote
             \EndIf
 
-            \If{$vt.step = 0 \land (vt \in V \lor \mathsf{IsEquivocation}(vt))$}
+            \If{$vt_s = 0 \land (vt \in V \lor \mathsf{IsEquivocation}(vt))$}
                 \State $\mathsf{return}$ \ //ignore vote, equivocation not allowed in proposal votes
             \EndIf
 
-            \If{$vt.step > 0 \land \mathsf{IsSecondEquivocation}(vt) $}
+            \If{$vt_s > 0 \land \mathsf{IsSecondEquivocation}(vt) $}
                 \State $\mathsf{return}$ \ //ignore vote if it's a second equivocation
             \EndIf
 
-            \If{$vt.round < r $}
+            \If{$vt_r < r $}
                 \State $\mathsf{return}$ \ //ignore vote of past round
             \EndIf
 
-            \If{$vt.round = r+1 \land (vt.period > 0 \lor vt.step \in \{next_0,\ldots, next_{249}\})$}
+            \If{$vt_r = r+1 \land (vt_p > 0 \lor vt_s \in \{next_0,\ldots, next_{249}\})$}
                 \State $\mathsf{return}$ \ //ignore vote of next round if non-zero period or $next_k$ step
             \EndIf
 
             % cambiar parentesis y corchetes por \{ \}
-            \If{$vt.round = r \land (vt.period \notin \{p-1,p, p+1\} \lor$ \\
-            $(vt.period = p+1 \land vt.step \in \{next_1,\ldots, next_{249}\}) \lor$ \\
-            $(vt.period = p \land vt.step \in \{next_1,\ldots, next_{249}\} \land vt.step \notin \{s-1,s, s+1\}) \lor$ \\
-            $(vt.period = p-1 \land vt.step \in \{next_1,\ldots, next_{249}\} \land vt.step \notin \{\bar{s}-1, \bar{s},\bar{s}+1\}))$}
+            \If{$vt_r = r \land (vt_p \notin \{p-1,p, p+1\} \lor$ \\
+            $(vt_p = p+1 \land vt_s \in \{next_1,\ldots, next_{249}\}) \lor$ \\
+            $(vt_p = p \land vt_s \in \{next_1,\ldots, next_{249}\} \land vt_s \notin \{s-1,s, s+1\}) \lor$ \\
+            $(vt_p = p-1 \land vt_s \in \{next_1,\ldots, next_{249}\} \land vt_s \notin \{\bar{s}-1, \bar{s},\bar{s}+1\}))$}
                 \State $return$ \ //ignore vote
             \EndIf
 
             \State $V \gets V \cup vt$ \ //observe vote
             \State $\mathsf{Relay}(vt)$
 
-            \If{$vt.step = proposal$}
+            \If{$vt_s = proposal$}
                 \If{$\mathsf{Proposal}(vt.v) \in P$}
                     %P*? Que onda el sortition aca?
                     \State $\mathsf{Broadcast}(\mathsf{Proposal}(vt.v))$
                 \EndIf
-            \ElsIf{$vt.step = soft$}
+            \ElsIf{$vt_s = soft$}
                 %check if soft bundle has been achieved
-                \If{$\exists v | Bundle(vt.round,vt.period,soft,v) \subset V$}
+                \If{$\exists v | Bundle(vt_r,vt_p,soft,v) \subset V$}
                     %Try to emit a certification vote
                     \For{$a \in A$}
                         \State $cred \gets 
@@ -1347,21 +1347,21 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                         \EndIf
                     \EndFor
                 \EndIf
-            \ElsIf{$vt.step = cert$}
+            \ElsIf{$vt_s = cert$}
                 %check if cert bundle has been achieved
-                \If{$\exists v | Bundle(vt.round,vt.period,cert,v) \subset V$}
+                \If{$\exists v | Bundle(vt_r,vt_p,cert,v) \subset V$}
                     \If{$\mathsf{Proposal}(v) \notin P$}
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
                     \State $r_{old} \gets r$
-                    \State $\mathsf{StartNewRound}(vt.round+1)$
+                    \State $\mathsf{StartNewRound}(vt_r+1)$
                     \State $\mathsf{GarbageCollect}(r_{old}, p)$
                 \EndIf
-            \ElsIf{$vt.step > cert$}
-                \If{$\exists v | Bundle(vt.round,vt.period,vt.step,v) \subset V$}
+            \ElsIf{$vt_s > cert$}
+                \If{$\exists v | Bundle(vt_r,vt_p,vt_s,v) \subset V$}
                     \State $p_{old} \gets p$
-                    \State $\mathsf{StartNewPeriod}(vt.period + 1)$
+                    \State $\mathsf{StartNewPeriod}(vt_p + 1)$
                     \State $\mathsf{GarbageCollect}(r, p_{old})$
                 \EndIf
             \EndIf
@@ -1370,10 +1370,11 @@ For each selected member, a corresponding ``certify vote'' for the current propo
         \end{algorithmic}
     \end{algorithm}
     
+A vote $vt$ is an uple consisting of a secret key $vt_{sk}$, a round $vt_r$, a step $vt_r$ and a period $vt_p$.\index{Vote structure}
     
-    \noindent \textbf{Description:}\\
+\noindent \textbf{Description:}\\
 The vote handler is triggered when a node receives a message containing a vote for a given proposal value, round, period and step.
-It first performs a series of checks, and if the received vote passes all of them, then it's broadcast by all accounts selected
+It first performs a series of checks, and if the received vote passes all of them, then it is broadcast by all accounts selected
 as the appropriate committee members.
 On line 2, it checks if the vote is valid by itself. If invalid, the node can optionally penalize the sender of the vote
 (by disconnecting or blacklisting it, for example).
@@ -1717,18 +1718,18 @@ Afterwards, it updates the balance table $BT$ with all state changes called for 
 \begin{algorithm}[H]\label{algo:verify-vote}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyVote}$}{$Vote \ vt$}
-        \State $valid \gets vt.round \leq r+2$
+        \State $valid \gets vt_r \leq r+2$
         
-        \If{$vt.step = 0$}
-            \State $valid \gets valid \land vt.v.p_{orig} \leq vt.period$
-            \If{$vt.period = vt.v.p_{orig}$}
+        \If{$vt_s = 0$}
+            \State $valid \gets valid \land vt.v.p_{orig} \leq vt_p$
+            \If{$vt_p = vt.v.p_{orig}$}
                 \State $valid \gets valid \land vt.v.I_{orig} = vt_I$
             \EndIf
         \EndIf
         
-        \If{$vt.step \in \{propose, soft, cert, late, redo\}$}
+        \If{$vt_s \in \{propose, soft, cert, late, redo\}$}
             \State $valid \gets valid \land vt.v \neq \bot$
-        \ElsIf{$vt.step = down$}
+        \ElsIf{$vt_s = down$}
             \State $valid \gets valid \land vt.v = \bot$
         \EndIf
 
