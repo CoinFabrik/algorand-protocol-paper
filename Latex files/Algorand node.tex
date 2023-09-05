@@ -2154,37 +2154,6 @@ if it has been observed.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:get-sortition-seed}
-    \begin{algorithmic}[1]
-        \Function{$getSortitionSeed$}{$ctx, r, a_{pk}$}
-        
-            $\Return\;ctx.block[r-1-(r\;mod\;R)].seed$
-
-        \EndFunction
-    \end{algorithmic}
-    \caption{\underline{getSortitionSeed}}
-\end{algorithm}
-
-\noindent \textbf{Arguments:}
-\begin{itemize}
-    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $round$ = current round number
-    \item $a_{pk}$ = the account's public key for the look up table
-  \end{itemize}
-
-
-\noindent \textbf{Description:}\\
-This helper function gets the relevant sortition seed for the current round $r$, according to the seed 
-lookback parameter $R$.
-Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, refreshed every $R$ rounds.
-
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item a sortition seed to be used in the round $r$
-  \end{itemize}
-
-% ----------------------------------------------------------------------------------------------
-
 \begin{algorithm}[H]\label{algo:get-sortition-weight}
     \begin{algorithmic}[1]
         \Function{$getSortition_w$}{$ctx, round, a_{pk}$}
@@ -2250,7 +2219,7 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \label{algo:sortition}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
-        \State $seed := L[r - \delta_s].seed$
+        \State $seed \gets L[r - \delta_s]_{seed}$
         //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
         \State $w := a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
         \State $W := \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
