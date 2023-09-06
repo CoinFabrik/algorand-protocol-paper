@@ -2,13 +2,13 @@
 
 \usepackage[utf8]{inputenc} % para poder usar tildes en archivos UTF-8
 \usepackage[english]{babel}
-\usepackage{a4wide} % márgenes un poco más anchos que lo usual
+\usepackage{a4wide}
 \usepackage{hyperref}
 \usepackage{float}
-% Comandos para simbolos matematicos.
-\usepackage{amsmath, amssymb}%, tabularx}
 
-% Comandos para algoritmos.
+\usepackage{amsmath, amssymb} 
+
+% algorithmics
 \usepackage[noend]{algpseudocode}
 \usepackage{algorithm}
 \algnewcommand{\IfThenElse}[3]{% \IfThenElse{<if>}{<then>}{<else>}
@@ -264,7 +264,7 @@ When it is nonzero, the node participates in the proposal voting representing th
 %for some number of steps $s\in\Z_{\ge 0}$, then
 In a vanilla run scenario and at this point, the period is zero ($p=0$). 
 The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
-sets $v$ as the proposal value obtained from the block $e$ and does two separate 
+sets $v$ as the proposal value obtained from the vote $e$ and does two separate 
 broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
 Also, we enter the "soft vote" step setting $s:=1$.
 
@@ -395,7 +395,7 @@ and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
 ending the round.
 Calling the new round algorithm (Algo.~\ref{algo:start-new-round}) will
 reset variables as: $\bar s:=s$, $\bar{v}:=\bot$, $r:=r+1$, $p:=0$ and
-$s:=proposal=1$;
+$s:=proposal=0$;
 and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect}) 
 will compute 
 $$
@@ -511,7 +511,7 @@ These transactions are processed by the node as follows.
 During consensus, a node that receives an e it will validate same as above.
 
 Once consensus accepted a block, e, it needs to run all transactions again
-but now modifies de ledger and balances. 
+but now modifies the ledger and balances. 
 
 
 {\bf Standards and Conventions:}
@@ -676,10 +676,11 @@ concurrently.
 
 The {\sf state of a node} \index{node's state}\index{state of a node}
 is given by the {\sf execution state} which is defined as the 3-tuple of nonnegative integers $(r, p, s)$, 
-an observed proposal, $P$, 
-an observed vote, $V$, 
+a set of observed proposals, $P$, 
+a set of observed votes, $V$, 
 a Ledger $L$ and 
 a balance table $BT$.
+% falta el pinned vote, el tiempo, el ultimo estado...
 Explicitly, we define the state of a node, $S$, as a tuple of values, 
 $$
 S = (r, p, s, V, P, \bar{v}, \bar{s}, L, BT)
@@ -687,35 +688,35 @@ $$
 where
 \begin{itemize}
     \item 
-    $r\in\mathbb{Z}_{\ge 0}$ is the current round and recorded as a 64-bits integer. 
+    $r\in\mathbb{Z}_{\ge 0}$ is the current {\sf round} and recorded as a 64-bits integer. \index{round}
     The round variable start as $r=0$, when the genesis block is generated, and increases
     by one after each block is accepted.\marginpar{revisar wording}
     
     \item 
-    $p\in\mathbb{Z}_{\ge 0}$ is the current period within the round and recorded as 
+    $p\in\mathbb{Z}_{\ge 0}$ is the current {\sf period} within the round and recorded as \index{period}
     a 64-bits integer. When the round starts, $p$ is set to 0 ($p=0$), and it is 
     increased via the function $\mathcal(F)$ (see \ref{fun:compute-p}).
     
     \item 
-    $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step}\index{step} within the round
+    $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step} within the round\index{step} 
     and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$), 
-    and it is increased via the function $\mathcal(F)$ (see \ref{fun:compute-s}) and 
+    and it is increased by the main algorithm (see \ref{algo:main}) and 
     labeled according to table (see (\ref{table:s})).
     
     \item
-    $V$ is the set of all {\sf valid observed votes}\index{valid observed votes} and 
+    $V$ is the set of all valid {\sf observed votes}\index{observed votes} and 
     {\sf equivocation votes}\index{equivocation votes} in the current execution state
     ($(r,p,s)$).
     
     \item
-    $P$ is the set of all {\sf valid observed proposals}\index{valid observed proposals}
+    $P$ is the set of all valid {\sf observed proposals}\index{observed proposals}
     in the current execution state ($(r,p,s)$).
     
     \item
-    $\bar{v}$ is the pinned proposal-value.
+    $\bar{v}$ is the {\sf pinned proposal value}.\index{pinned proposal value}
     
     \item
-    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}\index{last finished step}.
+    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}.\index{last finished step}.
     
     \item
     $L$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
@@ -748,8 +749,8 @@ where
 The first 7 values are the {\sf consensus state parameters},\index{consensus state parameters}
 whereas $L$ and $BT$ are {\sf ledger state parameters}.\index{ledger state parameters}
 
-Let round and period number, $r$ and $p$, be unsigned 64-bits integers. 
-step number, $s$, be an unsigned 8 bits integer.
+Let $r$ and $p$ be unsigned 64-bits integers representing the round and period number respectively, and 
+let $s$  be an unsigned 8 bits integer representing the step number.
 For convenience and readability, we define the following step name - step enumeration assignment:
 \begin{equation}\label{table:s}
 \left\{    
@@ -877,7 +878,7 @@ A block header holds the following data:
     in the slice is less or equal to 32. A block proposer may not include all such
     accounts in the slice and may even omit the slice completely
 \end{itemize}
-While a block's body is the block's transaction sequence, which describes the sequence
+While a body of a block is the block's transaction sequence, which describes the sequence
 of updates to the account state and box state.\marginpar{los account records no tienen states!}
 %adp: tecnicamente los local y global states son account updates, 
 %los local states viven en en el account record y tenes uno por cada app 
@@ -907,7 +908,6 @@ The special proposal where all fields are the zero-string is called the bottom
 proposal $\bot$. 
 It also includes the authentication information for the original proposer, that is, 
 a signature and VRF proof of the proposal-value.
-
 
 %claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
 For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
@@ -990,7 +990,7 @@ node.
 
 The node is reactive. The main algorithm for the node, thus, starts when it receives 
 any input, it makes computations --probably modifying the state of the node-- and 
-may end by broadcasting data to other nodes.
+may end by broadcasting data to other nodes. 
 
 \begin{algorithm}[H]
     \caption{\underline{Main node algorithm}}
@@ -1008,7 +1008,7 @@ may end by broadcasting data to other nodes.
             \State $s:=3$; $\mathsf{Recovery}()$
         \ElsIf{$time\in[\max\{4\lambda, \Lambda \} + 2^{s_t-3}\lambda, \max\{4\lambda, \Lambda \} + 2^{s_t-2}\lambda)$ for some $s\le s_t \le 252$}
             \State $s:=s_t $; $\mathsf{Recovery}()$
-        \ElsIf{$time = k\lambda_f + r, k \in \mathbb{Z} \land k>0, r \in U[0, \lambda_f]$}
+        \ElsIf{$time = k\lambda_f + r$ for some $k,r \in \mathbb{Z}, k>0, 0\le r \le \lambda_f$}
             \State $\mathsf{FastRecovery}()$
         \EndIf
     \Else \ //ev is MessageEvent
@@ -1130,23 +1130,24 @@ This is a pattern that we'll see in every other main algorithm subroutine
 that performs any form of committee voting.
 For each account, the sortition algorithm is run to check if the account is allowed 
 to participate in the proposal. 
-If it is selected by sortition (because $cred_j=\mathsf{Sortition}(a, proposal)+j>0$)
+If an account $a$ is selected by sortition (because $cred_j=\mathsf{Sortition}(a, proposal)+j>0$)
 there are two options. 
-If this is a proposal step ($p=0$) or if the node has recorded a bundle 
-$\mathsf{Bundle}(r, p-1, s^\prime, \bot)$, then a block is assembled 
 
+i) If this is a proposal step ($p=0$) or if the node has {\em observed} a bundle 
+$\mathsf{Bundle}(r, p-1, s^\prime, \bot)$ (meaning there is no valid pinned value), 
+then the algorithm assembles a block, computes the proposal value for this block, 
+broadcast a proposal vote by the account $a$, and broadcasts the full block in a 
+proposal type message.
 
-The core proposal algorithm is in lines 6 to 14: on lines 6 to 10, 
-if the node's on a first period, or it observed a bundle for the bottom proposal on the previous 
-period (meaning there is no valid pinned value), then it will assemble a block, compute the proposal-value for the 
-previously assembled block, broadcast a proposal vote by the selected account for this value, and 
-broadcast the full block in a proposal payload message.
-Otherwise, the node is at least on a second period, and it has a pinned value available, supported by a 
-bundle observed in the period immediately before, being the observation of this bundle the event to trigger 
-a period change in the first place. On line 12 the node gets this value explicitly, which coincides with the pinned
-value $\bar{v}$. 
-%P*? CAN the pinned value at this stage, by some manipulation of equivocation votes, not be unique? meaning there
+ii) Otherwise, a value $\bar v$ has been pinned supported by a bundle observed in 
+period $p-1$, and on line 12 the node gets this value, assembles a vote
+$\mathsf{Vote}(a_I, r, p, proposal, \bar{v}, cred)$, broadcasts this vote,
+and will also broadcast the proposal for the pinned vote if it was already
+observed.
+%adp P*? CAN the pinned value at this stage, by some manipulation of equivocation votes, not be unique? meaning there
 %is more than one full bundle for the past period.
+%
+%% Esto  me confunde. Esta bien indentado el algoritmo? O sea esto es independeinte de los IFs de arriba?
 Then, for every account selected, a proposal vote for this pinned value is broadcast. Afterwards, 
 if the corresponding full proposal has been observed, then it is also broadcast.
 
@@ -1263,22 +1264,25 @@ output in its filtering step.
 The proposal handler is triggered when a node receives a message containing a full proposal.
 It starts by performing a series of checks, after which it will either ignore the received
 proposal, discarding it and emitting no output; or relay, observe and produce an output
-according to the proposal's characteristics and the current context.
-The first check (lines 3 to 5) is a special case, where if the proposal is from the next round's 
-first period, the node relays it and then ignores it for the purpose of the current round. 
-Whenever the node catches up (observes a round change), and only if necessary, it will request 
-this proposal back from the network.
+according to the the current context and the characteristics of the proposal.
+
+In lines 3 to 5, it is checked if the proposal is from the next first period of the round next
+to the current, in which case the node relays this proposal and then ignores it for the purpose 
+of the current round. 
+Whenever the node catches up (i.e., observes a round change), and only if necessary, it will request 
+this proposal back from the network.\marginpar{Este request está en el agoritmo? Línea?}
 Lines 6 and 7 check if the proposal is invalid, or if it has been observed already. Any one of those
 conditions are sufficient to discard and ignore the proposal.
 Finally, on lines 8 and 9 it checks if the associated proposal value is either of the special values for the current
 round and period ($\sigma$, $\mu$, or the pinned proposal value $\bar{v}$). Any proposal whose proposal value does not match
 one of these is ignored.
-Once the checks have been surpassed, the node is ready to relay the proposal and observe it by adding
-it to the observed proposals set, $P$ (lines 10 and 11).
-Once relayed and observed, the proposal is then processed for further output.
-Here, and only if the proposal value has become committable and the current executing node's step is lower or equal
-to a certification step (it's not yet in a recovery step), the node plays for each account performing sortition
-to select committee members for the certification step. 
+
+Once the checks have been passed, in lines 10 and 11, the algorithm relays and observes the proposal (by adding
+it to the observed proposals set, $P$). 
+
+Next, and only if the proposal value is committable and the current step is lower than or equal
+to a certification step (i.e., it is not yet in a recovery step), the node plays for each account 
+performing sortition to select committee members for the certification step. 
 For each selected member, a corresponding ``certify vote'' for the current proposal value is cast.
 
 
@@ -2019,7 +2023,7 @@ $$
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]\label{algo:start-new-round}
-    \caption{\underline{StartNewRound}}
+    \caption{\underline{Start New Round}}
     \label{algo:start-new-round}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewRound}$}{$uint64 \ newRound$}
@@ -2042,7 +2046,9 @@ Period and step number are set to $0$ and $proposal=0$ respectively.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:start-new-period}
+\begin{algorithm}[H]
+    \caption{\underline{Start New Period}}
+    \label{algo:start-new-period}
     \begin{algorithmic}[1]
     \Function{$\mathsf{StartNewPeriod}$}{$uint64 \ newPeriod$}
 
@@ -2060,7 +2066,6 @@ Period and step number are set to $0$ and $proposal=0$ respectively.
     \State Reset $time$.
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{StartNewPeriod}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -2083,7 +2088,9 @@ Finally, the node updates $p$ to match the period to start.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:garbage-collect}
+\begin{algorithm}[H]
+    \caption{\underline{Garbage Collect}}
+    \label{algo:garbage-collect}
     \begin{algorithmic}[1]
     \Function{$\mathsf{GarbageCollect}$}{$r, p$}
 
@@ -2095,7 +2102,6 @@ Finally, the node updates $p$ to match the period to start.
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{GarbageCollect}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -2109,39 +2115,44 @@ and both the current and previous periods.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:request-proposal}
+\begin{algorithm}[H]
+    \caption{\underline{Request Proposal}}
+    \label{algo:request-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
-        //ver como hacer el request...como lo resuelve el nodo?
+      TBD
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{RequestProposal}}
 \end{algorithm}
 
-\noindent \textbf{Description:}\\
+\noindent \textbf{Description:}\marginpar{ver como hacer el request...como lo resuelve el nodo?}
+
 %The Ledger.Wait function (and its variants) seem to be used to wait for the block
 % https://github.com/algorand/go-algorand/blob/51f5314422b568526d09fdb74c4c87cfaaa0b4e2/ledger/ledger.go#L747
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:penalize-peer}
+\begin{algorithm}[H]
+    \caption{\underline{Penalize Peer}}
+    \label{algo:penalize-peer}
     \begin{algorithmic}[1]
     \Function{$\mathsf{PenalizePeer}$}{$PEER\_NETWORK\_ID$}
-        //ver como resuelve el nodo la desconexion o blacklist de un peer
+        TBD
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{PenalizePeer}}
 \end{algorithm}
 
-\noindent \textbf{Description:}\\
+\noindent \textbf{Description:}\marginpar{ver como resuelve el nodo la desconexion o blacklist de un peer}
 %Encontre en el codigo un key-value map donde podes asignar valores a peers a nivel network, pero
 %tengo que ver mejor para convencerme de si es ahi donde se resuelve esto
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:resynchronization-attempt}
+\begin{algorithm}[H]
+    \caption{\underline{Resynchronization Attempt}}
+    \label{algo:resynchronization-attempt}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{ResynchronizationAttempt}$}{}
+    \Function{$\mathsf{ResynchronizationAttempt}$}{\; }
 
     %P*? Sortition aca? deberia correrlo? no es claro como funcionaria aca
 
@@ -2163,7 +2174,6 @@ and both the current and previous periods.
 
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{ResynchronizationAttempt}}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
@@ -2178,7 +2188,9 @@ if it has been observed.
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:compute-seed}
+\begin{algorithm}[H]
+    \caption{\underline{Compute Seed And Proof}}
+    \label{algo:compute-seed}
     \begin{algorithmic}[1]
     \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
         \If {$p = 0$}
@@ -2198,7 +2210,6 @@ if it has been observed.
          \State $\mathsf{return} \ (Q, y)$
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{Compute Seed And Proof}}
 \end{algorithm}
 
 
@@ -2221,7 +2232,9 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{algorithm}[H]\label{algo:verify-seed}
+\begin{algorithm}[H]
+    \caption{\underline{Verify Seed}}
+    \label{algo:verify-seed}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifySeed}$}{$Q, \pi_{seed}, Address \ I_{proposer}$}
         \State $q_0 := \mathsf{L}[r-\delta_s]_{seed}$
@@ -2242,7 +2255,6 @@ and used by nodes receiving the proposal as part of the proposal validation proc
         \EndIf
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{Compute Seed And Proof}}
 \end{algorithm}
 
 
@@ -2257,6 +2269,38 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 \noindent \textbf{Returns:}\\ A boolean value. $True$ if the seed $Q$, with proof $\pi_{seed}$, computed by $I$,
     is valid for the current node context, otherwise returns $False$.
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \caption{\underline{Get Sortition Seed}}
+    \label{algo:get-sortition-seed}
+    \begin{algorithmic}[1]
+        \Function{$getSortitionSeed$}{$ctx, r, a_{pk}$}
+        
+            $\Return\;ctx.block[r-1-(r\;mod\;R)].seed$
+
+        \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\noindent \textbf{Arguments:}
+\begin{itemize}
+    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
+    \item $round$ = current round number
+    \item $a_{pk}$ = the account's public key for the look up table
+  \end{itemize}
+
+
+\noindent \textbf{Description:}\\
+This helper function gets the relevant sortition seed for the current round $r$, according to the seed 
+lookback parameter $R$.
+Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, refreshed every $R$ rounds.
+
+\noindent \textbf{Returns:}
+\begin{itemize}
+    \item a sortition seed to be used in the round $r$
+\end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2350,7 +2394,8 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
 \end{itemize}
 
 %A_0,..., A_algo are the committee members.... que es eso?
-\noindent \textbf{Description:}\\
+\noindent \textbf{Description:}\marginpar{A lot of notation to describe. Review.}
+
 The Sortition procedure is one of the most important subroutines in the main algorithm, as it is 
 used in multiple stages and contexts.
 Generally, it manages to pseudo-randomly but verifiably (through the use of a Verifiable Random 
@@ -2370,7 +2415,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
     \item an object of type $credentials$, containing the sortition hash and proof (output of VRF
     computation) and an unsigned integer $j$ representing the weight that player has in the committee,
     for the desired round, period and step.
-  \end{itemize}
+\end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2412,8 +2457,11 @@ observed stake.\\
     \item an integer $j$ that will be positive (larger than 0) if the user has been 
     selected, and it's size corresponds to the amount
     of sub-users for a given committee member
-  \end{itemize}
+\end{itemize}
 
+% ----------------------------------------------------------------------------------------------
+
+{\bf MISSING VRF(), VerifyVRF()}
 
 \end{section}
 % ----------------------------------------------------------------------------------------------
