@@ -1646,10 +1646,30 @@ Otherwise, it falls back to $SHA256$.\\
     \caption{\underline{AssembleBlock}}    
     \label{algo:assemble-block}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{AssembleBlock}$}{}
+    \Function{$\mathsf{AssembleBlock}$}{$Address \ I$}
 
-    \State $Block b$
+    \State $Block \ b$
+    \\
+
+    //define block body
     \State $b.body := TP[-s]$
+    \\
+
+    //define block header
+    \State $b_{r} := r$
+    \State $b_{prevHash} := \mathsf{H}(L[r])$
+    
+    \State $(seed, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
+    \State $b_{seed} := seed$
+
+    \State $b_{txnCommitment} := \mathsf{MerkleTree}(TP[-s])_{root}$
+
+    \State $b_{timestamp} := TIMESTAMP()$ //timestamp in seconds since epoch
+    //TODO: timestamp must be inside an interval. Validate this with code
+
+    
+
+
 
     \EndFunction
     \end{algorithmic}
@@ -1786,8 +1806,6 @@ block fields are zeroes).
 
     \State $proposal prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
     \State $\mathsf{return} \ prop$
-
-    
 
     \EndFunction
     \end{algorithmic}
