@@ -2208,11 +2208,15 @@ if it has been observed.
   \end{itemize}
 
 
-\noindent \textbf{Description:}\\ 
+\noindent \textbf{Description:}\\ Computes the cryptographic seed that goes in the block for round $r$,
+and will be used as a source of randomness for sortition in a future round.
+The seed is computed according to whether the function is called in a first period, $p = 0$, or not.
+It also computes the proof $\pi_{seed}$, bundled up with the block inside a proposal structure for broadcasting, 
+and used by nodes receiving the proposal as part of the proposal validation process.
 
 
 \noindent \textbf{Returns:} \\
-    the computed seed for the given block, ledger context and round, as well as the sortition proof
+    the computed seed $Q$ for the given block, ledger context, round and period, as well as the sortition proof $\pi_{seed}$
     to validate it
 
 % ----------------------------------------------------------------------------------------------
