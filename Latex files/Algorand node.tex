@@ -1654,8 +1654,8 @@ Otherwise, it falls back to $SHA256$.\\
     \State $b_{r} := r$
     \State $b_{prevHash} := \mathsf{H}(L[r-1])$
     
-    \State $(seed, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
-    \State $b_{seed} := seed$
+    \State $(Q, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
+    \State $b_{Q} := Q$
 
     \State $b_{txnCommitment} := \mathsf{MerkleTree}(TP[-s])_{root}$
 
@@ -1815,8 +1815,8 @@ Afterwards, it updates the balance table $BT$ with all state changes called for 
             \State $valid := valid \land vt.v = \bot$
         \EndIf
 
-
-        //TODO: verificacion de firmas, VRFs y rounds de validez
+        \State $valid := valid \land \mathsf{VerifyPartSignature}(vt)$
+        \State $valid := valid \land \mathsf{VerifyVRF}(vt_{\pi}, vt_I, vt_r, vt_p, vt_s)$
 
         \State $\mathsf{return} \ valid$
     \EndFunction
@@ -1828,6 +1828,33 @@ Afterwards, it updates the balance table $BT$ with all state changes called for 
 Vote verification gets an unauthenticated vote and returns an authenticated vote and a
 boolean indicating whether authentication succeeded or failed.
 
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]\label{algo:verify-part-sign}
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{VerifyPartSignature}$}{$Vote \ vt$}
+        
+        //get voter's relevant ephemeral key for this round
+        \State x
+
+        //verify key's validity interval
+        \State x
+
+        //use the cryptographic signature verification function
+        \State $\mathsf{return} \ \mathsf{ed25519\_verify}(part_{pk}, \mathsf{encode}(vt))$
+    \EndFunction
+    \end{algorithmic}
+    \caption{\underline{VerifyVote}}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+Vote verification gets an unauthenticated vote and returns an authenticated vote and a
+boolean indicating whether authentication succeeded or failed.
+The procedure retrieves the relevant ephemeral participation public key for the user given the vote round $vt_r$,
+checking that it exists and taking into account the lookback period $\delta_s\delta_b$.
+It then checks that the currently executing round (minus lookback) is inside the validity interval for said key.
+Finally, the internal cryptographic signature verification function (leveraging Algorand's fork of the sodium C library)
+is called to check the signature itself against the provided key and the vote serialized as plain bytes.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1836,6 +1863,8 @@ boolean indicating whether authentication succeeded or failed.
     \Function{$\mathsf{Proposal}$}{$Proposal_{value} \ v$}
 
     \If{$\exists e \in P \ | \ Proposal_{value}(e) = v$}
+        \State $\mathsf{return} \ e $
+    \Else
         \State $\mathsf{return} \ \mathsf{Proposal}(\bot) $
     \EndIf
 
@@ -1859,7 +1888,7 @@ block fields are zeroes).
     \Function{$\mathsf{MakeProposal}$}{$Block \ e, \pi_{seed}, uint64 \ p_{orig}, Address \ I_{orig}$}
     %el bloque se asume ya validado
 
-    \State $proposal prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
+    \State $proposal \ prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
     \State $\mathsf{return} \ prop$
 
     \EndFunction
@@ -2153,11 +2182,11 @@ if it has been observed.
     \begin{algorithmic}[1]
     \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
         \If {$p = 0$}
-             \State $y := \mathsf{VRF.Prove}(L[r-\delta_s].Seed, a_{sk})$
+             \State $y := \mathsf{VRF.Prove}(L[r-\delta_s]_Q, a_{sk})$
              \State $\alpha := \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
         \Else
             \State $y := 0$
-            \State $\alpha := \mathsf{H}(L[r-\delta_s].Seed)$
+            \State $\alpha := \mathsf{H}(L[r-\delta_s]_Q)$
         \EndIf
 
         \If{$r \mod \delta_s \delta_r < \delta_s$}
@@ -2292,12 +2321,12 @@ This helper function returns the sum of all stake for $R + SL$ rounds prior to $
     \label{algo:sortition}
     \begin{algorithmic}[1]
     \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
-        \State $seed \gets L[r - \delta_s]_{seed}$
+        \State $Q \gets L[r - \delta_s]_{Q}$
         //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
         \State $w := a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
         \State $W := \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
         \State $\tau := \mathsf{CommitteeThreshold}(p)$
-        \State $ \langle hash, \pi \rangle := \mathsf{VRF_{a_{sk}}}(seed||step)$
+        \State $ \langle hash, \pi \rangle := \mathsf{VRF_{a_{sk}}}(Q||step)$
         \State $t := \frac{\tau}{W}$
         \State $j := 0$
         \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
@@ -2344,8 +2373,8 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$pk, seed, \tau, round, period, step, w, W$}
-        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, seed||round||period||step)$}{$\mathsf{return} \ 0$}
+    \Function{$\mathsf{VerifySortition}$}{$pk, Q, \tau, round, period, step, w, W$}
+        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, Q||round||period||step)$}{$\mathsf{return} \ 0$}
         \State $p := \frac{t}{W}$
         \State $j := 0$
         \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
@@ -2360,7 +2389,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $pk$ = a user's public key (their address)
-    \item $seed$ = the sortition seed to be used
+    \item $Q$ = the sortition seed to be used
     \item $\tau$ = the expected committee size for the given role
     \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
     \item $w$ = the user's weight (i.e., its relevant stake)
