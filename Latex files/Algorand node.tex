@@ -925,9 +925,6 @@ For convenience, we define the function $\mathsf{RetrieveProposal}:v\mapsto{\mat
 $v$,  such that $\mathsf{RetrieveProposal}(v) = prop$ if, and only if, $prop$ is the proposal that, when hashed, corresponds 
 to the proposal hash $H(prop)$ of the proposal value $v$.
 
-%where P is the set of all observed proposals in a given round and period (en realidad tenes las del periodo anterior y el
-%siguiente disponibles tambien).
-
 
 We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
 \begin{itemize}
@@ -966,24 +963,18 @@ It is important to keep in mind that nodes are forbidden from equivocating
 on any steps $s \neq soft$.\marginpar{What does this mean? How do nodes enforce this?}
 
 % bundle
-A {\sf bundle}\index{bundle} is a set $b = Bundle(r,p,s,v)$ such that for any pair of distinct values 
+A {\sf bundle}\index{bundle} is a set $b = \mathsf{Bundle}(r,p,s,v)$ such that for any pair of distinct values 
 $vt_0, vt_1 \in b$ the following conditions hold: 
-a) $vt_0.r = vt_1.r $, 
-b) $vt_0.p = vt_1.p$,
-c) $vt_0.s = vt_1.s$,
+a) $vt_{0_r} = vt_{1_r} $, 
+b) $vt_{0_p} = vt_{1_p}$,
+c) $vt_{0_s} = vt_{1_s}$,
 d) for each pair of distinct elements, either $(vt_0)_I \neq (vt_1)_I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ 
 is an equivocation vote, and
 e) the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
 committee threshold of the votes in the set.
 
-% highest priority
-For convenience, we define two special values: $\mu(r,p)$ and $\sigma(r,p)$.
-$\mu(r,p)$ is the highest priority observed proposal-value in the current $(r,p)$ context 
-(lowest hashed according to the function outlined in the $\mathsf{BlockProposal}$ algorithm), 
-or $\bot$ if no valid proposal vote has been observed by the node.
-$\sigma(r,p)$ is the sole proposal-value for which a soft bundle has been observed (again, 
-in the current $(r,p)$ context), or $\bot$ if no valid soft bundle has been observed by the 
-node.
+We define the {\sf observed bundles}\index{B} for the current execution state, $B$, as the set of all of the bundles
+observed by the node in the current execution state.
 \end{subsection}
 
 \end{section}
@@ -1231,7 +1222,7 @@ output in its filtering step.
             \State $v := Proposal_{value}(prop, prop_{p}, prop_{I})$
 
             %relays proposal if its for a future round (but does not process it)
-            \If{$\sigma(r+1, 0) = v$}
+            \If{$\exists Bundle(r+1,0,soft,v) \in B$}
                 \State $\mathsf{Relay}(prop)$  %relay broadcasts to everyone except proposal sender
                 \State $\mathsf{return}$  //do not observe, as it's for a future round (we're behind)
             \EndIf
@@ -1243,12 +1234,12 @@ output in its filtering step.
 
             %ignores proposal if its proposal value is not either 
             %the current sigma, the pinned value or the current mu
-            \If{$v \notin \{ \sigma(r,p), \bar{v}, \mu(r,p)\}$}
+            \If{$v \notin \{\sigma, \bar{v}, \mu\}$}
                 \State $\mathsf{return}$ //ignore proposal
             \EndIf
 
             %we need to relay (broadcast to everybody but ourselves and o.g. sender), and observe p
-            \State $\mathsf{Relay}(e)$
+            \State $\mathsf{Relay}(prop)$
             \State $P := P \cup e$
 
             %all checks passsed, produce output
@@ -1266,7 +1257,14 @@ output in its filtering step.
         \end{algorithmic}
     \end{algorithm}
     
-    
+    Here $\mu$ is the highest priority observed proposal-value in the current $(r,p)$ context 
+    (lowest hashed according to the function outlined in the $\mathsf{BlockProposal}$ algorithm), 
+    or $\bot$ if no valid proposal vote has been observed by the node.
+
+    $\sigma$ is the sole proposal-value for which a soft bundle has been observed (again, 
+    in the current $(r,p)$ context), or $\bot$ if no valid soft bundle has been observed by the 
+    node.
+
     \noindent \textbf{Description:}\\
 The proposal handler is triggered when a node receives a message containing a full proposal.
 It starts by performing a series of checks, after which it will either ignore the received
@@ -2067,8 +2065,8 @@ Period and step number are set to $0$ and $proposal=0$ respectively.
     \If{$\exists v=Proposal_{value}(e),s^\prime \ | e\in P, \ v \neq \bot \land (s^\prime = soft \lor s^\prime > cert)  
     \land Bundle(r, newPeriod-1, s, v) \subset V$}
         \State $\bar{v} := v$
-    \ElsIf{$\sigma(r,p) \neq \bot$}
-        \State $\bar{v} := \sigma(r,p)$
+    \ElsIf{$\sigma \neq \bot$}
+        \State $\bar{v} := \sigma$
     \EndIf
 
     \State $p := newPeriod$
@@ -2076,6 +2074,10 @@ Period and step number are set to $0$ and $proposal=0$ respectively.
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
+
+$\sigma$ is the sole proposal-value for which a soft bundle has been observed (again, 
+in the current $(r,p)$ context), or $\bot$ if no valid soft bundle has been observed by the 
+node.
 
 \noindent \textbf{Description:}\\
 Procedure used to set all state variables necessary to start a new period.
@@ -2089,8 +2091,8 @@ bundle in the previous period, it would not be starting a new period and it woul
 the relevant entry and subsequently start a new round). If such bundle for a proposal-value $v$ exists, the pinned 
 value is updated to $v$.
 Otherwise, and assuming implicitly in this case that the bundle that caused the period switch is of value $\bot$,
-a check for the special $\sigma(r,p)$ value is performed on line 6, where $p$ is the period that was being executed 
-by the node up until a new period was observed. If $\sigma(r,p)$ is a valid non-empty proposal-value, the pinned 
+a check for the special $\sigma$ value is performed on line 6, where $p$ is the period that was being executed 
+by the node up until a new period was observed. If $\sigma$ is a valid non-empty proposal-value, the pinned 
 value $\bar{v}$ is set to this (line 7).
 Finally, if none of the above conditions were met, the pinned value remains unchanged going into the new period.
 Finally, the node updates $p$ to match the period to start.
