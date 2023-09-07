@@ -313,8 +313,8 @@ The algorithm exits on checks --which are passed with the vanilla run assumption
 It also exits if the vote received has already been recorded in the votes set $V$.
 If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
 to other nodes.
-Since nodes are synchronized, it holds that $vt.s=0=proposal$, the algorithm checks if 
-$\mathsf{Proposal}(vt.v)\in P$ and broadcasts this proposal if it is, ignoring if it is not.
+Since nodes are synchronized, it holds that $vt_s=0=proposal$, the algorithm checks if 
+$\mathsf{RetrieveProposal}(vt_v) \neq \bot$ and broadcasts this proposal if it is available, ignoring if it is not.
 %aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
 %adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
     % solo observa (aka agrega el voto a V) y broadcastea ese voto.
@@ -370,11 +370,11 @@ $$
 (sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
 $$
 and, if $j>0$ it broadcasts $\mathsf{Vote}(r,p,soft,v,credential^{\prime\prime})$.
-Moreover, if the proposal $p:=\mathsf{Proposal}(v)$ is in $P$, it also broadcasts $p$.
+Moreover, if the proposal $prop:=\mathsf{RetrieveProposal}(v)$ is not $\bot$, it also broadcasts $prop$.
 
 % timer > FilterTimeout(p), s=1=proposal. handle-poposal
-When the main algorithm receives a message of type vote 
-$\mathsf{Proposal}(\mathsf{Vote}(r,p,soft,v,credential))$ as above, it will
+When the main algorithm receives a message of type proposal 
+$prop$ as above, it will
 run the handle proposal algorithm as before.
 
 % timer > FilterTimeout(p), s=1=proposal. handle-vote
@@ -817,7 +817,7 @@ For the purpose of this article, transactions are an otherwise opaque object, wi
 attribution of modifying account records.
 
 % block
-A {\sf block} is a data structure which specifies the transition between states.
+A {\sf block} $e$ is a data structure which specifies the transition between states.
 The data in a block is divided between the block header and its block body.
 A block header holds the following data:
 \begin{itemize}
@@ -898,10 +898,15 @@ of updates to the account state and box state.\marginpar{los account records no 
 Applying a valid block to a state produces a new state by updating each of its components.
 A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
 
-A proposal-value is a tuple $v = (I, p, H(e), H(Encoding(e)))$ where 
+A Proposal is a tuple $prop = (e, \pi_{seed}, p_{orig}, I_{orig})$, where
+e is a full block, $\pi_{seed}$ is a VRF proof of the seed computed
+on block creation, $p_{orig}$ is the period in which the block was created,
+and $I_{orig}$ is the address of the block creator, the sole account that
+computed the sortition seed and proof.
+
+A proposal-value is a tuple $v = (I, p, H(prop), H(Encoding(prop)))$ where 
 $I$ is an address (the ``original proposer''), 
 $p$ is a period (the ``original period''), 
-{\bf Definir e}
 and
 $H(\,)$ is a cryptographic hash function (implemented as SHA512/256). 
 The special proposal where all fields are the zero-string is called the bottom 
@@ -909,15 +914,16 @@ proposal $\bot$.
 It also includes the authentication information for the original proposer, that is, 
 a signature and VRF proof of the proposal-value.
 
+$Proposal_{value}(I, p, prop) := (I, p, H(prop), H(Encoding(prop))$ is the function used
+by a block proposer to create a proposal-value.
+% Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
+% in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
+% by a table lookup--and no inconsistencies on bijectivity happen by construction.
+
 %claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
-For convenience, we define the function $Proposal:v\mapsto{Proposal}(v)$ for a given proposal value 
-$v$,  such that $\mathsf{Proposal}(v) = e$ if, and only if, $e$ is the proposal that, when hashed, corresponds 
-to the block hash $H(e)$ of the proposal value $v$. 
-The $\mathsf{Proposal}()$ function has an inverse, $Proposal_{value}(e)$, such that
-$Proposal_{value}(e) = v$ if $\mathsf{Proposal}(v) = e$.
-Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
-in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
-by a table lookup--and no inconsistencies on bijectivity happen by construction.
+For convenience, we define the function $\mathsf{RetrieveProposal}:v\mapsto{\mathsf{RetrieveProposal}}(v)$ for a given proposal value 
+$v$,  such that $\mathsf{RetrieveProposal}(v) = prop$ if, and only if, $prop$ is the proposal that, when hashed, corresponds 
+to the proposal hash $H(prop)$ of the proposal value $v$.
 
 %where P is the set of all observed proposals in a given round and period (en realidad tenes las del periodo anterior y el
 %siguiente disponibles tambien).
@@ -1098,17 +1104,18 @@ the corresponding construct (coinciding with their attached data type field).
             \For{$a \in A$}
                 \State $cred :=  \mathsf{Sortition}(a, proposal)$
                 \If{$cred_j > 0$}
-                    \If{$p = 0 \lor \exists s^\prime \textfractionsolidus Bundle(r, p-1, s^\prime, \bot) \subset V$}
-                        \State $e := \mathsf{AssembleBlock}(a_I)$
-                        \State $v := Proposal_{value}(e)$
+                    \If{$p = 0 \lor \exists s^\prime \textfractionsolidus \mathsf{Bundle}(r, p-1, s^\prime, \bot) \subset V$}
+                        \State $(e,\pi_{seed}) := \mathsf{AssembleBlock}(a_I)$
+                        \State $prop := \mathsf{Proposal}(e, \pi_{seed}, p, a_I)$
+                        \State $v := \mathsf{Proposal_{value}}(prop)$
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, v, cred))$
-                        \State $\mathsf{Broadcast}(e)$
+                        \State $\mathsf{Broadcast}(prop)$
                     \Else
                         %VER. Convencerme de que siempre es el pinned value
                         %\State $v := v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, \bar{v}, cred))$
-                        \If{$\mathsf{Proposal}(\bar{v}) \in P$}
-                            \State $\mathsf{Broadcast}(\mathsf{Proposal}(\bar{v}))$
+                        \If{$\mathsf{RetrieveProposal}(\bar{v}) \neq \bot$}
+                            \State $\mathsf{Broadcast}(\mathsf{RetrieveProposal}(\bar{v}))$
                             % proposal(\bar v) es un broadcast de un e 
                         \EndIf
                     \EndIf
@@ -1177,8 +1184,8 @@ if the corresponding full proposal has been observed, then it is also broadcast.
             \State $cred := \mathsf{Sortition}(a, soft)$
             \If{$cred_j > 0$}
                 \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
-                \If{$\mathsf{Proposal}(v) \in P$}
-                    \State $\mathsf{Broadcast}(\mathsf{Proposal}(v))$
+                \If{$\mathsf{RetrieveProposal}(v)$}
+                    \State $\mathsf{Broadcast}(\mathsf{RetrieveProposal}(v))$
                 \EndIf
             \EndIf
         \EndFor
@@ -1219,18 +1226,18 @@ output in its filtering step.
         \caption{\underline{HandleProposal}}
         \label{algo:handle-proposal}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{HandleProposal}$}{$Proposal \ e$}
+        \Function{$\mathsf{HandleProposal}$}{$Proposal \ prop$}
 
-            \State $v := Proposal_{value}(e)$
+            \State $v := Proposal_{value}(prop, prop_{p}, prop_{I})$
 
             %relays proposal if its for a future round (but does not process it)
             \If{$\sigma(r+1, 0) = v$}
-                \State $\mathsf{Relay}(e)$  %relay broadcasts to everyone except proposal sender
+                \State $\mathsf{Relay}(prop)$  %relay broadcasts to everyone except proposal sender
                 \State $\mathsf{return}$  //do not observe, as it's for a future round (we're behind)
             \EndIf
 
             %ignores proposal if it's invalid or if it has already been observed
-            \If{$\lnot \mathsf{VerifyProposal}(e) \lor e \in P$ }
+            \If{$\lnot \mathsf{VerifyProposal}(prop) \lor e \in P$ }
                 \State $\mathsf{return}$  //ignore proposal
             \EndIf
 
@@ -1342,9 +1349,8 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             \State $\mathsf{Relay}(vt)$
 
             \If{$vt_s = proposal$}
-                \If{$\mathsf{Proposal}(vt.v) \in P$}
-                    %P*? Que onda el sortition aca?
-                    \State $\mathsf{Broadcast}(\mathsf{Proposal}(vt.v))$
+                \If{$\mathsf{RetrieveProposal}(vt_v) \neq \bot$}
+                    \State $\mathsf{Broadcast}(\mathsf{RetrieveProposal}(vt_v))$
                 \EndIf
             \ElsIf{$vt_s = soft$}
                 %check if soft bundle has been achieved
@@ -1361,7 +1367,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             \ElsIf{$vt_s = cert$}
                 %check if cert bundle has been achieved
                 \If{$\exists v | Bundle(vt_r,vt_p,cert,v) \subset V$}
-                    \If{$\mathsf{Proposal}(v) \notin P$}
+                    \If{$\mathsf{RetrieveProposal}(v) = \bot$}
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
@@ -1406,14 +1412,14 @@ its step is not within a distance of one away from the node's last finished step
 then the vote is ignored and discarded. \\
 Once finished with the series of validation checks, the vote is observed on line 18, relayed on line 19, and then processed.
 The node will determine the desired output according to its current context and the vote's step.
-If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $\mathsf{Proposal}(v)$ is broadcast if it has been observed 
+If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $\mathsf{RetrieveProposal}(v)$ is broadcast if it has been observed 
 (that is, the player performs a re-proposal payload broadcast).
 If the vote's step is $soft$ (lines 19 through 24), and a $soft$ Bundle has been observed with the addition of the vote on line 19,
 the $Sortition$ sub-procedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
 the lottery, a $cert$ vote is cast as output (line 25).
 If the vote's step is $cert$ (lines 26 through 32), and observing the vote causes the node to observe a $cert$ Bundle for a proposal-value $v$,
 then it checks if the full proposal associated to the critical value has been observed (line 28). Note that simultaneous observation of a $cert$ Bundle 
-for a value $v$ and of a proposal $e = \mathsf{Proposal}(v)$ implies it that the associated entry committed.
+for a value $v$ and of a proposal $prop = \mathsf{RetrieveProposal}(v)$ implies that the associated entry is committable.
 Had the full proposal not been observed at this point, the node may stall and request the full proposal from the network.
 Once the desired block can be committed, on lines 30:32 the node proceeds to commit, start a new round, and garbage collect all
 transient data from the round it just finished.
@@ -1491,7 +1497,7 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
             \State $cred := 
             \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
             \If{$cred_j > 0$}
-                \If{$\exists v=Proposal_{value}(e) $ for some $e\in P | \mathsf{IsCommitable}(v)$}
+                \If{$\exists v=Proposal_{value}(prop, prop_p, prop_I) $ for some $prop\in P | \mathsf{IsCommitable}(v)$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, v, cred))$
                 \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.65cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
@@ -1507,7 +1513,7 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
     
     
     \noindent \textbf{Description:}\\
-The recovery algorithm that is executed every X seconds, 
+The recovery algorithm that is executed periodically,
 whenever a $cert$ bundle has not been observed before $\mathsf{FilterTimeout}(p)$ for a given period $p$. \\
 On line 2 it starts by making a resynchronization attempt. Then on line 3 the node's step is updated.\\
 Afterwards, the node plays for each managed account. For each account that is selected to be a part of the voting committee for the current
@@ -1676,7 +1682,7 @@ Otherwise, it falls back to $SHA256$.\\
 
     \State $b_{stateProof} := StateProofTrackers$
 
-    \State $b_{partUpdates} := X$ \\ \\
+    \State $b_{partUpdates} := \{a \in G \int G'\}$ \\ \\
 
 
     //define block body, ordered set of signed transactions
@@ -1684,11 +1690,11 @@ Otherwise, it falls back to $SHA256$.\\
     %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
         \State $txn := TP.pop()$
         \If{$\mathsf{Valid}(b_{payset}, txn)$}
-            \State $b_{payset} :=  b_{payset}||txn$ \\ \\
+            \State $b_{payset} :=  b_{payset}||txn$ \\
         \EndIf
     \EndWhile
 
-    \State $\mathsf{return} \ b$
+    \State $\mathsf{return} \ (b, \pi_{seed})$
 
     \EndFunction
     \end{algorithmic}
@@ -1748,7 +1754,7 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
-    \State $\mathsf{return} \ \mathsf{Proposal}(v) \in P \land Bundle(r,p,soft,v) \subset V$
+    \State $\mathsf{return} \ (\mathsf{RetrieveProposal}(v) \neq \bot) \land (\mathsf{Bundle}(r,p,soft,v) \subset V$)
 
     \EndFunction
     \end{algorithmic}
@@ -1779,8 +1785,8 @@ period. \\
     \begin{algorithmic}[1]
     \Function{$\mathsf{Commit}$}{$Proposal_{value} \ v$}
 
-    \State $L := L || \mathsf{Proposal}(v)$
-    \State $UpdateBT(\mathsf{Proposal}(v))$
+    \State $L := L || (\mathsf{RetrieveProposal}(v))_e$
+    \State $\mathsf{UpdateBT}((\mathsf{RetrieveProposal}(v))_e)$
 
     \EndFunction
     \end{algorithmic}
@@ -1797,9 +1803,10 @@ period. \\
 Commits the corresponding block for the proposal value received into the ledger.
 The proposal value must be committable (which implies validity and availability of the full
 ledger entry and seed).
-Line 2 means the algorithm will append the proposal that is retrieved by calling $\mathsf{Proposal}(v)$ and
-includes the block $e$, the seed $\pi$, the period $p$, and the address $I$ for the received proposal value.
+Line 2 means the algorithm will append the block contained in the proposal $\mathsf{RetrieveProposal}(v)$.
 Afterwards, it updates the balance table $BT$ with all state changes called for the committed entry.
+The function $\mathsf{UpdateBT}()$ is responsible for updating the table by incorporating all changes
+outlined by transactions in the block body (we defer to the specifications for further details). 
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1866,12 +1873,12 @@ is called to check the signature itself against the provided key and the vote se
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{Proposal}$}{$Proposal_{value} \ v$}
+    \Function{$\mathsf{RetrieveProposal}$}{$Proposal_{value} \ v$}
 
-    \If{$\exists e \in P \ | \ Proposal_{value}(e) = v$}
-        \State $\mathsf{return} \ e $
+    \If{$\exists prop \in P \ | \ Proposal_{value}(prop) = v$}
+        \State $\mathsf{return} \ prop $
     \Else
-        \State $\mathsf{return} \ \mathsf{Proposal}(\bot) $
+        \State $\mathsf{return} \ \bot $
     \EndIf
 
     \EndFunction
@@ -1881,8 +1888,8 @@ is called to check the signature itself against the provided key and the vote se
 
 \noindent \textbf{Description:}\\ Gets the proposal associated to a given proposal-value, 
 if it has been observed in the current context.
-Otherwise, it returns $\mathsf{Proposal}(\bot)$, defined as the "empty block" (special value where all
-block fields are zeroes).
+Otherwise, it returns $\bot$, defined as the "empty proposal" (special value where all
+proposal fields are zeroes).
 %esto no esta en una sola referencia de codigo, sino que abstrae varias cosas
 %internamente hay una tabla que matchea proposal votes (que contienen el proposal value)
 %con bloques. Esto es porque la validacion es asincronica y necesitas, si llegas a validar la proposal,
@@ -2170,8 +2177,8 @@ and both the current and previous periods.
         \State $val = v$
     \EndIf
 
-    \If{$val \neq \bot \land \mathsf{Proposal}(v) \in P$}
-        \State $\mathsf{Broadcast}(\mathsf{Proposal}(v))$
+    \If{$val \neq \bot \land \mathsf{RetrieveProposal}(v) \neq \bot$}
+        \State $\mathsf{Broadcast}(\mathsf{RetrieveProposal}(v))$
     \EndIf
 
     \EndFunction
@@ -2185,7 +2192,7 @@ Otherwise, if a recovery step bundle for an empty proposal-value $\bot$ was obse
 It's broadcast.
 Else, if there is a recovery step $s_0$ and a non-empty proposal-value $v$ for which a bundle was observed in the previous
 period, it's broadcast.
-Finally, if any Bundles were broadcast for a proposal-value $v$, the corresponding proposal $\mathsf{Proposal}(v)$ is broadcast
+Finally, if any Bundles were broadcast for a proposal-value $v$, the corresponding proposal $\mathsf{RetrieveProposal}(v)$ is broadcast
 if it has been observed.
 
 % ----------------------------------------------------------------------------------------------
