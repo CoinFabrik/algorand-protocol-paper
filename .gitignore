@@ -1,3 +1,3 @@
-Latex\ files/*
-!Latex\ files/Algorand\ node.tex
-!Latex\ files/bibliography.bib
+*
+!Algorand\ node.tex
+!bibliography.bib
