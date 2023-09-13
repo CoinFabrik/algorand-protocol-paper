@@ -2476,7 +2476,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$I, Q, round, period, step$}
+    \Function{$\mathsf{VerifySortition}$}{$I, Q, \pi, round, period, step$}
         \State $I_{VRFKey} := BT[round-\delta_s\delta_r][I]_{VRFKey}$
         \State $success := \mathsf{VRF_{verify}}(\pi, Q||round||period||step, I_{VRFKey})$
         \IfThen{$\neg success$}{$\mathsf{return} \ 0$} \\
@@ -2498,26 +2498,30 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $pk$ = a user's public key (their address)
-    \item $Q$ = the sortition seed to be used
-    \item $\tau$ = the expected committee size for the given role
-    \item $role$ = a flag specifying the role for the sortition to take place (e.g. block proposer)
-    \item $w$ = the user's weight (i.e., its relevant stake)
-    \item $W$ = the total relevant stake for the given round
+    \item $I$, a user's public spending key (their address)
+    \item $Q$, the 32 byte sortition seed to be used
+    \item $\pi$, an 80 byte VRF proof
+    \item $round$, the round number to be used inside the VRF function
+    \item $period$, the period to be used inside the VRF function
+    \item $step$, the step to be used for committee size and the VRF function
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The sortition verification procedure takes Sortition's output and utilizes 
+The sortition verification procedure takes the address of an account,
+a valid sortition seed to be used as a source of entropy,
+a VRF proof $\pi$ obtained from running $\mathsf{VRF_{prove}}$ and 
+a thruple representing a consensus context of a node ($round$, $period$ and $step$) and utilizes 
 VRF properties to verify the validity of said output.
 Once the check is passed, it repeats Sortition's sub-user selection procedure, 
 and outputs the amount of times the user was chosen according to their respective 
-observed stake.\\
+observed stake for the relevant $round$.\\
 
 \noindent \textbf{Returns:}
 \begin{itemize}
     \item an integer $j$ that will be positive (larger than 0) if the user has been 
-    selected, and it's size corresponds to the amount
-    of sub-users for a given committee member
+    selected, and it's size corresponds to the participation weight for a given committee member.
+    If the user $I$ is not chosen as a committee member for the context passed, 
+    a value of $j = 0$ is returned.
 \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
