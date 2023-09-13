@@ -442,6 +442,10 @@ interact with participation nodes where the latter receive transactions and
 implement the protocol while the former simply relay whatever they receive from
 the nodes.
 
+% Network messages are broadcast through P2P established connections,
+% while transactions are broadcast utilizing a websocket protocol.
+% Both kinds of messages are multiplexed together afterwards.
+
 A participation node includes:
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
@@ -2147,15 +2151,43 @@ and both the current and previous periods.
     \caption{\underline{Penalize Peer}}
     \label{algo:penalize-peer}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{PenalizePeer}$}{$PEER\_NETWORK\_ID$}
-        TBD
+    \Function{$\mathsf{DisconnectFromPeer}$}{$PEER\_ID$}
+        \State Remove $PEER\_ID$ from available connections
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
-\noindent \textbf{Description:}\marginpar{ver como resuelve el nodo la desconexion o blacklist de un peer}
-%Encontre en el codigo un key-value map donde podes asignar valores a peers a nivel network, pero
-%tengo que ver mejor para convencerme de si es ahi donde se resuelve esto
+%NOTA: algorand broadcastea txns por pubsub (https://docs.libp2p.io/concepts/pubsub/overview/)
+%igual termina todo multiplexado en la misma conexion, asi que el funcionamiento termina siendo similar.
+
+%https://github.com/algorand/go-algorand/blob/527d2c53d47f4d20d6dad5798cc0ffd1d37a6af8/network/p2pNetwork.go#L247
+
+\noindent \textbf{Description:}
+Function to send a hint for disconnection from a given peer, on a network level.
+$Peer\_ID$ is a libp2p peer ID, a base58 encoded multihash string. 
+Refer to its official documentation for further details.
+% https://docs.libp2p.io/concepts/fundamentals/peers/#peer-ids-in-multiaddrs
+Algorand works using libp2p to setup a P2P network, where nodes gossip messages to one another
+through websockets, and mantain a list of active peers.
+Consider a peer acts in one of the following ways:
+\begin{itemize}
+    \item sends badly formed votes, bundles or proposals, %(or transactions? they are handled in a different way),
+    %https://github.com/algorand/go-algorand/blob/527d2c53d47f4d20d6dad5798cc0ffd1d37a6af8/agreement/player_test.go#L2243
+    \item its connection becomes slow or idle,
+    %\item sends messages that produce a read or write error,
+    %\item unresolved clique, esto es cuando no pudiste formar un clique, depende de parametros de red
+    \item remains the least performing peer for a given amount of time,
+    \item requests a disconnect (e.g. is going offline),
+    \item sends messages with invalid network credentials (e.g. an invalid peer ID),
+    \item its connection is found to be duplicated in the peer list or
+    \item on a proposal request scenario, sends more data than requested.
+    %https://github.com/algorand/go-algorand/blob/527d2c53d47f4d20d6dad5798cc0ffd1d37a6af8/network/wsPeer.go#L175
+\end{itemize}
+ 
+In any of these cases, the outcome of accepting the message is generally adversarial
+to the correct functioning of the network. The node disconnects from the peer, closing the websocket and taking
+its entry off of the available peer list, and the content of the message is ignored and discarded.
+% If the number of available connections dips below a network parameter, a rediscovery subroutine kicks in
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2347,30 +2379,41 @@ with public key $a_{pk}$
 % ----------------------------------------------------------------------------------------------
 
 
-\begin{algorithm}[H]\label{algo:get-sortition-W}
+\begin{algorithm}[H]\label{algo:get-total-online-stake}
     \begin{algorithmic}[1]
-        \Function{$getSortition_W$}{$ctx, r$}
+        \Function{$\mathsf{getTotalOnlineStake}$}{$r^\prime$}
         
-        $\Return \sum_{a_{pk}\;\in\;ctx.balanceTable[r - (R + SL)]}{balanceTable[r - (R + SL)][a_{pk}]}$
+        \State $sum := 0$
+        \For{$br \in BT[r^\prime]$}
+            \If {$br_{online} \land br_{VRFkey}$}
+                \State $sum := sum + br_{balance}$
+            \EndIf
+        \EndFor
+
+        \State $\mathsf{Return} \ sum$
 
         \EndFunction
     \end{algorithmic}
-    \caption{\underline{getSortitionTotalStake}}
+    \caption{\underline{getTotalOnlineStake}}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $r$ = current round number
+    \item $uint64 \ r^\prime$, a valid round ($r^\prime \leq r$, where $r$ is the node's currently executing round).
   \end{itemize}
 
 
 \noindent \textbf{Description:}\\
-This helper function returns the sum of all stake for $R + SL$ rounds prior to $r$.
+This helper function computes the sum of all online stake in a given round.
+For each account that had been created up to round $r^\prime$, that is registered as online 
+and has an active VRF public key in its balance record for the given $r^\prime$, 
+it adds the recorded balance for that context.
+It returns the sum of that balance over all accounts, being the total online stake
+in the network on that particular round $r^\prime$.
 
 \noindent \textbf{Returns:}
 \begin{itemize}
-    \item the total stake at play in the relevant round (according to lookback parameters)
+    \item the total stake at play in the relevant round $r^\prime$.
   \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
@@ -2433,11 +2476,17 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$pk, Q, \tau, round, period, step, w, W$}
-        \IfThen{$\neg \mathsf{VerifyVRF}_{pk}(hash, \pi, Q||round||period||step)$}{$\mathsf{return} \ 0$}
-        \State $p := \frac{t}{W}$
+    \Function{$\mathsf{VerifySortition}$}{$I, Q, \tau, round, period, step, w, W$}
+        \State $I_{VRFKey} := BT[round-\delta_s\delta_r][I]_{VRFKey}$
+        \State $success := \mathsf{VRF_{verify}}(\pi, Q||round||period||step, I_{VRFKey})$
+        \IfThen{$\neg success$}{$\mathsf{return} \ 0$}
+
+        \State $hash := \mathsf{VRF_{proofToHash}}(\pi)$
+        \State $\tau := \mathsf{CommitteeSize}(step)$
+        \State $W := \mathsf{getTotalOnlineStake}(round-\delta_s\delta_r)$
+        \State $t := \frac{\tau}{W}$
         \State $j := 0$
-        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,p), \sum_{k=0}^{j+1}\mathsf{B}(k;w,p))$}
+        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
             \State $j++$
         \EndWhile
         \Return $j$
