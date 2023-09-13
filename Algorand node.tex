@@ -2476,18 +2476,19 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$I, Q, \tau, round, period, step, w, W$}
+    \Function{$\mathsf{VerifySortition}$}{$I, Q, round, period, step$}
         \State $I_{VRFKey} := BT[round-\delta_s\delta_r][I]_{VRFKey}$
         \State $success := \mathsf{VRF_{verify}}(\pi, Q||round||period||step, I_{VRFKey})$
-        \IfThen{$\neg success$}{$\mathsf{return} \ 0$}
+        \IfThen{$\neg success$}{$\mathsf{return} \ 0$} \\
 
-        \State $hash := \mathsf{VRF_{proofToHash}}(\pi)$
+        \State $h := \mathsf{VRF_{proofToHash}}(\pi)$
         \State $\tau := \mathsf{CommitteeSize}(step)$
+        \State $w := BT[round-\delta_s\delta_r][I]_{balance}$
         \State $W := \mathsf{getTotalOnlineStake}(round-\delta_s\delta_r)$
         \State $t := \frac{\tau}{W}$
         \State $j := 0$
-        \While{$\frac{hash}{2^{hashlen}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
-            \State $j++$
+        \While{$\frac{h}{2^{\mathsf{log_2}(h)}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
+            \State $j := j+1$
         \EndWhile
         \Return $j$
     \EndFunction
