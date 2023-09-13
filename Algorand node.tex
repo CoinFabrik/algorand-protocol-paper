@@ -2107,20 +2107,20 @@ Finally, the node updates $p$ to match the period to start.
     \caption{\underline{Garbage Collect}}
     \label{algo:garbage-collect}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{GarbageCollect}$}{$r, p$}
+    \Function{$\mathsf{GarbageCollect}$}{$r^\prime, p^\prime$}
 
-    \State $V_{(r,p-1)} := \{ vt \in V | vt.r < r \lor (vt.r=r \land vt.p + 1 < p) \}$
-    \State $P_{(r,p-1)} := \{ pp \in P | pp.r < r \lor (pp.r=r \land pp.p + 1 < p) \}$
+    \State $V_{(r^\prime,p^\prime-1)} := \{ vt \in V | vt.r < r \lor (vt_r=r^\prime \land vt_p + 1 < p^\prime) \}$
+    \State $P_{(r^\prime,p^\prime-1)} := \{ pp \in P | pp.r < r \lor (pp_r=r^\prime \land pp_p + 1 < p^\prime) \}$
 
-    \State $V := V\diagdown V_{(r,p-1)}$
-    \State $P := P\diagdown P_{(r,p-1)}$
+    \State $V := V\diagdown V_{(r^\prime,p^\prime-1)}$
+    \State $P := P\diagdown P_{(r^\prime,p^\prime-1)}$
 
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Garbage collection algorithm, for the finished $(r,p)\in\mathbb{Z}_{\ge 0}^2$ context.
+Garbage collection algorithm, for the finished $(r^\prime,p^\prime)\in\mathbb{Z}_{\ge 0}^2$ context.
 The procedure discards all votes in $V$ and proposals in $P$ where the round of emission is less than the
 new round, or the round of emission is equal to the new round and the period of emission is below the period
 directly before the current one.
@@ -2164,7 +2164,7 @@ and both the current and previous periods.
 
 \noindent \textbf{Description:}
 Function to send a hint for disconnection from a given peer, on a network level.
-$Peer\_ID$ is a libp2p peer ID, a base58 encoded multihash string. 
+$PEER\_ID$ is a libp2p peer ID, a base58 encoded multihash string.
 Refer to its official documentation for further details.
 % https://docs.libp2p.io/concepts/fundamentals/peers/#peer-ids-in-multiaddrs
 Algorand works using libp2p to setup a P2P network, where nodes gossip messages to one another
@@ -2346,38 +2346,6 @@ Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, ref
 \end{itemize}
 
 % ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]\label{algo:get-sortition-weight}
-    \begin{algorithmic}[1]
-        \Function{$getSortition_w$}{$ctx, round, a_{pk}$}
-
-            $\Return\;ctx.balanceTable[r - (R + SL)][a_{pk}]$
-
-        \EndFunction
-    \end{algorithmic}
-    \caption{\underline{getSortitionWeight}}
-\end{algorithm}
-
-\noindent \textbf{Arguments:}
-\begin{itemize}
-    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $r$ = current round number
-    \item $a_{pk}$ = the account's public key for the lookup table
-  \end{itemize}
-
-
-\noindent \textbf{Description:}\\
-This helper function retrieves the stake $R + SL$ rounds prior to $r$, for an account
-with public key $a_{pk}$
-
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item the relevant account's stake
-  \end{itemize}
-
-
-% ----------------------------------------------------------------------------------------------
-
 
 \begin{algorithm}[H]\label{algo:get-total-online-stake}
     \begin{algorithmic}[1]
