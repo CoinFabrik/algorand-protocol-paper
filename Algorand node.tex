@@ -1371,6 +1371,11 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                 \If{$\exists v | Bundle(vt_r,vt_p,cert,v) \subset V$}
                     \If{$\mathsf{RetrieveProposal}(v) = \bot$}
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
+                        \If{$p < vt_p$}
+                            \State $p_{old} := p$
+                            \State $\mathsf{StartNewPeriod}(vt_p)$
+                            \State $\mathsf{GarbageCollect}(r, p_{old})$
+                        \EndIf
                     \EndIf
                     \State $\mathsf{Commit}(v)$  %ver que pasa si no se pudiera commitear
                     \State $r_{old} := r$
@@ -2135,12 +2140,26 @@ and both the current and previous periods.
     \label{algo:request-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
-      TBD
+        \State async request $e \neq \bot |e \in P \implies RetrieveProposal(v) == e$ from $PEERS$ 
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
-\noindent \textbf{Description:}\marginpar{ver como hacer el request...como lo resuelve el nodo?}
+%aca es donde llego sin bloque
+%https://github.com/algorand/go-algorand/blob/527d2c53d47f4d20d6dad5798cc0ffd1d37a6af8/agreement/player.go#L359
+
+\noindent \textbf{Description:} \\
+This call opens a channel to asynchronously request the block for which the node has
+observed a complete certificate, but has not observed a proposal. In particular, it does not
+have the corresponding block for ledger commitment.
+The specs. allow some implementation divergence in this case.
+A node may continue participating in consensus while it asynchronously waits for the proposal
+in the open channel for this purpose. When taking this approach, the node is able to vote, but may
+not emit votes for a specific value until it has received the missing block or blocks, and may only produce
+votes for $\bot$ when applicable.
+Alternatively, the node may choose to stall, stopping its participation in consensus until the full ledger is available.
+
+\marginpar{ver como hacer el request...como lo resuelve el nodo?}
 
 %The Ledger.Wait function (and its variants) seem to be used to wait for the block
 % https://github.com/algorand/go-algorand/blob/51f5314422b568526d09fdb74c4c87cfaaa0b4e2/ledger/ledger.go#L747
