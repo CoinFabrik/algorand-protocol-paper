@@ -650,7 +650,7 @@ for the blockchain.,
 
     Selection or VRF keys are keys used for committee membership selection and verification.
     Private VRF keys are kept as secrets by the node, while public VRF keys are kept inside 
-    account records (in the $BT$),
+    account records (in the $\mathsf{BT}$),
     and are needed in order for an account to vote, as they will be
     used to verify committee membership by nodes receiving votes.
     They make use of an Algorand fork of the Sodium C library (citar!), implementing VRF signing, verification and
@@ -669,7 +669,7 @@ for the blockchain.,
     
     Once these are created and associated with the given address, a keyreg transaction will take the account
     online and have it start participating. An account record will be created for this account (if it did not
-    already exist in the Balance table $BT$), the VRF public key registered, as well as the public participation
+    already exist in the Balance table $\mathsf{BT}$), the VRF public key registered, as well as the public participation
     key, the created intermediate batch keys and the first sub-batch of ephemeral keys. All private counterparts of 
     these will be kept as secrets by the node and used extensively in succesive voting rounds, 
     starting $\delta$ rounds after the keyreg transaction is committed inside a block (currently $\delta = 320$).
@@ -694,12 +694,12 @@ The {\sf state of a node} \index{node's state}\index{state of a node}
 is given by the {\sf execution state} which is defined as the 3-tuple of nonnegative integers $(r, p, s)$, 
 a set of observed proposals, $P$, 
 a set of observed votes, $V$, 
-a Ledger $L$ and 
-a balance table $BT$.
+a Ledger $\mathsf{L}$ and 
+a balance table $\mathsf{BT}$.
 % falta el pinned vote, el tiempo, el ultimo estado...
 Explicitly, we define the state of a node, $S$, as a tuple of values, 
 $$
-S = (r, p, s, V, P, \bar{v}, \bar{s}, L, BT)
+S = (r, p, s, V, P, \bar{v}, \bar{s}, \mathsf{L}, \mathsf{BT})
 $$ 
 where
 \begin{itemize}
@@ -763,7 +763,7 @@ where
     time reset was called.
 \end{itemize}
 The first 7 values are the {\sf consensus state parameters},\index{consensus state parameters}
-whereas $L$ and $BT$ are {\sf ledger state parameters}.\index{ledger state parameters}
+whereas $\mathsf{L}$ and $\mathsf{BT}$ are {\sf ledger state parameters}.\index{ledger state parameters}
 
 Let $r$ and $p$ be unsigned 64-bits integers representing the round and period number respectively, and 
 let $s$  be an unsigned 8 bits integer representing the step number.
@@ -1667,7 +1667,7 @@ Otherwise, it falls back to $SHA256$.\\
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
-    \caption{\underline{AssembleBlock}}    
+    \caption{\underline{Assemble Block}}    
     \label{algo:assemble-block}
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{$Address \ I$}
@@ -1676,33 +1676,32 @@ Otherwise, it falls back to $SHA256$.\\
 
     //define block header
     \State $b_{r} := r$
-    \State $b_{prevHash} := \mathsf{H}(L[r-1])$
+    \State $b_{prevHash} := \mathsf{H}(\mathsf{L}[r-1])$
     
     \State $(Q, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
     \State $b_{Q} := Q$
 
     \State $b_{txnCommitment} := \mathsf{MerkleTree}(TP[-s])_{root}$
 
-    \State $b_{timestamp} := TIMESTAMP()$ //timestamp in seconds since epoch
-    //TODO: timestamp must be inside an interval. Validate this with code in block validation
+    \State $b_{timestamp} := \mathsf{SYSTEM\_TIME}$ //timestamp in seconds since epoch
 
-    \State $b_{GenesisID} := L_{genesisID}$
+    \State $b_{GenesisID} := \mathsf{L_{genesisID}}$
 
-    \State $b_{GenesisHash} := \mathsf{H}(L[0])$
+    \State $b_{GenesisHash} := \mathsf{H}(\mathsf{L}[0])$
 
-    //should we include reward state, update vote and update state?
+    % //should we include reward state, update vote and update state?
 
-    \State $b_{txnCounter} := NEXTTXNCOUNTER$
+    % \State $b_{txnCounter} := NEXTTXNCOUNTER$
 
-    \State $b_{stateProof} := StateProofTrackers$
+    % \State $b_{stateProof} := StateProofTrackers$
 
-    \State $b_{partUpdates} := \{a \in G \int G'\}$ \\ \\
+    % \State $b_{partUpdates} := \{a \in G \int G'\}$ \\ \\
 
 
     //define block body, ordered set of signed transactions
     \While{$Time() < Deadline$}
     %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
-        \State $txn := TP.pop()$
+        \State $txn := \mathsf{TP.pop}()$
         \If{$\mathsf{Valid}(b_{payset}, txn)$}
             \State $b_{payset} :=  b_{payset}||txn$ \\
         \EndIf
@@ -1933,9 +1932,9 @@ with everything needed to validate it, into a $proposal$ structure.
 
 \begin{algorithm}[H]\label{proposal-value}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ e$}
+    \Function{$\mathsf{Proposal_{value}}$}{$Proposal \ pp$}
 
-    \State $proposal_{value} \ v := (e.I_{orig}, e.p_{orig}, \mathsf{H}(e), \mathsf{H}(\mathsf{Encoding}(e)))$
+    \State $proposal_{value} \ v := (pp_{I_{orig}}, pp_{p_{orig}}, \mathsf{H}(pp_e), \mathsf{H}(\mathsf{Encoding}(pp)))$
 
     \Return $v$
 
@@ -1958,8 +1957,8 @@ and the hash of the msgpack encoding of the block.
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyProposal}$}{$ProposalPayload \ pp$}
 
-    \State $valid := \mathsf{ValidEntry}(pp.e, L)$
-    \State $valid := valid \land \mathsf{VerifySignature}(pp.y)$
+    \State $valid := \mathsf{ValidEntry}(pp_e, pp_{\pi_{seed}}, L)$
+    \State $valid := valid \land \mathsf{VerifySignature}(pp_y)$
 
     \EndFunction
     \end{algorithmic}
@@ -1974,20 +1973,20 @@ and the hash of the msgpack encoding of the block.
     \Function{$\mathsf{VerifyBundle}$}{$Bundle \ b$}
 
     //all individual votes are valid
-    \State $valid := (\forall vt \in b)(VerifyVote(vt))$
+    \State $valid := (\forall vt \in b)(\mathsf{VerifyVote}(vt))$
     
     //no two votes are the same
     \State $valid := valid \land (\forall i,k \in \mathbb{Z})(vt_i \in b \land vt_k \in b \land vt_i = vt_k \implies i=k)$
 
     //round, period and step must all match
-    \State $valid := valid \land (\forall vt \in b)(vt.r = b.r \land vt.p = b.p \land vt.s = b.s)$
+    \State $valid := valid \land (\forall vt \in b)(vt_r = b_r \land vt_p = b_p \land vt_s = b_s)$
   
     %P*? Equivocation vote solo vale para soft bundles. Eso es correcto?
     //all votes should either be for the same value or be equivocation votes
-    \State $valid := valid \land (\forall vt \in b)(vt.v = b.v \lor (b.s = soft \land IsEquivocation(vt.v, b)))$
+    \State $valid := valid \land (\forall vt \in b)(vt_v = b_v \lor (b_s = soft \land \mathsf{IsEquivocation}(vt_v, b)))$
 
     //summation of weights should surpass the relevant threshold
-    \State $valid := valid \land  \sum_{vt \in b}(vt.w) \geq CommitteeThreshold(b.s)$
+    \State $valid := valid \land  \sum_{vt \in b}(vt_j) \geq \mathsf{CommitteeThreshold}(b_s)$
 
     \Return $valid$
 
@@ -2147,7 +2146,7 @@ and both the current and previous periods.
     \label{algo:request-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
-        \State async request $e \neq \bot \ | \ e \in P \implies RetrieveProposal(v) == e$ from $\mathsf{PEERS}$ 
+        \State async request $e \neq \bot \ | \ e \in \mathsf{P} \implies \mathsf{RetrieveProposal}(v) == e$ from $\mathsf{PEERS}$ 
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2191,7 +2190,7 @@ Alternatively, the node may choose to stall, stopping its participation in conse
 \noindent \textbf{Description:}
 Function to send a hint for disconnection from a given peer, on a network level.
 $\mathsf{PEER\_ID}$ is a libp2p peer ID, a base58 encoded multihash string.
-Refer to its official documentation for further details.
+Refer to libp2p official documentation for further details.
 % https://docs.libp2p.io/concepts/fundamentals/peers/#peer-ids-in-multiaddrs
 Algorand works using libp2p to setup a P2P network, where nodes gossip messages to one another
 through websockets, and mantain a list of active peers.
@@ -2251,9 +2250,26 @@ It's broadcast.
 Else, if there is a recovery step $s_0$ and a non-empty proposal-value $v$ for which a bundle was observed in the previous
 period, it's broadcast.
 Finally, if any Bundles were broadcast for a proposal-value $v$, the corresponding proposal $\mathsf{RetrieveProposal}(v)$ is broadcast
-if it has been observed.
+if it has been observed.\\
 
 % ----------------------------------------------------------------------------------------------
+
+\begin{subsection}{Sortition and seed computation subroutines}\label{sect:sort-seed-subroutines}
+
+In the next set of functions, we make use of special cryptographic computation 
+functions $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$ and $\mathsf{VRF_{proofToHash}}(.)$.
+Implementation-wise, the node makes use of an Algorand specific fork of the sodium library.
+\marginpar{CITAR?. Tambien ver si esto va aca, o lo dejamos como subsection o que}. 
+Conceptually, the prove algorithm is used to execute a VRF for some given input
+data and a given secret VRF key, outputing an 80 byte string which we refer to as sortition proof $\pi$. 
+The proof to hash algorithm is a helper function to obtain the sortition hash $sh$ out of the proof
+$\pi$. Finally, the verify function is used to check for validity of a VRF result given input data,
+a public VRF key, a sortition hash and a proof, certifying that the hash and proof are output by running
+an instance of $\mathsf{VRF_{prove}}(.)$ with the corresponding secret VRF key and data.
+In other words, \\
+$\mathsf{VRF_{verify}}(\pi, sh, I_{VRFKey}) = \mathsf{True} \leftrightarrow 
+\mathsf{VRF_{prove}}(in, secrets(I)_{VRFkey}) = \pi \land \mathsf{VRF_{proofToHash}}(\pi) = sh$ \\
+Refer to the aformentioned library for details on implementation of these cryptographic functions.
 
 \begin{algorithm}[H]
     \caption{\underline{Compute Seed And Proof}}
@@ -2261,8 +2277,8 @@ if it has been observed.
     \begin{algorithmic}[1]
     \Function{$\mathsf{ComputeSeedAndProof}$}{$Address \ I$}
         \If {$p = 0$}
-             \State $y := \mathsf{VRF_{prove}}(L[r-\delta_s]_Q, secrets(I)_VRFkey)$
-             \State $\alpha := \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
+             \State $y := \mathsf{VRF_{prove}}(L[r-\delta_s]_Q, secrets(I)_{VRFkey})$
+             \State $\alpha := \mathsf{H}(\mathsf{VRF_{proofToHash}}(y), a_I)$
         \Else
             \State $y := 0$
             \State $\alpha := \mathsf{H}(L[r-\delta_s]_Q)$
@@ -2282,7 +2298,7 @@ if it has been observed.
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Account \ I$
+    \item $Address \ I$, the address of an online user who will be computing the seed.
   \end{itemize}
 
 
@@ -2346,7 +2362,7 @@ and used by nodes receiving the proposal as part of the proposal validation proc
         \Function{$\mathsf{getTotalOnlineStake}$}{$r^\prime$}
         
         \State $sum := 0$
-        \For{$br \in BT[r^\prime]$}
+        \For{$br \in \mathsf{BT}[r^\prime]$}
             \If {$br_{online} \land br_{VRFkey}$}
                 \State $sum := sum + br_{balance}$
             \EndIf
@@ -2356,7 +2372,7 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
         \EndFunction
     \end{algorithmic}
-    \caption{\underline{getTotalOnlineStake}}
+    \caption{\underline{Get Total Online Stake}}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
@@ -2382,7 +2398,7 @@ the total stake at play in the relevant round $r^\prime$.
     \caption{Sortition}
     \label{algo:sortition}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{Sortition}$}{$Address \ I, uint64 \ period, uint64 \ step$}
+    \Function{$\mathsf{Sortition}$}{$Address \ I, uint64 \ round, uint64 \ period, uint8 \ step$}
         \State $Q := \mathsf{L}[r - \delta_s]_{Q}$
 
         \State $\pi := \mathsf{VRF_{prove}}(Q||round||period||step, \mathsf{secrets}(I)_{VRFKey})$
@@ -2405,11 +2421,12 @@ the total stake at play in the relevant round $r^\prime$.
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Account \ a$, an online account's balance table record
-    \item $uint64 \ step$, the step to run sortition for
+    \item $Address \ I$, an online account's address. Their keys are used for computation of VRFs.
+    \item $uint64 \ round$, a round ($round \leq r$).
+    \item $uint64 \ period$, a period ($period \leq p$).
+    \item $uint8 \ step$, a step to run sortition. Used to get specific step-dependant committee size and threshold.
 \end{itemize}
 
-%A_0,..., A_algo are the committee members.... que es eso?
 \noindent \textbf{Description:}\marginpar{A lot of notation to describe. Review.}
 
 The Sortition procedure is one of the most important subroutines in the main algorithm, as it is 
@@ -2419,19 +2436,17 @@ Function) select a user with probability proportional
 to their weight (i.e., stake) by returning a $j$ parameter, which indicates the number of times that 
 specific user was chosen.
 Algorithmically, every monetary unit the user has is considered a ``sub-user'', and then each one 
-of them is selected with probability $p = \frac{\tau}{W}$,
+of them is selected with probability $t = \frac{\tau}{W}$,
 where $\tau$ is the expected amount of users to be selected for the given role, and $W$ is the total
 stake online for the relevant round.
 The semi-open interval $[0,1)$ is then split into consecutive intervals using an accumulated 
-binomial distribution, and wherever the fraction $\frac{hash}{2^{hashlen}}$
+binomial distribution, and wherever the fraction $\frac{sh}{2^{\mathsf{log_2}(sh)}}$
 belongs to the interval, that's the amount of chosen sub-users for the subroutine caller.\\
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item an object of type $credentials$, containing the sortition hash and proof (output of VRF
+\noindent \textbf{Returns:}\\
+    an object of type $credentials$, containing the sortition hash and proof (output of VRF
     computation) and an unsigned integer $j$ representing the weight that player has in the committee,
     for the desired round, period and step.
-\end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2440,13 +2455,13 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifySortition}$}{$I, \pi, round, period, step$}
         \State $Q := \mathsf{L}[r - \delta_s]_{Q}$
-        \State $I_{VRFKey} := BT[round-\delta_s\delta_r][I]_{VRFKey}$
+        \State $I_{VRFKey} := \mathsf{BT}[round-\delta_s\delta_r][I]_{VRFKey}$
         \State $success := \mathsf{VRF_{verify}}(\pi, Q||round||period||step, I_{VRFKey})$
         \IfThen{$\neg success$}{$\mathsf{return} \ 0$} \\
 
         \State $h := \mathsf{VRF_{proofToHash}}(\pi)$
         \State $\tau := \mathsf{CommitteeSize}(step)$
-        \State $w := BT[round-\delta_s\delta_r][I]_{balance}$
+        \State $w := \mathsf{BT}[round-\delta_s\delta_r][I]_{balance}$
         \State $W := \mathsf{getTotalOnlineStake}(round-\delta_s\delta_r)$
         \State $t := \frac{\tau}{W}$
         \State $j := 0$
@@ -2456,7 +2471,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
         \Return $j$
     \EndFunction
     \end{algorithmic}
-    \caption{\underline{VerifySortition}}
+    \caption{\underline{Verify Sortition}}
 \end{algorithm}
 
 \noindent \textbf{Arguments:}
@@ -2473,23 +2488,21 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 The sortition verification procedure takes the address of an account,
 a valid sortition seed to be used as a source of entropy,
 a VRF proof $\pi$ obtained from running $\mathsf{VRF_{prove}}$ and 
-a thruple representing a consensus context of a node ($round$, $period$ and $step$) and utilizes 
+a thruple representing the consensus context of a node ($round$, $period$ and $step$) and utilizes 
 VRF properties to verify the validity of said output.
 Once the check is passed, it repeats Sortition's sub-user selection procedure, 
 and outputs the amount of times the user was chosen according to their respective 
 observed stake for the relevant $round$.\\
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item an integer $j$ that will be positive (larger than 0) if the user has been 
+\noindent \textbf{Returns:} \\
+an integer $j$ that will be positive (larger than 0) if the user has been 
     selected, and it's size corresponds to the participation weight for a given committee member.
     If the user $I$ is not chosen as a committee member for the context passed, 
     a value of $j = 0$ is returned.
-\end{itemize}
 
-% ----------------------------------------------------------------------------------------------
+\end{subsection}
 
-{\bf MISSING VRF(), VerifyVRF()}
+% {\bf MISSING VRF(), VerifyVRF()}
 
 \end{section}
 % ----------------------------------------------------------------------------------------------
