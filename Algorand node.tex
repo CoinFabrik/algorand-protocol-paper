@@ -594,7 +594,8 @@ TODO: maybe include some voting stats?
 The AVM receives signed transactions that may or may not alter the 
 state of the blockchain and interprets TEAL, or the Transaction Execution 
 Approval Language, an assembly-like language designed by Algorand 
-for the blockchain.,
+for the blockchain.
+% It is a stack based machine and constitutes a safe isolated environment
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -741,12 +742,12 @@ where
     labeled according to table (see (\ref{table:s})).
     
     \item
-    $V$ is the set of all valid {\sf observed votes}\index{observed votes} and 
+    $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed votes} and 
     {\sf equivocation votes}\index{equivocation votes} in the current execution state
     ($(r,p,s)$).
     
     \item
-    $P$ is the set of all valid {\sf observed proposals}\index{observed proposals}
+    $\mathsf{P}$ is the set of all valid {\sf observed proposals}\index{observed proposals}
     in the current execution state ($(r,p,s)$).
     
     \item
@@ -756,13 +757,13 @@ where
     $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}.\index{last finished step}.
     
     \item
-    $L$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
+    $\mathsf{L}$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
     information established by the current instantiation of the Algorand protocol.
     \footnote{Note that, thanks to the genesis hash and previous 
     hash components, a ledger state unambiguously defines the whole history of state changes.}. 
     
     \item
-    $BT$ is the current balance table that includes 
+    $\mathsf{BT}$ is the current balance table \index{balance table} that includes 
       the ALGO owned by each account, 
       the ASA owned by each account (when an account opts-in to an ASA, an entry is created within his records for
         this ASA--and he must have a minimum balance for this to happen),
@@ -770,14 +771,25 @@ where
         ALGO balance for this),
       the global storage for this account--in case it belongs to a smart contract,
       the consensus participation status of this account (e.g., if this account is online and voting or not),
-      in case the account is online and voting, it also includes 
+      in case the account is online and voting, it also includes
         the public VRF key (selection key),
         a public participation key, 
         a set of public batch participation keys, 
         and a set of public sub-batch ephemeral keys.
+        In the rest of this work, we represent the balance table as a two dimensional mapping where the
+        first coordinate is the round for which we want account data (excluding rounds in the future; that
+        is for all $0 \leq r\prime \leq r$ at any given moment)
+        and the second coordinate is the address of the specific account.
+        This mapping makes all historical information accesible. Implementations usually cache certain past
+        values for performance, but in general historical data for a round $r\prime = r-k$ with $k>0$ and all 
+        existing accounts is available by traversing the ledger in reverse order and undoing all changes outlined 
+        in the last $k$ blocks.
+        For completeness, given an address $I$ for an account that does not exist as of round $r$,
+        $\mathsf{BT}[r][I] = (0,\emptyset,\emptyset,\emptyset,0,...)$ a valid empty record for account $I$ created ad-hoc,
+        while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
 
     \item
-    $TP$ is the node's transaction pool.
+    $\mathsf{TP}$ is the node's transaction pool.
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -804,7 +816,7 @@ For convenience and readability, we define the following step name - step enumer
 \end{equation}
 
 % ledger
-It is identified by a string called the genesis identifier, as well as a genesis hash that cryptographically 
+A Ledger is identified by a string called the genesis identifier, as well as a genesis hash that cryptographically 
 commits to the starting state of the ledger.
 Besides the already defined round number $r$, which indexes into the Ledger's sequence of states,
 a Ledger's state is defined by the following components:
@@ -840,10 +852,10 @@ past records might be cached and maintained to improve performance.
 
 For convenience, we assume that each node maintains an account list that provide 
 easy iteration access to all updated balance records for the accounts it manages 
-which are flagged as online and have a valid participation key registered on this
-node. 
+which are flagged as online and have a valid participation key and VRF key
+registered on this node.
 This array is named $A$ from now on, and each entry $a\in A$ has an account address 
-$a_I$, and all the information in its mapped balance record, $BT[a_I]$.
+$a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
 
 % transaction pool
 The Transaction pool, $TP$, which is a set of live unconfirmed transactions, $txn_k$, (where 
