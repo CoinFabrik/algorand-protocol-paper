@@ -453,9 +453,10 @@ order. It will record the current time when reset is called (e.g., by querying
 the OS where the node runs) and will report the elapsed time since the last reset
 in the latter case.
     \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
-etc etc.
-    \item a network interface.
-    \item An implementation of the consensus algorithm.
+from applications or attached to smart signatures. %review? etc. etc.
+    \item A p2p network interface.
+    \item An implementation of the consensus algorithm, with a player state machine module and
+an asynchronous cryptographic computation module.
     % \item A database engine including at least the following tables: ??
 \end{itemize}
 
@@ -471,7 +472,7 @@ There are currently seven transaction types on Algorand
 A participation node keeps a transaction pool. 
 Whenever a transaction arrives, 
   its signature is verified (if this is a smart signature, then it is checked against the AVM); those
-    which not pass are discarded, and the result is cached by those which do pass.
+    which do not pass are discarded, and the result of computation is cached for those which do pass.
   It checks that current round is inside the first valid (round) and last valid (round) included in the
     transaction fields.
   It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
@@ -1117,12 +1118,9 @@ the corresponding construct (coinciding with their attached data type field).
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, v, cred))$
                         \State $\mathsf{Broadcast}(prop)$
                     \Else
-                        %VER. Convencerme de que siempre es el pinned value
-                        %\State $v := v_0 \textfractionsolidus \exists s, Bundle(r,p-1,s,v_0) \subset V$
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, proposal, \bar{v}, cred))$
                         \If{$\mathsf{RetrieveProposal}(\bar{v}) \neq \bot$}
                             \State $\mathsf{Broadcast}(\mathsf{RetrieveProposal}(\bar{v}))$
-                            % proposal(\bar v) es un broadcast de un e 
                         \EndIf
                     \EndIf
                 \EndIf
@@ -1656,7 +1654,7 @@ If no consensus was achieved, this timeout constant is relaxed in all subsequent
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Hashable \ in$ = some hashable data (plain bytes)
+    \item $Hashable \ in$, some hashable data (plain bytes)
   \end{itemize}
 
 \noindent \textbf{Description:}\\
@@ -1664,9 +1662,7 @@ General purpose hashing function. If $SHA512/256$ is supported by the underlying
 Otherwise, it falls back to $SHA256$.\\
 
 \noindent \textbf{Returns:}
-\begin{itemize}
-    \item The result of hashing the input $in$ with the selected algorithm based on underlying system support
-  \end{itemize}
+    The result of hashing the input $in$ with the selected algorithm based on underlying system support
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2151,7 +2147,7 @@ and both the current and previous periods.
     \label{algo:request-proposal}
     \begin{algorithmic}[1]
     \Function{$\mathsf{RequestProposal}$}{$Proposal_{value} \ v$}
-        \State async request $e \neq \bot |e \in P \implies RetrieveProposal(v) == e$ from $PEERS$ 
+        \State async request $e \neq \bot \ | \ e \in P \implies RetrieveProposal(v) == e$ from $\mathsf{PEERS}$ 
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2170,7 +2166,7 @@ not emit votes for a specific value until it has received the missing block or b
 votes for $\bot$ when applicable.
 Alternatively, the node may choose to stall, stopping its participation in consensus until the full ledger is available.
 
-\marginpar{ver como hacer el request...como lo resuelve el nodo?}
+% \marginpar{ver como hacer el request...como lo resuelve el nodo?}
 
 %The Ledger.Wait function (and its variants) seem to be used to wait for the block
 % https://github.com/algorand/go-algorand/blob/51f5314422b568526d09fdb74c4c87cfaaa0b4e2/ledger/ledger.go#L747
@@ -2178,11 +2174,11 @@ Alternatively, the node may choose to stall, stopping its participation in conse
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
-    \caption{\underline{Penalize Peer}}
-    \label{algo:penalize-peer}
+    \caption{\underline{Disconnect from Peer}}
+    \label{algo:disconnect-peer}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{DisconnectFromPeer}$}{$PEER\_ID$}
-        \State Remove $PEER\_ID$ from available connections
+    \Function{$\mathsf{DisconnectFromPeer}$}{$\mathsf{PEER\_ID}$}
+        \State Remove $\mathsf{PEER\_ID}$ from available connections
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2194,7 +2190,7 @@ Alternatively, the node may choose to stall, stopping its participation in conse
 
 \noindent \textbf{Description:}
 Function to send a hint for disconnection from a given peer, on a network level.
-$PEER\_ID$ is a libp2p peer ID, a base58 encoded multihash string.
+$\mathsf{PEER\_ID}$ is a libp2p peer ID, a base58 encoded multihash string.
 Refer to its official documentation for further details.
 % https://docs.libp2p.io/concepts/fundamentals/peers/#peer-ids-in-multiaddrs
 Algorand works using libp2p to setup a P2P network, where nodes gossip messages to one another
@@ -2539,6 +2535,8 @@ observed stake for the relevant $round$.\\
     Usually wrapped inside a $credentials$ structure.
     \item $\pi$, the 32-byte sortition proof output by running $VRF_{a_{sk}}$ algorithm over a desired input.
     Usually wrapped inside a $credentials$ structure.
+    \item $\pi_{seed}$, the 32-byte sortition proof output by running $VRF_{a_{sk}}$ algorithm for a cryptographic 
+    seed computation.
     \item $j$, an unsigned 64-bit integer, representing the weight of a given account's vote inside a specific committee
     (for a given round, period and step).
     Usually wrapped inside a $credentials$ structure.
