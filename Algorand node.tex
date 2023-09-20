@@ -355,15 +355,15 @@ $\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
 The soft vote is about selecting a priority block and voting it in, and it proceeds as follows.
 It initializes to an empty vote $v=\bot$ and with the lowest observed hash at infinity ($lowestObservedhash:=\infty$).
 The node will go through all the votes $vt^\prime\in V$ in its votes set that are in the
-proposal step ($vt^\prime.s=0$).
-Given the credentials for the vote $vt^\prime.credential=(sh,\pi, j)$, where $sh$ is the hash,
+proposal step ($vt^\prime_s=0$).
+Given the credentials for the vote $vt^\prime_{credential}=(sh,\pi, j)$, where $sh$ is the hash,
 $\pi$ is the proof and $j\in\mathbb{Z}_{\geq 0}$, the algorithm computes the priority hash
 $$
 priorityHash:=\min\{\mathsf{Hash}(sh\| i): 0\le i<j\},
 $$
 and whenever this value (as an integer) is lower than the recorded 
 $lowestObservedHash$ it sets 
-$lowestObservedHash:=priorityHash$ and $v:=vt^\prime.v$.
+$lowestObservedHash:=priorityHash$ and $v:=vt^\prime_v$.
 Next, if there was at least one vote in $V$, for every registered account $a\in A$
 it computes \marginpar{fix notation!}
 $$
@@ -382,8 +382,8 @@ When the main algorithm receives a message of type vote
 $\mathsf{Vote}(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
 votes set (if it is new) and checks whether it can form a bundle from the 
 votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
-$vt\in V$ with round $vt.r=r, vt.p=0, vt.s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt.cred_j\ge \mathsf{CommitteeThreshold}(soft)$) 
+$vt\in V$ with round $vt_r=r, vt_p=0, vt_s=soft$ that have the same vote $vt.v$ 
+and such that the sum of its weights ($\sum_{vt\in V} vt_{cred_j}\ge \mathsf{CommitteeThreshold}(soft)$) 
 is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
 Imagine that the first time this happens, it cannot form a bundle. 
 
@@ -400,8 +400,8 @@ and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect})
 will compute 
 $$
 \begin{array}{rl}
-V_{(r,p-1)} & :=\{vt\in V : vt.r < r \text{ or } (vt.r = r \text{ and } vt.p + 1 < p)\}\\
-P_{(r,p-1)} & :=\{pr\in PP: pr.r < r \text{ or } (pr.r = r \text{ and } pr.p + 1 < p)\}
+V_{(r,p-1)} & :=\{vt\in V : vt_r < r \text{ or } (vt_r = r \text{ and } vt_p + 1 < p)\}\\
+P_{(r,p-1)} & :=\{pr\in PP: pr_r < r \text{ or } (pr_r = r \text{ and } pr_p + 1 < p)\}
 \end{array}
 $$%Es $pr_p+1$; no $pr_{p+1}$ 
 and then remove these sets from the votes and participation sets: $V:=V\setminus V_{(r,p-1)}$,
@@ -455,8 +455,8 @@ in the latter case.
     \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
 etc etc.
     \item a network interface.
-    \item A XX implementing the consensus algorithm.
-    \item A database engine including at least the following tables:
+    \item An implementation of the consensus algorithm.
+    % \item A database engine including at least the following tables: ??
 \end{itemize}
 
 
@@ -530,7 +530,7 @@ and {\sf participation nodes}\index{participation nodes}.
 Both nodes operate on servers that are connected to the internet and run publicly
 available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
 Participation nodes can connect only to relay nodes, they run an instance
-of the Aglorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
+of the Algorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
 
 %el voting y demas esta afuera de la avm? Si, todo el mecanismo de consenso corre completamente independiente de la AVM.
 %La AVM solo ejecuta los smart contracts o logicsigs y esto es a nivel de txn, previo a la ejecucion del algoritmo total
@@ -606,14 +606,16 @@ for the blockchain.,
     %comentario general sobre como funciona un esquema de firma publica/privada
     %podria estar mejor
     Generally all keys will be in pairs, in a public / private cryptographic scheme.
-    This scheme supports a signing procedure, which takes a private key and a message and outputs a signature, 
-    and a verification procedure, which takes a public key, a message and a signature, and outputs a boolean value.
-    A true output certifies that the signature was indeed produced by signing the relevant message with the private key of the 
-    claimed address.
+    This scheme supports a signing procedure $Sign(.)$, which takes a private key and a packet of data of arbitrary length,
+    and outputs a signature (a bit-string of fixed length).
+    It also supports a verification $Verify(.)$ procedure, which takes a public key, some data of arbitrary length and a signature, 
+    and outputs a boolean value.
+    A true output certifies that the signature was indeed produced by signing the data with the private key of the 
+    claimed address, while a false output ensures the signature is invalid for the data and key provided.
     We now make a brief description of each of the three key types and their relevance in the protocol.
+    Each of them will have a specific implementation of the signature and verification algorithms.
 
-
-    Spending keys are 32 byte keys used by accounts to sign and verify transactions
+    Spending keys are 32 byte strings used by accounts to sign and verify transactions
     on behalf of accounts. Nodes interact only with public spending keys, out of which
     Algorand addresses are derived. Private spending keys are used to sign transactions
     and should be kept privately by the user managing the relevant account for security
@@ -621,14 +623,20 @@ for the blockchain.,
     the private key of the account designated by the rekeying transaction is the key authorized 
     to sign transactions on behalf of this account.
 
-    Participation keys are used to sign all consensus messages. They are organized in a tree scheme.
-    %(generated through the goal addpartkey command). 
-    The private keys in the scheme are stored as secrets by the node,
-    while their public keys are a mandatory part of online account records.
+    Participation keys are used to sign all consensus messages.
+    %(generated through the goal addpartkey command).
+    All private participation keys are stored as secrets by the node,
+    while their public keys are a part of online account records, required for any account to 
+    participate in consensus.
     They correspond to the ed25119 eliptic curve cryptographic standard (TODO: CITAR standard).
+    They are organized in a tree scheme, as follows.
     Previous to online account registration, the node generates a root participation key, a batch of subkeys
-    of size n, and a sub-batch of ephemeral keys of size $k$, where $k = keyDillution$ (which defaults to the square
-    root of the round range; e.g. for a 3e+06 round range a 1712 sub-batch of ephemeral keys is generated).
+    of size $n$, and a sub-batch of ephemeral keys of size $k$.
+    
+    where $k$ is a field 
+    in the key generation command line interface call named $keyDillution$, and defaults to the square
+    root of the round range when not specified 
+    (e.g. for a $3e+06$ round range a $1712$ sub-batch of ephemeral keys is generated).
     
         according to the key dilution field.
     A keyreg transaction needs the root public participation key as a valid field.
@@ -640,11 +648,14 @@ for the blockchain.,
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
     Selection or VRF keys are keys used for committee membership selection and verification.
-    VRF public keys are kept inside account records (in the $BT$),
+    Private VRF keys are kept as secrets by the node, while public VRF keys are kept inside 
+    account records (in the $BT$),
     and are needed in order for an account to vote, as they will be
     used to verify committee membership by nodes receiving votes.
     They make use of an Algorand fork of the Sodium C library (citar!), implementing VRF signing, verification and
     key generation functions.
+    In the following work, these three cryptographic functions are abstracted as $\mathsf{VRF_{proove}}(.)$, $\mathsf{VRF_{verify}}(.)$ and $\mathsf{VRF_{generate}}(.)$
+    respectively.
     The account's private keys are kept as secrets by the node, and are guaranteed to be non-persistant in memory.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/vrf.go
@@ -2103,7 +2114,7 @@ Otherwise, and assuming implicitly in this case that the bundle that caused the 
 a check for the special $\sigma$ value is performed on line 6, where $p$ is the period that was being executed 
 by the node up until a new period was observed. If $\sigma$ is a valid non-empty proposal-value, the pinned 
 value $\bar{v}$ is set to this (line 7).
-Finally, if none of the above conditions were met, the pinned value remains unchanged going into the new period.
+If none of the above conditions were met, the pinned value remains unchanged going into the new period.
 Finally, the node updates $p$ to match the period to start.
 
 % ----------------------------------------------------------------------------------------------
