@@ -616,69 +616,85 @@ for the blockchain.,
     We now make a brief description of each of the three key types and their relevance in the protocol.
     Each of them will have a specific implementation of the signature and verification algorithms.
 
-    Spending keys are 32 byte strings used by accounts to sign and verify transactions
-    on behalf of accounts. Nodes interact only with public spending keys, out of which
+    Spending keys are 32 byte strings corresponding to the ed25119 eliptic curve cryptographic standard,
+    used by accounts to sign and verify transactions
+    on their behalf. Nodes interact only with public spending keys, out of which
     Algorand addresses are derived. Private spending keys are used to sign transactions
     and should be kept privately by the user managing the relevant account for security
     concerns. This is, unless the account has undergone a process called ``rekeying'', in which case 
     the private key of the account designated by the rekeying transaction is the key authorized 
     to sign transactions on behalf of this account.
 
-    Participation keys are used to sign all consensus messages.
+    Participation and VRF keys are generated on demand in the node by issuing a key generation CLI call.
+    This command takes an address, a range of rounds and a 64 bit integer key dillution parameter.
+
+    Participation keys are used to sign all consensus messages, those being messages broadcast or relayed
+    to the network containing votes, proposals or bundles.
+    In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
+    with a valid participation root public key and at least one valid subkey and one valid ephemeral key.
     %(generated through the goal addpartkey command).
-    All private participation keys are stored as secrets by the node,
-    while their public keys are a part of online account records, required for any account to 
-    participate in consensus.
-    They correspond to the ed25119 eliptic curve cryptographic standard (TODO: CITAR standard).
-    They are organized in a tree scheme, as follows.
-    Previous to online account registration, the node generates a root participation key, a batch of subkeys
-    of size $n$, and a sub-batch of ephemeral keys of size $k$.
-    
-    where $k$ is a field 
-    in the key generation command line interface call named $keyDillution$, and defaults to the square
-    root of the round range when not specified 
-    (e.g. for a $3e+06$ round range a $1712$ sub-batch of ephemeral keys is generated).
-    
-        according to the key dilution field.
-    A keyreg transaction needs the root public participation key as a valid field.
-    Ephemeral keys are leaves of the two level tree, and are used to sign consensus messages for a given round.
-    They are deleted after the succesful advancement of a round.
-    An agreement vote message is valid only when it is signed with the correct voting key.
-    When generated, a validity range is specified.
+    They are 32 bytes in length and same as spending keys correspond to the ed25119 eliptic curve cryptographic standard 
+    \marginpar{TODO: CITAR standard}.
+    To greatly reduce chances of breaking forward security, they are organized in a tree scheme, as follows.
+    Consider a two level tree structure, with a root node, $n$ nodes in the first level and $n*k$ nodes in the
+    second level, where each node holds a 32 byte string representing a type of public participation key. 
+    In the case of first level nodes, they also keep a signature of the public subkey concatenated with a corresponding batch index $0 \leq i \leq n$,
+    using a $\mathsf{Sign}(.)$ procedure with the private root participation key.
+    In the case of leaf nodes, they also keep a signature of the public ephemeral key concatenated with its round of validity,
+    using the parent private subkey.
+    Previous to online account registration, a user issues a command to the node prompting generation of a root 
+    participation key, a batch of subkeys of size $n$, and a sub-batch of ephemeral participation keys of size $k$.
+    Then, the root node of the tree holds the root participation key, the first level nodes hold the $n$ sub-keys
+    (signed by the root key), and the first node in the first level is the parent branch of $k$ nodes holding
+    ephemeral participation keys, signed by the parent branch sub-key, as leaves.
+    These leaf key pairs are considered ephemeral because they are by design valid for one round only and are deleted when their
+    one round validity interval has passed.
+    The private root participation key is deleted after signing all sub-batches during key generation,
+    and each one of the sub-keys private counterparts will be deleted after computation and signature of each ephemeral batch.
+    Once a batch has run out (when reaching round $r^\prime$, where the round of validity for the last key in the batch
+    is $r^\prime - 1$), the tree is pruned; their parent branch is deleted, and a new batch of $k$ ephemerals
+    is generated for the next subkey in the tree.
+    When signing messages for consensus in round $r$, the next available computed ephemeral leaf key is used.
+    When verifying this signature, a node will verify the signature of the message against the public ephemeral key, 
+    then verify the signature of the ephemeral key itself by the master sub-key, and finally verify this sub-key's
+    signature using the root participation key.
+    % The participation keys tree is kept up to date by a key deletion thread that runs in parallel constantly.
+
+    The batch size $k$ is passed as a field in the key generation command line interface call named 
+    $keyDillution$, an unsigned 64 bit integer which defaults to the square root of the round range (rounded down to the nearest integer) 
+    when not specified. E.g. for a 3 million round range a $1712$ batch of subkeys is generated,
+    along with a first sub-batch of $1712$ ephemeral keys.
+    In order to change an account status from offline to online, a ``keyreg'' transaction needs the 
+    root public participation key as a valid field in order to succeed.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
     Selection or VRF keys are keys used for committee membership selection and verification.
     Private VRF keys are kept as secrets by the node, while public VRF keys are kept inside 
-    account records (in the $\mathsf{BT}$),
-    and are needed in order for an account to vote, as they will be
-    used to verify committee membership by nodes receiving votes.
-    They make use of an Algorand fork of the Sodium C library (citar!), implementing VRF signing, verification and
+    account records (in the $\mathsf{BT}$).
+    They are created and registered on a CLI key generation call, after participation key generation.
+    VRF keys are needed in order for an account to vote, as they will be
+    used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
+    More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
+    with valid VRF public keys for the lookback round $r-\delta_s(1+\delta_r)$.
+    They make use of an Algorand fork of the Sodium C library \marginpar{citar libsodium y el fork}, implementing VRF signing, verification and
     key generation functions.
-    In the following work, these three cryptographic functions are abstracted as $\mathsf{VRF_{proove}}(.)$, $\mathsf{VRF_{verify}}(.)$ and $\mathsf{VRF_{generate}}(.)$
-    respectively.
-    The account's private keys are kept as secrets by the node, and are guaranteed to be non-persistant in memory.
+    In the following work, these cryptographic functions are abstracted as $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$, $\mathsf{VRF_{generate}}(.)$
+    and the helper function $\mathsf{VRF_{proofToHash}}(.)$.
+    Refer to the provided repository for implementation details.
+
+    Participation (root, subkey and ephemeral) private keys and VRF private keys for a given account are kept as secrets by the node
+    in which the account registered to participate in consensus.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/vrf.go
 
-
-    On a key generation command, a node takes an address, a range of rounds and a 64
-    bit integer key dilution parameter. The round range has a maximum of $2^{24} - 1$, and a recommended
-    value of $3e06$. It then uses a function in the Algorand sodium library fork (LINK TO GITHUB),
-    to produce a public VRF key, and a private VRF key that will be kept as a secret by the node.
-    
-    Once these are created and associated with the given address, a keyreg transaction will take the account
-    online and have it start participating. An account record will be created for this account (if it did not
-    already exist in the Balance table $\mathsf{BT}$), the VRF public key registered, as well as the public participation
-    key, the created intermediate batch keys and the first sub-batch of ephemeral keys. All private counterparts of 
-    these will be kept as secrets by the node and used extensively in succesive voting rounds, 
-    starting $\delta$ rounds after the keyreg transaction is committed inside a block (currently $\delta = 320$).
-
     We define a $\mathsf{secrets}(I, r^\prime)$ helper function, which takes a user address and
-    a valid round number (that is lesser or equal to $r$), and is able to retrieve secret VRF keys 
-    and participation keys (in the latter, from any of the tree levels as needed) for a given user $I$ 
-    and a valid round number $r^\prime$. As a precondition it is assumed that in any call to $\mathsf{secrets(.)}$,
-    the keys were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
+    a valid round number (that is lesser or equal to $r$), and is able to retrieve private VRF keys
+    and private ephemeral participation keys (and living private participation subkeys) for a given user $I$ 
+    and a valid round number $r^\prime$ when applicable. Note that past round ephemeral private keys are not recoverable
+    by design. 
+    As a precondition it is assumed that in any call to $\mathsf{secrets(.)}$,
+    the keys being retrieved were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
     in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
     \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
 
@@ -993,8 +1009,11 @@ is an equivocation vote, and
 e) the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
 committee threshold of the votes in the set.
 
-We define the {\sf observed bundles}\index{B} for the current execution state, $B$, as the set of all of the bundles
-observed by the node in the current execution state.
+For convenience, we define the {\sf observed bundles}\index{B} for the current execution state, $B$, 
+as the set of all of the bundles
+observed by the node in the current execution state. Said set is always consistent with an in-place
+reconstruction by grouping elements of $V$ in all possible subsets with the required properties
+of a valid bundle.
 \end{subsection}
 
 \end{section}
@@ -1007,7 +1026,7 @@ observed by the node in the current execution state.
 
 The node is reactive. The main algorithm for the node, thus, starts when it receives 
 any input, it makes computations --probably modifying the state of the node-- and 
-may end by broadcasting data to other nodes. 
+may end by broadcasting data to other nodes.
 
 \begin{algorithm}[H]
     \caption{\underline{Main node algorithm}}
@@ -1015,7 +1034,7 @@ may end by broadcasting data to other nodes.
     \begin{algorithmic}[1]
     \Function{$\mathsf{EventHandler}(Event \ ev)$}{}
     
-    \If{$ev \ is \ TimeoutEvent$}
+    \If{$ev \ is \ \mathsf{TimeoutEvent}$}
         \State $time := ev.time$
         \If{$time = 0$}
             \State $\mathsf{BlockProposal}()$; $s:=1$
@@ -1175,21 +1194,21 @@ if the corresponding full proposal has been observed, then it is also broadcast.
     \caption{\underline{Soft Vote}}
     \label{algo:soft-vote}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{SoftVote}$}{}
+    \Function{$\mathsf{SoftVote}$}{\;}
     \State $lowestObservedHash := \infty$
     \State $v := \bot$ 
 
-    \For{$vt^\prime \in V \text{ with } vt^\prime_s = proposal$}
-        \State $priorityHash := \min_{i \in [0, vt^\prime.cred_j)} \{ \mathsf{H}(vt^\prime.cred.sh || i)\}$
+    \For{$vt^\prime \in \mathsf{V} \text{ with } vt^\prime_s = proposal$}
+        \State $priorityHash := \min_{i \in [0, vt^\prime_{cred_j})} \{ \mathsf{H}(vt^\prime_{cred_{sh}} || i)\}$
         \If{$priorityHash < lowestObservedHash$}
             \State $lowestObservedHash := priorityHash$
-            \State $v := vt.v$
+            \State $v := vt_v$
         \EndIf    
     \EndFor
 
     \If {$lowestObservedHash < \infty$}
         \For{$Account \ a \in A$}
-            \State $cred := \mathsf{Sortition}(a, soft)$
+            \State $cred := \mathsf{Sortition}(a_I, r, p, s, soft)$
             \If{$cred_j > 0$}
                 \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
                 \If{$\mathsf{RetrieveProposal}(v)$}
@@ -1208,17 +1227,17 @@ The soft vote stage (also known as ``filtering'') is run after a timeout of $\ma
 (where $p$ is the executing period of the node) is observed by the node. 
 That is to say, filtering is triggered after either a $2\cdot\lambda_0$ or $2\cdot\lambda$ timeout is observed according 
 to whether $p=0$ or $p>0$ respectively.
-Let $V*$ be all proposal votes received, e.g., $V*=\{vt^\prime\in V : vt^\prime_s = proposal\}$.
+Let $V^*$ be all proposal votes received, e.g., $V^*=\{vt^\prime\in \mathsf{V} : vt^\prime_s = proposal\}$.
 With the aid of a priority hash function, this stage performs a filtering action,
 keeping the lowest hashed value observed.
-The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V*$.
+The priority function (lines 4 to 8) should be interpreted as follows. Consider every proposal vote $vt$ in $V^*$.
 Given the sortition hash $sh$ output by the $\mathsf{VRF}$ for the proposer account, and for each sub-user unit $i$ 
-in the interval from $0$ (inclusive) to the vote weight (exclusive; the $j$ output of $\mathsf{Sortition}()$ inside 
+in the interval from $0$ (inclusive) to the vote weight (exclusive; the $j$ output of $\mathsf{Sortition}(.)$ inside 
 the $cred$ credentials structure), the node hashes the concatenation of $sh$ and $i$, $\mathsf{H}(sh||i)$ 
-(where $\mathsf{H}()$ is the node's general cryptographic hashing function). On lines 6 to 8, 
+(where $\mathsf{H}(.)$ is the node's general cryptographic hashing function). On lines 6 to 8, 
 then, it keeps track of the proposal-value that minimizes this concatenation and subsequent hashing procedure.
 After running the filtering algorithm for all proposal votes observed, and assuming there was at least one vote
-in $V*$, the broadcasting section of the filtering algorithm is executed (lines 9 to 15).
+in $V^*$, the broadcasting section of the filtering algorithm is executed (lines 9 to 15).
 For every online managed account selected to be part of the $soft$ voting committee, a $soft$ vote is
 broadcast for the previously found filtered value $v$. If the full proposal has been observed and is available in $P$,
 it is also broadcast. 
@@ -1262,7 +1281,7 @@ output in its filtering step.
             %all checks passsed, produce output
             \If{$\mathsf{IsCommitable}(v) \land s \leq cert$}
                 \For{$a \in A$}
-                    \State $cred := \mathsf{Sortition}(a, cert)$
+                    \State $cred := \mathsf{Sortition}(a_I, r,p,s, cert)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v,  cred))$
                     \EndIf
@@ -1331,7 +1350,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             % \\
 
             \If{$\mathbf{not}\; \mathsf{VerifyVote}(vt)$}
-                \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(vt))$ \ //optional
+                \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(vt))$
                 \Return \ //ignore invalid vote
             \EndIf
 
@@ -2181,7 +2200,7 @@ Alternatively, the node may choose to stall, stopping its participation in conse
     \label{algo:disconnect-peer}
     \begin{algorithmic}[1]
     \Function{$\mathsf{DisconnectFromPeer}$}{$\mathsf{PEER\_ID}$}
-        \State Remove $\mathsf{PEER\_ID}$ from available connections
+        \State Remove $\mathsf{PEER\_ID}$ from $\mathsf{PEERS}$
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2258,7 +2277,49 @@ if it has been observed.\\
 
 % ----------------------------------------------------------------------------------------------
 
-\begin{subsection}{Sortition and seed computation subroutines}\label{sect:sort-seed-subroutines}
+\begin{algorithm}[H]
+    \caption{\underline{Broadcast}}
+    \label{algo:broadcast}
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{Broadcast}$}{$data$}
+
+    Send $\mathsf{msg}(data)$ to all peers in $\mathsf{PEERS}$
+
+    \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+This function serves as a nexus between the networking module and the modules responsible
+for running consensus, abstracting away networking details and allowing a node to produce
+output for other nodes in the network to observe.
+$\mathsf{msg}(.)$ abstracts away the process of packing all data to be sent into the relevant message type,
+according to the nature of the data, filling out its type field depending on whether it is a transaction, 
+vote, proposal or bundle.
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{algorithm}[H]
+    \caption{\underline{Relay}}
+    \label{algo:relay}
+    \begin{algorithmic}[1]
+    \Function{$\mathsf{Relay}$}{$data$}
+
+    Send $\mathsf{msg}(data)$ to all peers in $\mathsf{PEERS}$ except for $\mathsf{SENDER\_PEER}(data)$
+
+    \EndFunction
+    \end{algorithmic}
+\end{algorithm}
+
+\noindent \textbf{Description:}\\
+Similar to the broadcast function, but in this case the node excludes explicitly from the list of senders
+a peer whose ID is that of the original sender of the input data.
+The function is used to re-send received messages while avoiding unnecesary forwarding loops 
+that may congest the network.
+
+% ----------------------------------------------------------------------------------------------
+
+\begin{subsection}{Sortition and seed computation}\label{sect:sort-seed}
 
 In the next set of functions, we make use of special cryptographic computation 
 functions $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$ and $\mathsf{VRF_{proofToHash}}(.)$.
@@ -2272,7 +2333,8 @@ a public VRF key, a sortition hash and a proof, certifying that the hash and pro
 an instance of $\mathsf{VRF_{prove}}(.)$ with the corresponding secret VRF key and data.
 In other words, \\
 $\mathsf{VRF_{verify}}(\pi, sh, I_{VRFKey}) = \mathsf{True} \leftrightarrow 
-\mathsf{VRF_{prove}}(in, secrets(I)_{VRFkey}) = \pi \land \mathsf{VRF_{proofToHash}}(\pi) = sh$ \\
+\mathsf{VRF_{prove}}(in, secrets(I,r^\prime)_{VRFkey}) = \pi \land \mathsf{VRF_{proofToHash}}(\pi) = sh$ \\
+for a given round $r^\prime \leq r$ in which there is a valid VRF key pair for $I$.
 Refer to the aformentioned library for details on implementation of these cryptographic functions.
 
 \begin{algorithm}[H]
@@ -2348,7 +2410,7 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $Q$, a 32 byte computed seed to verify
-    \item $\pi_{seed}$, the 80 byte proof for the $\mathsf{VRF_prove}(.)$ call that computed $Q$
+    \item $\pi_{seed}$, the 80 byte proof for the $\mathsf{VRF_{prove}}(.)$ call that computed $Q$
     \item $Address \ I_{proposer}$, the address of the user that proposed a block and computed $Q$
   \end{itemize}
 
