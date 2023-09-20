@@ -1698,12 +1698,22 @@ Otherwise, it falls back to $SHA256$.\\
 % ----------------------------------------------------------------------------------------------
 
 \begin{algorithm}[H]
-    \caption{\underline{Assemble Block}}    
+    \caption{\underline{Assemble Block}}
     \label{algo:assemble-block}
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{$Address \ I$}
 
-    \State $Block \ b$ \\
+    \State $Block \ b$ \\ \\
+
+    //define block body, ordered set of signed transactions
+    \State $it_{TP} := \mathsf{iterator}(TP_{head})$
+    \While{$\mathsf{Time}() < \mathsf{Deadline} \land \mathsf{hasNext}(it_{TP})$}
+    %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
+        \State $txn := \mathsf{next}(it_{TP})$
+        \If{$\mathsf{TxnSetValid}(b_{payset}||txn)$}
+            \State $b_{payset} :=  b_{payset}||txn$ \\
+        \EndIf
+    \EndWhile
 
     //define block header
     \State $b_{r} := r$
@@ -1712,11 +1722,9 @@ Otherwise, it falls back to $SHA256$.\\
     \State $(Q, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
     \State $b_{Q} := Q$
 
-    \State $b_{txnCommitment} := \mathsf{MerkleTree}(TP[-s])_{root}$
-
     \State $b_{timestamp} := \mathsf{SYSTEM\_TIME}$ //timestamp in seconds since epoch
 
-    \State $b_{GenesisID} := \mathsf{L_{genesisID}}$
+    \State $b_{GenesisID} := \mathsf{L}_{genesisID}$
 
     \State $b_{GenesisHash} := \mathsf{H}(\mathsf{L}[0])$
 
@@ -1725,18 +1733,11 @@ Otherwise, it falls back to $SHA256$.\\
     % \State $b_{txnCounter} := NEXTTXNCOUNTER$
 
     % \State $b_{stateProof} := StateProofTrackers$
+    % //For the scope of this work, we exclude state proof trackers\\
 
-    % \State $b_{partUpdates} := \{a \in G \int G'\}$ \\ \\
+    % \State $b_{partUpdates} := \{a \in G \int G'\}$
 
-
-    //define block body, ordered set of signed transactions
-    \While{$Time() < Deadline$}
-    %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
-        \State $txn := \mathsf{TP.pop}()$
-        \If{$\mathsf{Valid}(b_{payset}, txn)$}
-            \State $b_{payset} :=  b_{payset}||txn$ \\
-        \EndIf
-    \EndWhile
+    \State $b_{txnCommitment} := \mathsf{root}(\mathsf{MerkleTree}(b_{payset}))$
 
     \Return $(b, \pi_{seed})$
 
