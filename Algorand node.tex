@@ -928,7 +928,7 @@ A block header holds the following data:
     accounts in the slice and may even omit the slice completely
 \end{itemize}
 While a body of a block is the block's transaction sequence, which describes the sequence
-of updates to the account state and box state.\marginpar{los account records no tienen states!}
+of updates to the account state and box state. %\marginpar{los account records no tienen states!}
 %adp: tecnicamente los local y global states son account updates, 
 %los local states viven en en el account record y tenes uno por cada app 
 %a la que estes opted in, los global funcionan similar para la cuenta del contrato
@@ -1501,7 +1501,7 @@ then a new period is started and the currently executing period-specific data ga
                 \Return
             \EndIf
 
-            \If{$b.r = r \land b.p + 1 \geq p$}
+            \If{$b_r = r \land b_p + 1 \geq p$}
                 \For{$vt \in b$}
                     \State $\mathsf{HandleVote}(vt)$
                 \EndFor
@@ -1540,18 +1540,17 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
         \caption{\underline{Recovery}}
         \label{algo:recovery}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{Recovery}$}{}
+        \Function{$\mathsf{Recovery}$}{\;}
 
         \State $\mathsf{ResynchronizationAttempt}()$
     
         \For{$Account \ a \in A$}
-            \State $cred := 
-            \mathsf{\mathsf{Sortition}}(a_{sk}, s)$
+            \State $cred := \mathsf{\mathsf{Sortition}}(a_{I}, s)$
             \If{$cred_j > 0$}
-                \If{$\exists v=Proposal_{value}(prop, prop_p, prop_I) $ for some $prop\in P | \mathsf{IsCommitable}(v)$}
+                \If{$\exists v=\mathsf{Proposal_{value}}(prop, prop_p, prop_I) $ for some $prop\in \mathsf{P} | \mathsf{IsCommitable}(v)$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, v, cred))$
-                \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
-                ${}$ ${\hskip 2.65cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
+                \ElsIf{$\nexists s_0 > cert | \mathsf{Bundle}(r, p - 1, s_0, \bot) \subseteq \mathsf{V} \wedge$ \newline 
+                ${}$ ${\hskip 2.65cm} \exists s_1 > cert | \mathsf{Bundle}(r, p - 1, s_1, \bar{v}) \subseteq \mathsf{V}$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, \bar{v}, cred))$
                 \Else
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, \bot, cred))$
@@ -1586,7 +1585,7 @@ from equivocating in $next$ votes.
         \caption{\underline{FastRecovery}}
         \label{algo:fast-recovery}
         \begin{algorithmic}[1]
-        \Function{$FastRecovery$}{}
+        \Function{$FastRecovery$}{\;}
 
         %P*? Como se maneja el step number aca? y el bar_step?
 
@@ -1594,23 +1593,22 @@ from equivocating in $next$ votes.
     
         \For{$Account \ a \in A$}
             \If{$\mathsf{IsCommitable}(v)$}
-                \State $cred := 
-                \mathsf{Sortition}(a_{sk}, late)$
+                \State $cred := \mathsf{Sortition}(a_{I}, r,p,late)$
                 \If{$cred_j > 0$}
-                    \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, late, v, cred))$
+                    \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, late, v, cred))$
                 \EndIf
 
             \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
                 ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
                     \State $cred := 
-                    \mathsf{Sortition}(a_{sk}, redo)$
+                    \mathsf{Sortition}(a_{I}, redo)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,redo,\bar{v}, cred))$
                     \EndIf
 
             \Else
                 \State $cred := 
-                \mathsf{Sortition}(a_{sk}, down)$
+                \mathsf{Sortition}(a_{I}, r,p, down)$
                 \If{$cred_j > 0$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,down,\bot, cred))$
                 \EndIf
@@ -1657,20 +1655,18 @@ from equivocating in $next$ votes.
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $uint64 \ p$ is a period number
+    \item $uint64 \ p$ is a period number.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
 The function $\mathsf{FilterTimeout}(\;)$\index{$\mathsf{FilterTimeout}(\;)$} provides the timeout 
 constant for the filtering (i.e., ``soft'' or ``soft vote'') stage.
 This timeout depends on the period value; the first period has a special, faster timeout.
-If no consensus was achieved, this timeout constant is relaxed in all subsequent periods. 
+If no consensus was achieved, this timeout constant is relaxed in all subsequent periods.\\ 
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item The time constant used to trigger the filtering stage (according to whether the given
-    period $p$ is the first period of the current round or not)
-  \end{itemize}
+\noindent \textbf{Returns:}\\
+The time constant used to trigger the filtering stage (according to whether the given
+    period $p$ is the first period of the current round or not).
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1853,7 +1849,7 @@ The proposal value must be committable (which implies validity and availability 
 ledger entry and seed).
 Line 2 means the algorithm will append the block contained in the proposal $\mathsf{RetrieveProposal}(v)$.
 Afterwards, it updates the balance table $BT$ with all state changes called for the committed entry.
-The function $\mathsf{UpdateBT}()$ is responsible for updating the table by incorporating all changes
+The function $\mathsf{UpdateBT}(.)$ is responsible for updating the table by incorporating all changes
 outlined by transactions in the block body (we defer to the specifications for further details). 
 
 % ----------------------------------------------------------------------------------------------
@@ -1888,34 +1884,33 @@ outlined by transactions in the block body (we defer to the specifications for f
 \noindent \textbf{Description:}\\
 Vote verification gets an unauthenticated vote and returns an authenticated vote and a
 boolean indicating whether authentication succeeded or failed.
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]\label{algo:verify-part-sign}
-    \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifyPartSignature}$}{$Vote \ vt$}
-        
-        //get voter's relevant ephemeral key for this round
-        \State x
-
-        //verify key's validity interval
-        \State x
-
-        //use the cryptographic signature verification function
-        \Return $\mathsf{ed25519\_verify}(part_{pk}, \mathsf{encode}(vt))$
-    \EndFunction
-    \end{algorithmic}
-    \caption{\underline{VerifyVote}}
-\end{algorithm}
-
-\noindent \textbf{Description:}\\
-Vote verification gets an unauthenticated vote and returns an authenticated vote and a
-boolean indicating whether authentication succeeded or failed.
 The procedure retrieves the relevant ephemeral participation public key for the user given the vote round $vt_r$,
 checking that it exists and taking into account the lookback period $\delta_s\delta_b$.
 It then checks that the currently executing round (minus lookback) is inside the validity interval for said key.
 Finally, the internal cryptographic signature verification function (leveraging Algorand's fork of the sodium C library)
 is called to check the signature itself against the provided key and the vote serialized as plain bytes.
+
+% % ----------------------------------------------------------------------------------------------
+
+% \begin{algorithm}[H]\label{algo:verify-part-sign}
+%     \begin{algorithmic}[1]
+%     \Function{$\mathsf{VerifyPartSignature}$}{$Vote \ vt$}
+        
+%         //get voter's relevant ephemeral key for this round
+%         \State x
+
+%         //verify key's validity interval
+%         \State x
+
+%         //use the cryptographic signature verification function
+%         \Return $\mathsf{ed25519\_verify}(part_{pk}, \mathsf{encode}(vt))$
+%     \EndFunction
+%     \end{algorithmic}
+%     \caption{\underline{VerifyVote}}
+% \end{algorithm}
+
+% \noindent \textbf{Description:}\\
+
 
 % ----------------------------------------------------------------------------------------------
 
