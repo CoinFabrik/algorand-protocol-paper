@@ -577,7 +577,7 @@ Any account participating in consensus does so with their full balance. There is
 associated to participation, nor there are any rewards for running a node.
 
 
-TODO: maybe include some voting stats?
+\marginpar{TODO: maybe include some voting stats?}
 
 \end{subsection}
 % ------------------------------------------------------------------------
@@ -789,7 +789,13 @@ where
         while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
 
     \item
-    $\mathsf{TP}$ is the node's transaction pool.
+    $\mathsf{TP}$ is the node's transaction pool, represented as a priority queue, supporting
+    a $\mathsf{head(.)}$ function to get the next element to unqueue, an $\mathsf{iterator}(.)$
+    helper function to construct and return an iterator into the queue and be able to retrieve all
+    queued elements in priority order.
+    It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset from a block $e$
+    and correctly unqueues all transactions included in the intersection $e_{payset} \int TP$, and then
+    drops all elements that have been invalidated by round advancement.
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -1830,8 +1836,10 @@ period. \\
     \begin{algorithmic}[1]
     \Function{$\mathsf{Commit}$}{$Proposal_{value} \ v$}
 
-    \State $L := L || (\mathsf{RetrieveProposal}(v))_e$
-    \State $\mathsf{UpdateBT}((\mathsf{RetrieveProposal}(v))_e)$
+    \State $e := \mathsf{RetrieveProposal}(v)_e$ 
+    \State $L := \mathsf{L} || e$
+    \State $\mathsf{UpdateBT}(e)$
+    \State $\mathsf{UpdateTP}(e_{payset})$
 
     \EndFunction
     \end{algorithmic}
