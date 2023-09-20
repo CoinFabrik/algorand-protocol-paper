@@ -1311,7 +1311,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
 \begin{subsection}{HandleVote}\label{ssect:HandleVote}
 
     \begin{algorithm}[H]
-        \caption{\underline{HandleVote}}
+        \caption{\underline{Handle Vote}}
         \label{algo:handle-vote}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleVote}$}{$Vote \ vt$}
@@ -1328,16 +1328,16 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             % \\
 
             \If{$\mathbf{not}\; \mathsf{VerifyVote}(vt)$}
-                \State $\mathsf{PenalizePeer}(SENDER\_PEER(vt))$ \ //optional
-                \State $\mathsf{return}$ \ //ignore invalid vote
+                \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(vt))$ \ //optional
+                \Return \ //ignore invalid vote
             \EndIf
 
             \If{$vt_s = 0 \land (vt \in V \lor \mathsf{IsEquivocation}(vt))$}
-                \State $\mathsf{return}$ \ //ignore vote, equivocation not allowed in proposal votes
+                \Return \ //ignore vote, equivocation not allowed in proposal votes
             \EndIf
 
             \If{$vt_s > 0 \land \mathsf{IsSecondEquivocation}(vt) $}
-                \State $\mathsf{return}$ \ //ignore vote if it's a second equivocation
+                \Return \ //ignore vote if it's a second equivocation
             \EndIf
 
             \If{$vt_r < r $}
@@ -1353,7 +1353,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             $(vt_p = p+1 \land vt_s \in \{next_1,\ldots, next_{249}\}) \lor$ \\
             $(vt_p = p \land vt_s \in \{next_1,\ldots, next_{249}\} \land vt_s \notin \{s-1,s, s+1\}) \lor$ \\
             $(vt_p = p-1 \land vt_s \in \{next_1,\ldots, next_{249}\} \land vt_s \notin \{\bar{s}-1, \bar{s},\bar{s}+1\}))$}
-                \State $return$ \ //ignore vote
+                \Return \ //ignore vote
             \EndIf
 
             \State $V := V \cup vt$ \ //observe vote
@@ -1409,8 +1409,9 @@ A vote $vt$ is an uple consisting of a secret key $vt_{sk}$, a round $vt_r$, a s
 The vote handler is triggered when a node receives a message containing a vote for a given proposal value, round, period and step.
 It first performs a series of checks, and if the received vote passes all of them, then it is broadcast by all accounts selected
 as the appropriate committee members.
-On line 2, it checks if the vote is valid by itself. If invalid, the node can optionally penalize the sender of the vote
-(by disconnecting or blacklisting it, for example).
+On line 2, it checks if the vote is valid by itself. If invalid, the node can optionally disconnect 
+from the sender of the vote. In that case, we use $\mathsf{SENDER\_PEER(msg)}$ as a helper network module function,
+that retrieves the network ID of the original message sender.
 Equivocation votes on a proposal step are not allowed, so a check for this condition is performed on line 5.
 Furthermore, second equivocations are never allowed (line 7).
 Any votes for rounds prior to the current round are discarded (line 9).
@@ -1451,8 +1452,8 @@ then a new period is started and the currently executing period-specific data ga
 \begin{subsection}{HandleBundle}\label{ssect:HandleBundle}
 
     \begin{algorithm}[H]
-        \caption{\underline{HandleBundle}}
-        label{algo:habdle-bundle}
+        \caption{\underline{Handle Bundle}}
+        \label{algo:handle-bundle}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleBundle}$}{$Bundle \ b$}
 
@@ -1462,7 +1463,7 @@ then a new period is started and the currently executing period-specific data ga
             % should probably be for some $v´$
 
             \If{$\neg \mathsf{VerifyBundle}(b)$}
-                \State $\mathsf{PenalizePeer}(\mathsf{SENDER\_PEER}(b))$ \ //optional
+                \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(b))$ \ //optional
                 \State $\mathsf{return}$
             \EndIf
 
@@ -2222,7 +2223,7 @@ its entry off of the available peer list, and the content of the message is igno
     \label{algo:resynchronization-attempt}
     \begin{algorithmic}[1]
     \Function{$\mathsf{ResynchronizationAttempt}$}{\; }
-    
+
     \State $Val = \bot$
 
     \If{$\exists v | Bundle(r, p, soft, v) \subset V$}
@@ -2274,7 +2275,7 @@ if it has been observed.
             \State $Q := \mathsf{H}(\alpha)$
         \EndIf
 
-         \State $\mathsf{return} \ (Q, y)$
+         \Return $(Q, y)$
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2338,38 +2339,6 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 \noindent \textbf{Returns:}\\ A boolean value. $\mathsf{True}$ if the seed $Q$, with proof $\pi_{seed}$, computed by $I$,
     is valid for the current node context, otherwise returns $\mathsf{False}$.
-
-% ----------------------------------------------------------------------------------------------
-
-\begin{algorithm}[H]
-    \caption{\underline{Get Sortition Seed}}
-    \label{algo:get-sortition-seed}
-    \begin{algorithmic}[1]
-        \Function{$getSortitionSeed$}{$ctx, r, a_{pk}$}
-        
-            $\Return\;ctx.block[r-1-(r\;mod\;R)].seed$
-
-        \EndFunction
-    \end{algorithmic}
-\end{algorithm}
-
-\noindent \textbf{Arguments:}
-\begin{itemize}
-    \item $ctx$ = a helper structure to retrieve ledger context information (e.g. the last confirmed block)
-    \item $round$ = current round number
-    \item $a_{pk}$ = the account's public key for the look up table
-  \end{itemize}
-
-
-\noindent \textbf{Description:}\\
-This helper function gets the relevant sortition seed for the current round $r$, according to the seed 
-lookback parameter $R$.
-Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, refreshed every $R$ rounds.
-
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item a sortition seed to be used in the round $r$
-\end{itemize}
 
 % ----------------------------------------------------------------------------------------------
 
