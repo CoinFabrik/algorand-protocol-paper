@@ -2222,9 +2222,7 @@ its entry off of the available peer list, and the content of the message is igno
     \label{algo:resynchronization-attempt}
     \begin{algorithmic}[1]
     \Function{$\mathsf{ResynchronizationAttempt}$}{\; }
-
-    %P*? Sortition aca? deberia correrlo? no es claro como funcionaria aca
-
+    
     \State $Val = \bot$
 
     \If{$\exists v | Bundle(r, p, soft, v) \subset V$}
@@ -2261,9 +2259,9 @@ if it has been observed.
     \caption{\underline{Compute Seed And Proof}}
     \label{algo:compute-seed}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{ComputeSeedAndProof}$}{$Account \ a$}
+    \Function{$\mathsf{ComputeSeedAndProof}$}{$Address \ I$}
         \If {$p = 0$}
-             \State $y := \mathsf{VRF.Prove}(L[r-\delta_s]_Q, a_{sk})$
+             \State $y := \mathsf{VRF_{prove}}(L[r-\delta_s]_Q, secrets(I)_VRFkey)$
              \State $\alpha := \mathsf{H}(\mathsf{VRF.ProofToHash}(y), a_I)$
         \Else
             \State $y := 0$
@@ -2308,10 +2306,10 @@ and used by nodes receiving the proposal as part of the proposal validation proc
     \Function{$\mathsf{VerifySeed}$}{$Q, \pi_{seed}, Address \ I_{proposer}$}
         \State $q_0 := \mathsf{L}[r-\delta_s]_{seed}$
             \If {$p = 0$}
-                \If {$\neg \mathsf{VRF.Verify}(\pi_{seed}, q_0, I)$}
+                \If {$\neg \mathsf{VRF_{verify}}(\pi_{seed}, q_0, I_{proposer})$}
                     \State $\mathsf{return} \ \mathsf{False}$
                 \EndIf
-                \State $q_1 := \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I)$
+                \State $q_1 := \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I_{proposer})$
             \Else
                 \State $q_1 := \mathsf{H}(q_0)$
             \EndIf
@@ -2329,15 +2327,17 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Account \ I$
+    \item $Q$, a 32 byte computed seed to verify
+    \item $\pi_{seed}$, the 80 byte proof for the $\mathsf{VRF_prove}(.)$ call that computed $Q$
+    \item $Address \ I_{proposer}$, the address of the user that proposed a block and computed $Q$
   \end{itemize}
 
 
 \noindent \textbf{Description:}\\ The seed verification procedure certifies the validity of a computed seed $Q$.
 
 
-\noindent \textbf{Returns:}\\ A boolean value. $True$ if the seed $Q$, with proof $\pi_{seed}$, computed by $I$,
-    is valid for the current node context, otherwise returns $False$.
+\noindent \textbf{Returns:}\\ A boolean value. $\mathsf{True}$ if the seed $Q$, with proof $\pi_{seed}$, computed by $I$,
+    is valid for the current node context, otherwise returns $\mathsf{False}$.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2384,7 +2384,7 @@ Conceptually, it corresponds with the seed computed $R$ rounds prior to $r$, ref
             \EndIf
         \EndFor
 
-        \State $\mathsf{Return} \ sum$
+        \Return $sum$
 
         \EndFunction
     \end{algorithmic}
@@ -2405,10 +2405,8 @@ it adds the recorded balance for that context.
 It returns the sum of that balance over all accounts, being the total online stake
 in the network on that particular round $r^\prime$.
 
-\noindent \textbf{Returns:}
-\begin{itemize}
-    \item the total stake at play in the relevant round $r^\prime$.
-  \end{itemize}
+\noindent \textbf{Returns:} \\
+the total stake at play in the relevant round $r^\prime$.
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2416,19 +2414,21 @@ in the network on that particular round $r^\prime$.
     \caption{Sortition}
     \label{algo:sortition}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{Sortition}$}{$Account \ a, uint64 \ step$}
-        \State $Q \gets L[r - \delta_s]_{Q}$
-        //ACLARAR QUE ESTE BALANCE ES EL DEL LOOKBACK (NO EL ACTUAL)
-        \State $w := a.balance$ //$BT[a.address][r-\delta_s-\delta_b].balance$
-        \State $W := \sum_{a \in A_{r-\delta_s-\delta_b}}a.balance$
-        \State $\tau := \mathsf{CommitteeThreshold}(p)$
-        \State $ \langle hash, \pi \rangle := \mathsf{VRF_{a_{sk}}}(Q||step)$
+    \Function{$\mathsf{Sortition}$}{$Address \ I, uint64 \ period, uint64 \ step$}
+        \State $Q := \mathsf{L}[r - \delta_s]_{Q}$
+
+        \State $\pi := \mathsf{VRF_{prove}}(Q||round||period||step, \mathsf{secrets}(I)_{VRFKey})$
+        \State $sh := \mathsf{VRF_{ProofToHash}}(\pi)$
+
+        \State $w := \mathsf{BT}[round-\delta_s\delta_r][I]_{balance}$
+        \State $W := \mathsf{getTotalOnlineStake}(round-\delta_s\delta_r)$
+        \State $\tau := \mathsf{CommitteeSize}(step)$
         \State $t := \frac{\tau}{W}$
         \State $j := 0$
-        \While{$\frac{hash}{2^{hashlen}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
+        \While{$\frac{sh}{2^{\mathsf{log_2}(sh)}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
             \State $j := j+1$
         \EndWhile
-        \Return $credentials(hash, \pi, j)$
+        \Return $\mathsf{credentials}(sh, \pi, j)$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Sortition}}
@@ -2470,7 +2470,8 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \begin{algorithm}[H]
     \begin{algorithmic}[1]
-    \Function{$\mathsf{VerifySortition}$}{$I, Q, \pi, round, period, step$}
+    \Function{$\mathsf{VerifySortition}$}{$I, \pi, round, period, step$}
+        \State $Q := \mathsf{L}[r - \delta_s]_{Q}$
         \State $I_{VRFKey} := BT[round-\delta_s\delta_r][I]_{VRFKey}$
         \State $success := \mathsf{VRF_{verify}}(\pi, Q||round||period||step, I_{VRFKey})$
         \IfThen{$\neg success$}{$\mathsf{return} \ 0$} \\
@@ -2481,7 +2482,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
         \State $W := \mathsf{getTotalOnlineStake}(round-\delta_s\delta_r)$
         \State $t := \frac{\tau}{W}$
         \State $j := 0$
-        \While{$\frac{h}{2^{\mathsf{log_2}(h)}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
+        \While{$\frac{sh}{2^{\mathsf{log_2}(h)}} \notin [\sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
             \State $j := j+1$
         \EndWhile
         \Return $j$
@@ -2492,7 +2493,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $I$, a user's public spending key (their address)
+    \item $I$, a user's address
     \item $Q$, the 32 byte sortition seed to be used
     \item $\pi$, an 80 byte VRF proof
     \item $round$, the round number to be used inside the VRF function
