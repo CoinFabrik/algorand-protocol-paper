@@ -674,8 +674,13 @@ for the blockchain.,
     these will be kept as secrets by the node and used extensively in succesive voting rounds, 
     starting $\delta$ rounds after the keyreg transaction is committed inside a block (currently $\delta = 320$).
 
-
-
+    We define a $\mathsf{secrets}(I, r^\prime)$ helper function, which takes a user address and
+    a valid round number (that is lesser or equal to $r$), and is able to retrieve secret VRF keys 
+    and participation keys (in the latter, from any of the tree levels as needed) for a given user $I$ 
+    and a valid round number $r^\prime$. As a precondition it is assumed that in any call to $\mathsf{secrets(.)}$,
+    the keys were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
+    in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
+    \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -920,7 +925,7 @@ on block creation, $p_{orig}$ is the period in which the block was created,
 and $I_{orig}$ is the address of the block creator, the sole account that
 computed the sortition seed and proof.
 
-A proposal-value is a tuple $v = (I, p, H(prop), H(Encoding(prop)))$ where 
+A proposal-value is a tuple $v = (I, p, \mathsf{H}(prop), \mathsf{H}(Encoding(prop)))$ where 
 $I$ is an address (the ``original proposer''), 
 $p$ is a period (the ``original period''), 
 and
@@ -930,17 +935,15 @@ proposal $\bot$.
 It also includes the authentication information for the original proposer, that is, 
 a signature and VRF proof of the proposal-value.
 
-$Proposal_{value}(I, p, prop) := (I, p, H(prop), H(Encoding(prop))$ is the function used
+$\mathsf{Proposal_{value}}(I, p, prop) := (I, p, \mathsf{H}(prop), \mathsf{H}(Encoding(prop))$ is the function used
 by a block proposer to create a proposal-value.
 % Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
 % in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
 % by a table lookup--and no inconsistencies on bijectivity happen by construction.
 
-%claro, deberia ser que corresponde especificamente a la parte del Hash(e) de v. Ahi lo corregi abajo
 For convenience, we define the function $\mathsf{RetrieveProposal}:v\mapsto{\mathsf{RetrieveProposal}}(v)$ for a given proposal value 
 $v$,  such that $\mathsf{RetrieveProposal}(v) = prop$ if, and only if, $prop$ is the proposal that, when hashed, corresponds 
-to the proposal hash $H(prop)$ of the proposal value $v$.
-
+to the proposal hash $\mathsf{H}(prop)$ of the proposal value $v$.
 
 We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
 \begin{itemize}
@@ -948,7 +951,7 @@ We define an auxiliary structure, $credentials$, useful in voting, with the foll
     \item $\pi$ is the sortition proof (32-byte string).
     \item $j$ is a 64-bit unsigned integer that represents the vote's weight.
 \end{itemize}
-An object of this type is output by the $\mathsf{Sortition}()$ procedure.
+An object of this type is output by the $\mathsf{Sortition}(.)$ procedure.
 
 A vote $vt$, constructed as $\mathsf{Vote}(I,r,p,s,v,cred)$ is a tuple with the following members:
 \begin{itemize}
@@ -963,9 +966,10 @@ A vote $vt$, constructed as $\mathsf{Vote}(I,r,p,s,v,cred)$ is a tuple with the 
 In practice, votes are broadcast wrapped in a structure called ``Unauthenticated Vote'', 
 where the $credentials$ field is added, containing only the voter's sortition proof and 
 address.
-The rest of relevant data is reconstructed as part of the verification process, 
-where a node authenticates the received vote and obtains the vote weight and sortition hash.
-For the sake of simplicity we abstract away this step and assume availability of all 
+The rest of relevant data, sortition hash $sh$ and vote weight $j$, are reconstructed as part 
+of the verification process, 
+where a node authenticates the received vote and re-computes them.
+For the sake of simplicity we abstract away this step and assume immediate availability of all 
 $credentials$ fields.
 
 
@@ -2401,7 +2405,7 @@ the total stake at play in the relevant round $r^\prime$.
     \Function{$\mathsf{Sortition}$}{$Address \ I, uint64 \ round, uint64 \ period, uint8 \ step$}
         \State $Q := \mathsf{L}[r - \delta_s]_{Q}$
 
-        \State $\pi := \mathsf{VRF_{prove}}(Q||round||period||step, \mathsf{secrets}(I)_{VRFKey})$
+        \State $\pi := \mathsf{VRF_{prove}}(Q||round||period||step, \mathsf{secrets}(I, r-\delta_s\delta_r)_{VRFKey})$
         \State $sh := \mathsf{VRF_{ProofToHash}}(\pi)$
 
         \State $w := \mathsf{BT}[round-\delta_s\delta_r][I]_{balance}$
@@ -2435,6 +2439,12 @@ Generally, it manages to pseudo-randomly but verifiably (through the use of a Ve
 Function) select a user with probability proportional
 to their weight (i.e., stake) by returning a $j$ parameter, which indicates the number of times that 
 specific user was chosen.
+The function starts by retrieving a sortition seed $Q$.
+This seed will be a tamper-proof source of randmoness committed as part of a block header $\delta_s$ rounds in
+the past.
+Then, on line 3 it computes the sortition proof $\pi$ by running $\mathsf{VRF_prove}(.)$, 
+using the secret VRF key from user $I$, who should have a valid VRF public/private key pair 
+for $\delta_s\delta_r$ rounds in past.
 Algorithmically, every monetary unit the user has is considered a ``sub-user'', and then each one 
 of them is selected with probability $t = \frac{\tau}{W}$,
 where $\tau$ is the expected amount of users to be selected for the given role, and $W$ is the total
