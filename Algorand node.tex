@@ -266,7 +266,7 @@ In a vanilla run scenario and at this point, the period is zero ($p=0$).
 The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
 sets $v$ as the proposal value obtained from the vote $e$ and does two separate 
 broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
-Also, we enter the "soft vote" step setting $s:=1$.
+Also, we enter the ``soft vote'' step setting $s:=1$.
 
 
 % adp:
@@ -484,7 +484,7 @@ Whenever a transaction arrives,
   If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
     as the manager for this asset, and that this asset is not frozen among other checks.
   If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
-    cases which include an opt in, in which a user technically "transfer an asset" to himself and in this
+    cases which include an opt in, in which a user technically ``transfers an asset'' to themselves and in this
     case it is only checked that the asset ID exists, 
     a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
     receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
@@ -568,7 +568,7 @@ are responsible for keeping the network's high throughput.
 
 Accounts are managed by participation nodes. Accounts should be registered in at least one participation
 node only, however this is not enforced.
-In order for an account to participate in consensus, it needs to switch its status to "online". 
+In order for an account to participate in consensus, it needs to switch its status to ``online''. 
 That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
 which registers a participation key for the account and creates a two-level ephemeral key tree.
 It is important to note that the registered account will only start participating in consensus
@@ -620,7 +620,7 @@ for the blockchain.,
     on behalf of accounts. Nodes interact only with public spending keys, out of which
     Algorand addresses are derived. Private spending keys are used to sign transactions
     and should be kept privately by the user managing the relevant account for security
-    concerns. This is, unless the account has undergone a process called "rekeying", in which case 
+    concerns. This is, unless the account has undergone a process called ``rekeying'', in which case 
     the private key of the account designated by the rekeying transaction is the key authorized 
     to sign transactions on behalf of this account.
 
@@ -1227,28 +1227,28 @@ output in its filtering step.
 \begin{subsection}{HandleProposal}\label{ssect:handle-proposal}
 
     \begin{algorithm}[H]
-        \caption{\underline{HandleProposal}}
+        \caption{\underline{Handle Proposal}}
         \label{algo:handle-proposal}
         \begin{algorithmic}[1]
         \Function{$\mathsf{HandleProposal}$}{$Proposal \ prop$}
 
-            \State $v := Proposal_{value}(prop, prop_{p}, prop_{I})$
+            \State $v :=  \mathsf{Proposal_{value}}(prop, prop_{p}, prop_{I})$
 
             %relays proposal if its for a future round (but does not process it)
-            \If{$\exists Bundle(r+1,0,soft,v) \in B$}
+            \If{$\exists \mathsf{Bundle}(r+1,0,soft,v) \in B$}
                 \State $\mathsf{Relay}(prop)$  %relay broadcasts to everyone except proposal sender
-                \State $\mathsf{return}$  //do not observe, as it's for a future round (we're behind)
+                \Return //do not observe, as it's for a future round (we're behind)
             \EndIf
 
             %ignores proposal if it's invalid or if it has already been observed
             \If{$\lnot \mathsf{VerifyProposal}(prop) \lor e \in P$ }
-                \State $\mathsf{return}$  //ignore proposal
+                \Return //ignore proposal
             \EndIf
 
             %ignores proposal if its proposal value is not either 
             %the current sigma, the pinned value or the current mu
             \If{$v \notin \{\sigma, \bar{v}, \mu\}$}
-                \State $\mathsf{return}$ //ignore proposal
+                \Return //ignore proposal
             \EndIf
 
             %we need to relay (broadcast to everybody but ourselves and o.g. sender), and observe p
@@ -1258,8 +1258,7 @@ output in its filtering step.
             %all checks passsed, produce output
             \If{$\mathsf{IsCommitable}(v) \land s \leq cert$}
                 \For{$a \in A$}
-                    \State $cred := 
-                    \mathsf{Sortition}(a, cert)$
+                    \State $cred := \mathsf{Sortition}(a, cert)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v,  cred))$
                     \EndIf
@@ -1341,11 +1340,11 @@ For each selected member, a corresponding ``certify vote'' for the current propo
             \EndIf
 
             \If{$vt_r < r $}
-                \State $\mathsf{return}$ \ //ignore vote of past round
+                \Return \ //ignore vote of past round
             \EndIf
 
             \If{$vt_r = r+1 \land (vt_p > 0 \lor vt_s \in \{next_0,\ldots, next_{249}\})$}
-                \State $\mathsf{return}$ \ //ignore vote of next round if non-zero period or $next_k$ step
+                \Return \ //ignore vote of next round if non-zero period or $next_k$ step
             \EndIf
 
             % cambiar parentesis y corchetes por \{ \}
@@ -1464,7 +1463,7 @@ then a new period is started and the currently executing period-specific data ga
 
             \If{$\neg \mathsf{VerifyBundle}(b)$}
                 \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(b))$ \ //optional
-                \State $\mathsf{return}$
+                \Return
             \EndIf
 
             \If{$b.r = r \land b.p + 1 \geq p$}
@@ -1613,9 +1612,9 @@ from equivocating in $next$ votes.
     \begin{algorithmic}[1]
     \Function{$\mathsf{FilterTimeout}$}{$uint64 \ p$}
         \If{$p = 0$}
-            \State $\mathsf{return} \ 2\lambda_0$
+            \Return $2\lambda_0$
         \Else 
-            \State $\mathsf{return} \ 2\lambda$
+            \Return $2\lambda$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -1628,7 +1627,7 @@ from equivocating in $next$ votes.
 
 \noindent \textbf{Description:}\\
 The function $\mathsf{FilterTimeout}(\;)$\index{$\mathsf{FilterTimeout}(\;)$} provides the timeout 
-constant for the filtering (i.e., "soft" or "soft vote") stage.
+constant for the filtering (i.e., ``soft'' or ``soft vote'') stage.
 This timeout depends on the period value; the first period has a special, faster timeout.
 If no consensus was achieved, this timeout constant is relaxed in all subsequent periods. 
 
@@ -1645,9 +1644,9 @@ If no consensus was achieved, this timeout constant is relaxed in all subsequent
     \begin{algorithmic}[1]
     \Function{$\mathsf{H}$}{$Hashable \ in$}
         \If{$SHA512/256 \ is \ supported$}
-            \State $\mathsf{return SHA512/256}(in)$
+            \Return $\mathsf{SHA512/256}(in)$
         \Else
-            \State $\mathsf{return SHA256}(in)$
+            \Return $\mathsf{SHA256}(in)$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -1709,7 +1708,7 @@ Otherwise, it falls back to $SHA256$.\\
         \EndIf
     \EndWhile
 
-    \State $\mathsf{return} \ (b, \pi_{seed})$
+    \Return $(b, \pi_{seed})$
 
     \EndFunction
     \end{algorithmic}
@@ -1769,7 +1768,7 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
-    \State $\mathsf{return} \ (\mathsf{RetrieveProposal}(v) \neq \bot) \land (\mathsf{Bundle}(r,p,soft,v) \subset V$)
+    \Return $(\mathsf{RetrieveProposal}(v) \neq \bot) \land (\mathsf{Bundle}(r,p,soft,v) \subset V$)
 
     \EndFunction
     \end{algorithmic}
@@ -1846,7 +1845,7 @@ outlined by transactions in the block body (we defer to the specifications for f
         \State $valid := valid \land \mathsf{VerifyPartSignature}(vt)$
         \State $valid := valid \land \mathsf{VerifyVRF}(vt_{\pi}, vt_I, vt_r, vt_p, vt_s)$
 
-        \State $\mathsf{return} \ valid$
+        \Return $valid$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{VerifyVote}}
@@ -1869,7 +1868,7 @@ boolean indicating whether authentication succeeded or failed.
         \State x
 
         //use the cryptographic signature verification function
-        \State $\mathsf{return} \ \mathsf{ed25519\_verify}(part_{pk}, \mathsf{encode}(vt))$
+        \Return $\mathsf{ed25519\_verify}(part_{pk}, \mathsf{encode}(vt))$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{VerifyVote}}
@@ -1891,9 +1890,9 @@ is called to check the signature itself against the provided key and the vote se
     \Function{$\mathsf{RetrieveProposal}$}{$Proposal_{value} \ v$}
 
     \If{$\exists prop \in P \ | \ Proposal_{value}(prop) = v$}
-        \State $\mathsf{return} \ prop $
+        \Return $prop$
     \Else
-        \State $\mathsf{return} \ \bot $
+        \Return $\bot$
     \EndIf
 
     \EndFunction
@@ -1903,7 +1902,7 @@ is called to check the signature itself against the provided key and the vote se
 
 \noindent \textbf{Description:}\\ Gets the proposal associated to a given proposal-value, 
 if it has been observed in the current context.
-Otherwise, it returns $\bot$, defined as the "empty proposal" (special value where all
+Otherwise, it returns $\bot$, defined as the ``empty proposal'' (special value where all
 proposal fields are zeroes).
 %esto no esta en una sola referencia de codigo, sino que abstrae varias cosas
 %internamente hay una tabla que matchea proposal votes (que contienen el proposal value)
@@ -1917,7 +1916,7 @@ proposal fields are zeroes).
     %el bloque se asume ya validado
 
     \State $proposal \ prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
-    \State $\mathsf{return} \ prop$
+    \Return $prop$
 
     \EndFunction
     \end{algorithmic}
@@ -1938,7 +1937,7 @@ with everything needed to validate it, into a $proposal$ structure.
 
     \State $proposal_{value} \ v := (e.I_{orig}, e.p_{orig}, \mathsf{H}(e), \mathsf{H}(\mathsf{Encoding}(e)))$
 
-    \State $\mathsf{return} \ v$
+    \Return $v$
 
     \EndFunction
     \end{algorithmic}
@@ -1990,7 +1989,7 @@ and the hash of the msgpack encoding of the block.
     //summation of weights should surpass the relevant threshold
     \State $valid := valid \land  \sum_{vt \in b}(vt.w) \geq CommitteeThreshold(b.s)$
 
-    \State $\mathsf{return} \ valid$
+    \Return $valid$
 
     \EndFunction
     \end{algorithmic}
@@ -2308,7 +2307,7 @@ and used by nodes receiving the proposal as part of the proposal validation proc
         \State $q_0 := \mathsf{L}[r-\delta_s]_{seed}$
             \If {$p = 0$}
                 \If {$\neg \mathsf{VRF_{verify}}(\pi_{seed}, q_0, I_{proposer})$}
-                    \State $\mathsf{return} \ \mathsf{False}$
+                    \Return $\mathsf{False}$
                 \EndIf
                 \State $q_1 := \mathsf{H}(\mathsf{VRF.ProofToHash}(\pi)||I_{proposer})$
             \Else
@@ -2317,9 +2316,9 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 
         \If{$r \equiv (r \mod \delta_s) \mod \delta_s\delta_r$}
-            \State $\mathsf{return} \ Q = \mathsf{H}(q_1||\mathsf{H}(\mathsf{L}[r-\delta_s\delta_b]))$
+            \Return $Q = \mathsf{H}(q_1||\mathsf{H}(\mathsf{L}[r-\delta_s\delta_b]))$
         \Else
-            \State $\mathsf{return} \ Q = q_1$
+            \Return $Q = q_1$
         \EndIf
     \EndFunction
     \end{algorithmic}
