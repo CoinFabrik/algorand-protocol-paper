@@ -1050,10 +1050,10 @@ may end by broadcasting data to other nodes.
     \caption{\underline{Main node algorithm}}
     \label{algo:main}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{EventHandler}(Event \ ev)$}{}
+    \Function{$\mathsf{EventHandler}(\mathsf{Event} \ ev)$}{}
     
-    \If{$ev \ is \ \mathsf{TimeoutEvent}$}
-        \State $time := ev.time$
+    \If{$ev$ is $\mathsf{TimeoutEvent}$}
+        \State $time := ev_{time}$
         \If{$time = 0$}
             \State $\mathsf{BlockProposal}()$; $s:=1$
         \ElsIf{$time = \mathsf{FilterTimeout}(p)$}
@@ -1066,12 +1066,12 @@ may end by broadcasting data to other nodes.
             \State $\mathsf{FastRecovery}()$
         \EndIf
     \Else \ //ev is MessageEvent
-        \State $msg := ev.msg$
-        \If{$msg \ is \ of \ type \ Proposal \ p$}
-            \State $\mathsf{HandleProposal}(p)$
-        \ElsIf{$msg\ is \ of\ type\  Vote \ v$}
+        \State $msg := ev_{msg}$
+        \If{$msg_{data}$ is of type $Proposal \ pp$}
+            \State $\mathsf{HandleProposal}(pp)$
+        \ElsIf{$msg_{data}$ is of type $Vote \ v$}
             \State $\mathsf{HandleVote}(v)$
-        \ElsIf{$msg\ is\ of\ type\ Bundle \ b$}
+        \ElsIf{$msg_{data}$ is of type $Bundle \ b$}
             \State $\mathsf{HandleBundle}(b)$
         \EndIf
     \EndIf
@@ -1089,7 +1089,7 @@ are special ``fast'' recovery steps.
 A period is an execution of a subset of steps, ran in order until one of them achieves 
 a bundle for a specific value. A round always starts with a $proposal$ step and finishes with a $cert$
 step (when a block is certified and committed to the ledger). However, multiple periods might
-be run inside a round until a certification bundle ($Bundle(r,p,s,v) $ where $s = cert$) is observable by the network.
+be run inside a round until a certification bundle ($\mathsf{Bundle}(r,p,s,v) $ where $s = cert$) is observable by the network.
 
 \medskip
 Events are the only way in which the node state machine is able to both internally transition and produce output.
@@ -1112,7 +1112,7 @@ Internally, we consider the relevant data of an event to be:
 
 $\mathbf{Timeout \ Events}$ are events that are triggered after a certain time has elapsed after the start of a new period.
 \begin{itemize}
-    \item $soft$ Timeout (aka. Filtering): The filter timeout is run after a timeout of $FilterTimeout(p)$ is observed 
+    \item $soft$ Timeout (aka. Filtering): The filter timeout is run after a timeout of $\mathsf{FilterTimeout}(p)$ is observed 
     (where $p$ is the currently running period). Note that it only depends on the period as far as if it's the first
     period in a round or a subsequent one.
     Will perform a filtering action, finding the highest priority proposal observed to produce a soft vote, as detailed
@@ -1150,7 +1150,7 @@ the corresponding construct (coinciding with their attached data type field).
             \State $\mathsf{ResynchronizationAttempt}()$
 
             \For{$a \in A$}
-                \State $cred :=  \mathsf{Sortition}(a, proposal)$
+                \State $cred :=  \mathsf{Sortition}(a_I, r,p, proposal)$
                 \If{$cred_j > 0$}
                     \If{$p = 0 \lor \exists s^\prime \textfractionsolidus \mathsf{Bundle}(r, p-1, s^\prime, \bot) \subset V$}
                         \State $(e,\pi_{seed}) := \mathsf{AssembleBlock}(a_I)$
@@ -1182,7 +1182,7 @@ This is a pattern that we'll see in every other main algorithm subroutine
 that performs any form of committee voting.
 For each account, the sortition algorithm is run to check if the account is allowed 
 to participate in the proposal. 
-If an account $a$ is selected by sortition (because $cred_j=\mathsf{Sortition}(a, proposal)+j>0$)
+If an account $a$ is selected by sortition (because $cred_j=\mathsf{Sortition}(a_I, r,p,proposal)_j>0$)
 there are two options. 
 
 i) If this is a proposal step ($p=0$) or if the node has {\em observed} a bundle 
@@ -1226,7 +1226,7 @@ if the corresponding full proposal has been observed, then it is also broadcast.
 
     \If {$lowestObservedHash < \infty$}
         \For{$Account \ a \in A$}
-            \State $cred := \mathsf{Sortition}(a_I, r, p, s, soft)$
+            \State $cred := \mathsf{Sortition}(a_I, r, p, soft)$
             \If{$cred_j > 0$}
                 \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, soft, v, cred))$
                 \If{$\mathsf{RetrieveProposal}(v)$}
@@ -1299,7 +1299,7 @@ output in its filtering step.
             %all checks passsed, produce output
             \If{$\mathsf{IsCommitable}(v) \land s \leq cert$}
                 \For{$a \in A$}
-                    \State $cred := \mathsf{Sortition}(a_I, r,p,s, cert)$
+                    \State $cred := \mathsf{Sortition}(a_I, r,p, cert)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v,  cred))$
                     \EndIf
@@ -1328,7 +1328,7 @@ In lines 3 to 5, it is checked if the proposal is from the next first period of 
 to the current, in which case the node relays this proposal and then ignores it for the purpose 
 of the current round. 
 Whenever the node catches up (i.e., observes a round change), and only if necessary, it will request 
-this proposal back from the network.\marginpar{Este request está en el agoritmo? Línea?}
+this proposal back from the network.
 Lines 6 and 7 check if the proposal is invalid, or if it has been observed already. Any one of those
 conditions are sufficient to discard and ignore the proposal.
 Finally, on lines 8 and 9 it checks if the associated proposal value is either of the special values for the current
@@ -1409,7 +1409,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                     %Try to emit a certification vote
                     \For{$a \in A$}
                         \State $cred := 
-                        \mathsf{Sortition}(a_{sk}, cert)$
+                        \mathsf{Sortition}(a_{sk}, r,p,cert)$
                         \If{$cred_j > 0$}
                             \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, cert, v, cred))$
                         \EndIf
@@ -1417,7 +1417,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                 \EndIf
             \ElsIf{$vt_s = cert$}
                 %check if cert bundle has been achieved
-                \If{$\exists v | Bundle(vt_r,vt_p,cert,v) \subset V$}
+                \If{$\exists v | \mathsf{Bundle}(vt_r,vt_p,cert,v) \subset V$}
                     \If{$\mathsf{RetrieveProposal}(v) = \bot$}
                         \State $\mathsf{RequestProposal}(v)$ //waits or keeps playing without voting power
                         \If{$p < vt_p$}
@@ -1432,7 +1432,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
                     \State $\mathsf{GarbageCollect}(r_{old}, p)$
                 \EndIf
             \ElsIf{$vt_s > cert$}
-                \If{$\exists v | Bundle(vt_r,vt_p,vt_s,v) \subset V$}
+                \If{$\exists v | \mathsf{Bundle}(vt_r,vt_p,vt_s,v) \subset V$}
                     \State $p_{old} := p$
                     \State $\mathsf{StartNewPeriod}(vt_p + 1)$
                     \State $\mathsf{GarbageCollect}(r, p_{old})$
@@ -1472,7 +1472,7 @@ The node will determine the desired output according to its current context and 
 If the vote's step is $proposal$, the corresponding proposal for the proposal-value $v$, $\mathsf{RetrieveProposal}(v)$ is broadcast if it has been observed 
 (that is, the player performs a re-proposal payload broadcast).
 If the vote's step is $soft$ (lines 19 through 24), and a $soft$ Bundle has been observed with the addition of the vote on line 19,
-the $Sortition$ sub-procedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
+the $\mathsf{Sortition}(.)$ sub-procedure is run for every account managed by the node (line 23). Afterwards, for each account selected by
 the lottery, a $cert$ vote is cast as output (line 25).
 If the vote's step is $cert$ (lines 26 through 32), and observing the vote causes the node to observe a $cert$ Bundle for a proposal-value $v$,
 then it checks if the full proposal associated to the critical value has been observed (line 28). Note that simultaneous observation of a $cert$ Bundle 
@@ -1495,7 +1495,7 @@ then a new period is started and the currently executing period-specific data ga
         \caption{\underline{Handle Bundle}}
         \label{algo:handle-bundle}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{HandleBundle}$}{$Bundle \ b$}
+        \Function{$\mathsf{HandleBundle}$}{$\mathsf{Bundle} \ b$}
 
             % //P*? "Ignores* it if Bundle(r, p, s, v) is invalid." Esta linea esta mal no? en specs. Deberia ser rk, pk, sk
 
@@ -1530,10 +1530,10 @@ If the bundle's round is the node's current round and it's at most one period be
 then the bundle is processed, which is simply calling the vote handler for each 
 vote constituting it (lines 6:7). If the check on line 5 is not passed by $b$, no output is produced
 and the bundle is ignored and discarded.
-Note that handling each vote separately, if a bundle $b\prime = Bundle(b.r, b.p, b.s, v\prime)$ is observed
-(where $v\prime$ is not necessarily equal to $b.v$, consider $b$ may contain equivocation votes), then it will be relayed
+Note that handling each vote separately, if a bundle $b\prime = \mathsf{Bundle}(b_r, b_p, b_s, v\prime)$ is observed
+(where $v\prime$ is not necessarily equal to $b_v$, consider $b$ may contain equivocation votes), then it will be relayed
 as each vote was relayed individually, and any output or state changes it produces will be made. All leftover votes 
-in $b$ will be processed according to the new state the node is in, e.g. being discarded if $b.r < r$.
+in $b$ will be processed according to the new state the node is in, e.g. being discarded if $b_r < r$.
     
 \end{subsection}
 
@@ -1551,7 +1551,7 @@ in $b$ will be processed according to the new state the node is in, e.g. being d
         \State $\mathsf{ResynchronizationAttempt}()$
     
         \For{$Account \ a \in A$}
-            \State $cred := \mathsf{\mathsf{Sortition}}(a_{I}, s)$
+            \State $cred := \mathsf{\mathsf{Sortition}}(a_{I}, r,p,s)$
             \If{$cred_j > 0$}
                 \If{$\exists v=\mathsf{Proposal_{value}}(prop, prop_p, prop_I) $ for some $prop\in \mathsf{P} | \mathsf{IsCommitable}(v)$}
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(a_I, r, p, s, v, cred))$
@@ -1953,8 +1953,8 @@ proposal fields are zeroes).
     \Function{$\mathsf{MakeProposal}$}{$Block \ e, \pi_{seed}, uint64 \ p_{orig}, Address \ I_{orig}$}
     %el bloque se asume ya validado
 
-    \State $proposal \ prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
-    \Return $prop$
+        \State $proposal \ prop := (e, \pi_{seed}, p_{orig}, I_{orig})$
+        \Return $prop$
 
     \EndFunction
     \end{algorithmic}
