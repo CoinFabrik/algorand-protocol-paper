@@ -124,68 +124,63 @@ currently in development.
 
 \end{section}
 % ---------------------------------------------------------------------
+% ---------------------------------------------------------------------
 \begin{section}{Strutcture}
 The Algorand protocol is implemented in a network over the Internet, where nodes 
-form a peer-to-peer network. More explicitly, a set of whitelisted relay nodes 
-interact with participation nodes where the latter receive transactions and
-implement the protocol while the former simply relay whatever they receive from
-the nodes.
+implementing a service form a peer-to-peer (p2p) network: they listen to other nodes 
+and to transactions sent by clients.
 
-% Network messages are broadcast through P2P established connections,
-% while transactions are broadcast utilizing a websocket protocol.
-% Both kinds of messages are multiplexed together afterwards.
+% ---------------------------------------------------------------------
+\begin{subsection}{Nodes}
+Actually, the network topology includes two kinds of nodes: a set of whitelisted 
+{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.
+Each participation node may connect to one relay node: their addresses and keys
+are hardcoded into the code of participation nodes.\marginpar{como se identifican?}
+Relay nodes form a p2p network and will send all the messages they receive from
+participation nodes and other relay nodes to the relay nodes connected to them.\marginpar{Y cuando un CLI manda un msj, no recibe response?} 
+Network messages between the nodes are broadcast through P2P connections that are
+established and kept going, while transactions are received utilizing a websocket 
+protocol.
+A node will queue (multiplex) both kinds of messages together.\marginpar{meter grafico generado por Gero}
 
-A participation node includes:
+Relay nodes are not only responsible for relaying messages. They must also keep a complete
+acopy of the ledger. They do not participate in consensus.
+They function as network level facilitators, collecting messages sent by participation
+nodes or other relay nodes and distributing them across the network.
+Currently, any individual or entity is able to run a participation node, 
+but relay nodes are permissioned. They must be {\em whitelisted} by 
+Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
+
+
+A participation node service runs the following.
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
 order. It will record the current time when reset is called (e.g., by querying
 the OS where the node runs) and will report the elapsed time since the last reset
 in the latter case.
     \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
-from applications or attached to smart signatures. %review? etc. etc.
-    \item A p2p network interface.
+from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
+    \item p2p and websocket network interfaces.
     \item An implementation of the consensus algorithm, with a player state machine module and
-an asynchronous cryptographic computation module.
-    % \item A database engine including at least the following tables: ??
+    an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
+    in greater detail.
+    \item Ledger and balances.\marginpar{ver bien donde y como explicamos este componente}
 \end{itemize}
 
+Participation nodes are non-archival in nature, meaning they do not keep\index{archival node}\index{non-archival node}
+the whole ledger in memory at all times. At the time of this writing,
+participation nodes keep the latest 1,000 blocks.
+Any queries that require blocks prior to those, need to be made
+through one of the relay nodes they are connected to.
+These nodes are responsible for running the consensus algorithm that
+will be outlined in this document.
 
-There are currently seven transaction types on Algorand 
- (Payment, 
- Key Registration, 
- Asset Configuration, 
- Asset Freeze, 
- Asset Transfer, 
- Application Call, 
- State Proof).
-A participation node keeps a transaction pool. 
-Whenever a transaction arrives, 
-  its signature is verified (if this is a smart signature, then it is checked against the AVM); those
-    which do not pass are discarded, and the result of computation is cached for those which do pass.
-  It checks that current round is inside the first valid (round) and last valid (round) included in the
-    transaction fields.
-  It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
-    transaction type and go as follows.
-  It checks that the genesis hash included in the transaction is the same as the one configured in the node.
-  If this is a payment transaction, it checks that the sender has sufficient funds for transfer and fee.
-  If this is a key  registration transaction, it checks the current round is inside the first valid (round) 
-    and last valid (round) defined in key registration transaction fields for the validity of the key.
-  If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
-    as the manager for this asset, and that this asset is not frozen among other checks.
-  If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
-    cases which include an opt in, in which a user technically ``transfers an asset'' to themselves and in this
-    case it is only checked that the asset ID exists, 
-    a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
-    receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
-  If this is an application call, it runs the code against the AVM and may either discard the transaction or 
-    accept it (balance or state changes are not applied at this time).
-  If this is a state proof transaction, checks that the last attesting round is bigger than the current 
-    round for the node, and it also checks the structure of the state proof message.
-  Readers interested in more details should check the specifications (\cite{algorand:specs}).
-  Finally, the transaction is stored in the transaction pool. 
-
-Nodes do have a limit, e.g, they will
-keep 1,000 transactions and ignore the rest.\marginpar{is this ok?}
+Participation nodes maintain a transaction pool. Basically, this pool receives transactions\marginpar{Pensemos que parte de esto es AssembleBlock()? Me hace ruido q en assemble block dice que prioriza x fee}
+from clients (see Sect.~\ref{sect:cliandkeys}) and keeps them in the order as they are 
+received, it allows the AVM to poll this pool (e.g., on a first poll the AVM receives 
+the first transaction, then the second one and so on), and to empty this pool. 
+The pool size is limited, e.g, the node will keep the first 1,000 transactions it receives 
+and ignore the rest.
 These transactions are processed by the node as follows.
 \begin{itemize}
     \item The node orders the transactions as they arrive.
@@ -193,34 +188,29 @@ These transactions are processed by the node as follows.
     address as its source, this address also identifies a public key that may be used to 
     verify the signature); if it is a logicsig, it is verified; if it is an app call, then
     the run is simulated.
-    \item At some point, the node starts assembling the node. It will now rerun all transactions
+    \item At some point, the node starts assembling the block. It will now rerun all transactions
     (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
     fail. If it succeeds, it may alter the ledger and balances for the next block. These 
     changes are recorded. Changes to the balances and ledger are temporary recorded and
     checked for inconsistencies (e.g., local to the block creation)
     \item Once a timeout is reached, the node will collect all the changes into a block 
-    proposal. e.
+    proposal. 
 \end{itemize}
 
-During consensus, a node that receives an e it will validate same as above.
+During consensus, a node that receives a block proposal it will validate same as above.
 
-Once consensus accepted a block, e, it needs to run all transactions again
+Once consensus accepted a block proposal, it needs to run all transactions again
 but now modifies the ledger and balances. 
 
 
-{\bf Standards and Conventions:}
-Algorand protocols make use of two hash functions of the SHA-2 family
-as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
-
-    
+\end{subsection}    
 % ---------------------------------------------------------------------    
-\begin{subsection}{Network}
+\begin{subsection}{Network}\label{sect:network}
 A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
 and {\sf participation nodes}\index{participation nodes}. 
 Both nodes operate on servers that are connected to the internet and run publicly
 available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
-Participation nodes can connect only to relay nodes, they run an instance
-of the Algorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
+Participation nodes can connect only to one relay node at a time.
 
 %el voting y demas esta afuera de la avm? Si, todo el mecanismo de consenso corre completamente independiente de la AVM.
 %La AVM solo ejecuta los smart contracts o logicsigs y esto es a nivel de txn, previo a la ejecucion del algoritmo total
@@ -233,41 +223,31 @@ of the Algorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar
 %esta dejado a libre implementacion. En el sim por ahora esoy asumiendo creacion instantanea en cuanto a tiempo de
 %simulacion.
 
-They are non-archival in nature, meaning they don't keep\index{archival node}\index{non-archival node}
-the whole ledger in memory at all times. At the time of this writing,
-participation nodes keep the latest 1000 blocks.
-Any queries that require blocks prior to those, need to be made
-through one of the relay nodes they are connected to.
-These nodes are responsible for running the consensus algorithm that
-will be outlined in this document.
-Relay nodes on the other hand, are archival (meaning they have immediate
-access to the whole ledger), but do not participate in consensus.
-They function as network level facilitators, collecting messages sent by participation
-nodes or other relay nodes and distributing them across the network.
-
-Currently, any individual or entity is able to run a participation node, 
-but relay nodes are permissioned. They must be {\em whitelisted} by 
-Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
-
-When a participation node is booted up, it establishes a peer-to-peer (P2P) 
+When a participation node boots, it establishes a peer-to-peer (P2P) 
 channel with at least one relay (4 on average), using a phone book which is included
-as part of the node's code. 
+as part of the soruce code of the node. 
 Relay nodes manage a significantly higher number of connections, as they 
 are responsible for keeping the network's high throughput.
 
-Accounts are managed by participation nodes. Accounts should be registered in at least one participation
-node only, however this is not enforced.
-In order for an account to participate in consensus, it needs to switch its status to ``online''. 
-That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
-which registers a participation key for the account and creates a two-level ephemeral key tree.
-It is important to note that the registered account will only start participating in consensus
-$\delta_b$ rounds after the key registration transaction is approved.
-Any account participating in consensus does so with their full balance. There is no risk
-associated to participation, nor there are any rewards for running a node.
+Participation nodes also keep a list of online accounts, and while each accounts should
+register in at most one participation node, this is not enforced.
+{\bf Consensus and transactoipns....}
 
 
-\marginpar{TODO: maybe include some voting stats?}
-
+\end{subsection}
+% ------------------------------------------------------------------------
+\begin{subsection}{Accounts}\label{sect:accounts}
+    Accounts are managed by participation nodes. Accounts should be registered in at least one participation
+    node only, however this is not enforced.
+    In order for an account to participate in consensus, it needs to switch its status to ``online''
+    (see Sect.~\ref{sect:cliandkeys}). 
+    That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
+    which registers a participation key for the account.% and creates a two-level ephemeral key tree.
+    %It is important to note that the registered account will only start participating in consensus
+    %$\delta_b$ rounds after the key registration transaction is approved.
+    %Any account participating in consensus does so with their full balance. There is no risk
+    %associated to participation, nor there are any rewards for running a node.
+    
 \end{subsection}
 % ------------------------------------------------------------------------
 \begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
@@ -288,7 +268,7 @@ for the blockchain.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
-\begin{subsection}{User Interface and Cryptrographic Algorithms}
+\begin{subsection}{User Interface and Cryptrographic Algorithms}\label{sect:cliandkeys}
     Algorand distributes a command-line interface (CLI) called GOAL\footnote{https://developer.algorand.org/docs/clis/goal/goal/} 
     that allows users to interact with the protocol. The CLI supports a series of commands 
     that allow users to generate  wallets, keys, sing and send transactions to 
@@ -296,9 +276,46 @@ for the blockchain.
     When the CLI command involves the network (e.g., transactions), the CLI
     sends a message to a relay node over the Internet, and nodes will decide
     how to process this transaction.
+
+    There are currently seven transaction types on Algorand:\marginpar{Hay algun nro de version que podamos usar, o es la fecha ??}
+        Payment, 
+        Key Registration, 
+        Asset Configuration, 
+        Asset Freeze, 
+        Asset Transfer, 
+        Application Call, 
+        State Proof).
+    A participation node keeps a transaction pool. 
+    Whenever a transaction arrives, 
+        its signature is verified (if this is a smart signature, then it is checked against the AVM); those
+        which do not pass are discarded, and the result of computation is cached for those which do pass.
+    It checks that current round is inside the first valid (round) and last valid (round) included in the
+        transaction fields.
+    It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
+        transaction type and go as follows.
+    It checks that the genesis hash included in the transaction is the same as the one configured in the node.
+    If this is a payment transaction, it checks that the sender has sufficient funds for transfer and fee.
+    If this is a key  registration transaction, it checks the current round is inside the first valid (round) 
+        and last valid (round) defined in key registration transaction fields for the validity of the key.
+    If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
+        as the manager for this asset, and that this asset is not frozen among other checks.
+    If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
+        cases which include an opt in, in which a user technically ``transfers an asset'' to themselves and in this
+        case it is only checked that the asset ID exists, 
+        a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
+        receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
+    If this is an application call, it runs the code against the AVM and may either discard the transaction or 
+        accept it (balance or state changes are not applied at this time).
+    If this is a state proof transaction, checks that the last attesting round is bigger than the current 
+        round for the node, and it also checks the structure of the state proof message.
+    Readers interested in more details should check the specifications (\cite{algorand:specs}).
+    Finally, the transaction is stored in the transaction pool. 
+
+    {\centering * * *\par}
+
+    Algorand protocols make use of two hash functions of the SHA-2 family
+    as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
     
-    %comentario general sobre como funciona un esquema de firma publica/privada
-    %podria estar mejor
     A cryptographic singing scheme defines a triplet of algorithms $(\mathsf{Generate}(\,),\mathsf{Sign}(\,),\mathsf{Verify}(\,))$. 
     These include a key-generation algorithm $\mathsf{Generate}(\,)$ that takes a random string and
     returns a public and secret key; a signing procedure $\mathsf{Sign}(\,)$ which takes a private key 
@@ -409,6 +426,9 @@ for the blockchain.
     the keys being retrieved were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
     in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
     \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
+
+
+    Hablar de logicsigs y smart signatures, multisigs etc.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -1059,7 +1079,7 @@ of a valid bundle.
     \end{section}
 
 % ------------------------------------------------------------------------
-\begin{section}{Main algorithm}
+\begin{section}{Main algorithm}\ref{sect:main}
 % Broadcast(e) = Event(type=proposal-payload, data=e, sign=Signature(pk_sender, e))
 % Broadcast(\mathsf{Vote}(....)) = Event(type=vote, data=\mathsf{Vote}(....), sign=Signature(pk_sender, \mathsf{Vote}(....)))
 %
