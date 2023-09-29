@@ -1,3 +1,4 @@
 # Algorand protocol node overview
 
-paper
+This repository includes sources for an article on the Algorand protocol by Argimiro del Pozzo and Ariel Waissbein
+

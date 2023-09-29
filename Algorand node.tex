@@ -122,381 +122,65 @@ can be in, as well as all kinds of events that cause transitions and network
 output. This work will provide a basis for an Algorand blockchain simulator 
 currently in development.
 
-% ---------------------------------------------------------------------
-% quizas hay que reubicar esta sect. ver luego
-\begin{subsection}{Vanilla run}\label{subsect:vanilla-run}
-Let us assume a genesis block was generated, the blockchain has been running and
-has already generated blocks, with a set of nodes and accounts. 
-We are now at round $r-1$ ($r>2$), meaning that $r-1$ blocks have been 
-generated and confirmed by the blockchain.
-Moreover, the node has received transactions which have been verified to 
-be correctly signed by Algorand accounts and validated according to Ledger context, 
-and has added them to its transaction pool and relayed them to other nodes.
-For this section, we assume that all nodes behave according to protocol
-and that they are in sync (e.g., the context $(r,s,p)$ for all nodes is 
-the same and their internal clocks are synchronized).
-
-The node keeps some values in memory or storage. In particular the 
-timer, which we assume is now at $timer=0$,
-a round number $r\in\mathbb{Z}_{\ge 0}$, 
-a step $s:=0\in\mathbb{Z}_{\ge 0}$,
-a period $p:=0\in\mathbb{Z}_{\ge 0}$, 
-a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
-a pinned vote $v:=\bot$.
-
-The main algorithm (Algorithm~\ref{algo:main}) for consensus is an event 
-handler that receives two types of input from the node. 
-It receives messages, and it is also able to read the timer.
-% (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
-% Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
-% y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
-% "similar" segun los viejos papers).
-% El 0 es un decir, en realidad hay un tiempo inicial. Seria mas bien time=ZeroedTime() o time=CurrentTime() si queremos ser mas rigurosos, y todo
-% Son deltas respecto de este, pero me parecio razonable plantearlo asi por una cuestion de legibilidad
-% En el sim esta implementado asi, como incrementos desde un tiempo inicial medido al principio de proposal
-%
-% DUDA:
-% pero el clock del sistema va en ms! y en algun lugar me parecio ver que miraba milisegundos.
-% Mi duda es que el event handler labura con = y claro, es raro que justo hagas un query al timer en el momento en 
-% el que da FilterTimeout(p) o 4\lambda
-
-% adp: en realidad el igual es un decir. Esa variabilidad, asi como otras (conexion por ejemplo) estan representadas en un valor aleatorio agregado,
-%a todos los timeouts, sampleado de una distribucion uniforme (es el ultimo valor) con un rango bastante amplio
-%igual la logica no es de estar polleando hasta que te de el timeout, es al reves, son interrupciones representadas en mensajes enviados a mi mismo.
-%La comparacion se hace una vez que me llego un mensaje. Y como es de interrupcion, que tipo de interrupcion es? Entonces ahi miro el timer
-
-% aw: calculo e'? BT'? L'?
-% adp: En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
-% Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
-% luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
-% un bloque vacio.
-% Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
-% y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK
-% porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
-
-% $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
-
-% timer = 0
-% event handler
-% As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
-As the main algorithm starts a round, it receives a self message with $timer=0$.
-Then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
-
-
-
-The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the main loop. Said loop
-iterates over all the accounts that are registered in the node.
-
-%adp
-%Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
-%En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
-%son de funcionamiento del consenso en si -p,s,V,P,etc.-) se aplican sobre el nodo al confirmar un bloque.
-%El nodo puede cachear algunos de estos valores por performance (ej, tener un cache de los cambios de balance
-%ya que ya los calculo) pero no esta enforceado. 
-%Un caso especial es la avm. Esta ejecuta codigo en dos momentos distintos potencialmente: 
-%cuando recibe una txn o cuando recibe un bloque, como parte de la validacion de ambos respectivamente.
-%
-%En recepcion de txn:
-%Cuando recibe una txn, si es una logicsig, ejecuta ese codigo (como parte de la verif. de la firma) y como
-%las logicsig son stateless, ese nodo ya no va a ejecutar ese codigo mas, la encola en la txn pool y ya esta.
-%Cabe aclarar aca que toda txn pusheada en la txnPool esta YA validada individualmente (aplica para grupos tambien).
-%Si la transaccion era una appcall, corre el codigo. Si falla obviamente se descarta, pero si aprueba la txn
-%esta validada INDIVIDUALMENTE nada mas, pero como depende del contexto, si la txn no entra al proximo bloque
-%el codigo se tiene que correr de nuevo en el proximo round.
-%
-%En recepcion/armado de bloque:
-%cuando recibe un bloque, valida individualmente todas las txns que no figuren en la txn pool en orden.
-%Miro el txnPool. Si ya la tengo me ahorro todo chequeo de validacion que no sea contexto-dependiente (verif. de firmas
-%es uno en particular importante porque es caro). Esto implica que si tiene una logicsig, no la ejecuto.
-%Ahora si es una appCall, no importa, la tengo que volver a correr, ya que la appCall es dependiente del ctx. y
-%aca parte de la validacion es que el orden sea coherente. Aplica tambien para los pays, los transfers, en fin,
-%cualquier cosa contextual.
-%(Ver: https://forum.algorand.org/t/which-protocol-steps-have-teal-execution/8860/2)
-%
-% aw:
-% no me queda claro si ademas de ejecutar las tranasacciones stateful, tambien aplica cambios. como quien cuando?
-%
-% adp: Ah, esto internamente funciona asi. Una proposal es un bloque junto con todo lo necesario para validarlo.
-% https://github.com/algorand/go-algorand/blob/2670e9493688696b3649dd67ccff5dbb353bf6e8/ledger/ledgercore/validatedBlock.go#L27
-%Basicamente, adentro de una proposal tenes una unauthenticatedProposal (donde vas a tener el bloque pelado, la VRFProof de la semilla, 
-%el periodo original y la address del propositor original). Ademas, tenes un validatedBlock, que contiene adentro el delta de estado que resultaria
-%de aplicar el bloque (logicamente solo los campos relevantes). Igual esto es completamente opcional, y si hubiese en el medio ponele un corte de luz,
-%eso no queda guardado a long term storage (como si los votos y bloques). Entonces, cuando esto va vacio por h o por b, el fallback es computar
-%esos cambios on commitment. Pero rigurosamente tiene un cache para acelerar las cosas.
-
-%Como este tiene algunos otros truquitos, no se hasta que punto incluirlos y ser riguroso y hasta que punto empantanan el entendimiento del 
-%protocolo como tal. Deberiamos:
-%describirlos en detalle igual y considerarlos en todo momento
-%describirlos brevemente con algun nivel de formalidad/informalidad y despues abstraerlos
-%obviarlos para este paper (no asi el simulador) porque son opcionales y no afectan la logica per se del sistema
-%Yo votaria por la segunda pero opinion?
-
-%
-% sortition
-
-For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
-which basically runs a Verifiable Random Function in order to decide whether this account 
-can vote (by picking a random value) and provide a proof that the random value was generated according
-to protocol.
-% j>0
-If sortition for a particular account returns the zero value, this means the account has
-not been selected for block proposal. %block creation or voting,
-If after running sortition for every online account managed by the node, no positive integer value is returned,
-the algorithm exits and the node will no longer be a proposer in the proposal step.
-%adp: el nodo sigue participando del round, solo que no propone
-%aw: pero como? Si no propone ni vota! Qué mas hay para hacer?
-%adp: en realidad se me habia pasado que decía block creation _or voting_, 
-    %aca estamos corriendo sortition solo para block proposal (el step que estoy corriendo, s=0). 
-    %Sortition es dependiente del contexto r,p,s en el que corremos (eso garantiza 
-    %que no haya previsibilidad, ej. soy un atacante y veo que salieron las cuentas 
-    %A_0...A_t como committee members en el soft vote para el primer periodo. 
-    %Logro forzar un segundo periodo -o espero a que se de "naturalmente"- y despues solo 
-    %necesito comprometer una cantidad muy pequeña de cuentas para controlar el softvote, y ya esta puedo colgar todo para siempre)
-    %Entonces que un nodo no participe de un step no garantiza que no participe de otros steps del mismo periodo (ni de otros periodos, 
-    %pero eso no importa para la vanilla run).
-    %Incluso si no participa *proponiendo* un bloque, e incluso si tampoco sale nadie sorteado para votar soft o cert, 
-    %va a participar en el sentido de que va a recibir proposal votes, va a hacer un filtering, va a recibir soft votes,
-    %va a armar un soft bundle, va a recibir cert votes y va a armar un cert bundle. Cuando reciba la propuesta (bloque completo) ademas,
-    %la va a reenviar ya que esto no depende de la pertenencia al comité.
-When it is nonzero, the node participates in the proposal voting representing the account.
-%En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
-%If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
-%for some number of steps $s\in\Z_{\ge 0}$, then
-In a vanilla run scenario and at this point, the period is zero ($p=0$). 
-The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
-sets $v$ as the proposal value obtained from the vote $e$ and does two separate 
-broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
-Also, we enter the ``soft vote'' step setting $s:=1$.
-
-
-% adp:
-%Cabe aclarar aca que si tenes dos o mas cuentas seleccionadas para participar, queda a discreción de la impl.
-%si jugar por las dos cuentas, o tratar de optimizar el comportamiento de la red mandando solo la de mejor prioridad
-%y descartando la/s otra/s (que serian votos por la misma propuesta pero con los valores account dependientes -vrf output,
-%proposer address- de las otras cuentas)
-%
-% aw: interesante. Yo lo omitiria en la vanilla run, y lo aclararia luego
-
-%\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
-%or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
-
-% 0 < timer < FilterTimeout(p)
-% main algorithm: Handle Proposal
-Assume that some time has passed and now $0<timer<\mathsf{FilterTimeout}(p)$, and that 
-the node received a block proposal $e^\prime$ which was broadcasted from another node. 
-Then, the event handler runs $\mathsf{HandleProposal}(e^\prime)$ (Algorithm~\ref{algo:handle-proposal}).
-This algorithm receives the proposal $e^\prime$ and unpacks its contents,
-including the execution state $(r^\prime,p^\prime,s^\prime)$.
-Per assumptions, we have that $r=r^\prime$ and $p=p^\prime=0$.
-The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
-on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details),
-it also checks if periods differ ($p\neq p^\prime$), exiting if not. However, both checks pass per 
-the vanilla run assumptions.
-%Next it returns if any of the following conditions hold:
-%a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
-%b) if it agrees with the pinned value proposal, or
-%c) if the hash underlying proposal $e^prime$ agrees with the lowest hash seen for this
-%context. (EXPLICAR MEJOR)
-%Assume that this is the first block received, and hence none of the above conditions are
-%attained.
-Next, if $e^\prime\in P$, it returns; else $\mathsf{HandleProposal}$ re-broadcasts $e^\prime$, 
-adds $e^\prime$ to a set $P$ of stored proposals, and exits.
-
-% revisar: porque broadcastea e y recibe vt?
-
-% 0 < timer < FilterTimeout(p)
-% main algorithm: Handle Vote
-Let us say that the node received a broadcasted vote $vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ 
-algorithm) and assume that $0<timer<\mathsf{FilterTimeout}(p)$ still holds.
-The event handler for the main algorithm thus calls $\mathsf{HandleVote}(vt)$ (Algorithm~\ref{algo:handle-vote}).
-The algorithm exits on checks --which are passed with the vanilla run assumptions.
-It also exits if the vote received has already been recorded in the votes set $V$.
-If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
-to other nodes.
-Since nodes are synchronized, it holds that $vt_s=0=proposal$, the algorithm checks if 
-$\mathsf{RetrieveProposal}(vt_v) \neq \bot$ and broadcasts this proposal if it is available, ignoring if it is not.
-%aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
-%adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
-    % solo observa (aka agrega el voto a V) y broadcastea ese voto.
-    %Condicionalmente broadcastea la propuesta completa (el bloque que corresponde al vt.v), si la tiene.
-    %
-    %Aca voy a estar potencialmente recibiendo un monton de propuestas y sus respectivos votos, 
-    %no puedo garantizar el orden de los mensajes (incluso en una vanilla run).
-    %En el handler, quizas se podrian obviar todos los chequeos en un vanilla run, porque:
-        %asumimos honestidad de los nodos (todos los votos son correctos y verifican OK)
-        %asumimos por lo mismo de arriba que no hay equivocations
-        %el step no es mayor que 0 en esta porcion que estamos describiendo(vt.s=0),
-        %asumimos que todos los nodos estan en el mismo round, luego vt.r = r
-        %mismo caso que arriba
-    %Hay complicaciones posibles. Podria ser que mi nodo este desactualizado y reciba votos para steps futuros, que tiene que reconsiderar mas adelante.
-    %Podemos agregar el caveat de que vanilla run asume cierta sincronizacion de los clocks de todos los nodos, para que todos esten
-    %mas o menos en el mismo momento.
-    %TODO: implementar desync en la simulacion! Puede ser un caso interesante para simular.
-
-
-%aca en el medio falta algo. Cuando el event handler recibe un voto, y time < FilterTimeout(p), el handler lo va 
-%a observar y demas.
-%Cuando el event handler recibe un timeout event = FilterTimeout(p), filtra (se queda con el proposal value que 
-%minimice la funcion de prioridad) y emite un soft vote (o sea llama la subrutina softVote()).
-%Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. 
-% Aca va a estar recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
-%Si ya observo un soft bundle, emite un cert vote y ahi step := 2 (tanto del voto como
-%en el contexto de ejecucion del nodo). Entre FilterTimeout(p) y el primer timeout de next
-%2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
-%ahi viene eso ultimo
-
-Until $timer\ge \mathsf{FilterTimeout}(p)$ the main algorithm will execute the above steps
-whenever a vote or a proposal are received, always recording new events and this happens.
-
-% timer = FilterTimeout(p)
-% main algorithm: soft vote
-Eventually, the timer is at $timer=\mathsf{FilterTimeout}(p)$ and the main algorithm calls 
-$\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
-The soft vote is about selecting a priority block and voting it in, and it proceeds as follows.
-It initializes to an empty vote $v=\bot$ and with the lowest observed hash at infinity ($lowestObservedhash:=\infty$).
-The node will go through all the votes $vt^\prime\in V$ in its votes set that are in the
-proposal step ($vt^\prime_s=0$).
-Given the credentials for the vote $vt^\prime_{credential}=(sh,\pi, j)$, where $sh$ is the hash,
-$\pi$ is the proof and $j\in\mathbb{Z}_{\geq 0}$, the algorithm computes the priority hash
-$$
-priorityHash:=\min\{\mathsf{Hash}(sh\| i): 0\le i<j\},
-$$
-and whenever this value (as an integer) is lower than the recorded 
-$lowestObservedHash$ it sets 
-$lowestObservedHash:=priorityHash$ and $v:=vt^\prime_v$.
-Next, if there was at least one vote in $V$, for every registered account $a\in A$
-it computes \marginpar{fix notation!}
-$$
-(sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
-$$
-and, if $j>0$ it broadcasts $\mathsf{Vote}(r,p,soft,v,credential^{\prime\prime})$.
-Moreover, if the proposal $prop:=\mathsf{RetrieveProposal}(v)$ is not $\bot$, it also broadcasts $prop$.
-
-% timer > FilterTimeout(p), s=1=proposal. handle-poposal
-When the main algorithm receives a message of type proposal 
-$prop$ as above, it will
-run the handle proposal algorithm as before.
-
-% timer > FilterTimeout(p), s=1=proposal. handle-vote
-When the main algorithm receives a message of type vote 
-$\mathsf{Vote}(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
-votes set (if it is new) and checks whether it can form a bundle from the 
-votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
-$vt\in V$ with round $vt_r=r, vt_p=0, vt_s=soft$ that have the same vote $vt.v$ 
-and such that the sum of its weights ($\sum_{vt\in V} vt_{cred_j}\ge \mathsf{CommitteeThreshold}(soft)$) 
-is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
-Imagine that the first time this happens, it cannot form a bundle. 
-
-Eventually it basically adds the accepted block to the ledger, modifies the state according
-to the new block, garbage collects and sets the new round.
-That is, it will broadcast the proposal if it is not in the proposal set $P$,
-and then commit $v$, calling $\mathsf{Commit}(v)$, set $r_{old}:=r$,
-and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
-ending the round.
-Calling the new round algorithm (Algo.~\ref{algo:start-new-round}) will
-reset variables as: $\bar s:=s$, $\bar{v}:=\bot$, $r:=r+1$, $p:=0$ and
-$s:=proposal=0$;
-and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect}) 
-will compute 
-$$
-\begin{array}{rl}
-V_{(r,p-1)} & :=\{vt\in V : vt_r < r \text{ or } (vt_r = r \text{ and } vt_p + 1 < p)\}\\
-P_{(r,p-1)} & :=\{pr\in PP: pr_r < r \text{ or } (pr_r = r \text{ and } pr_p + 1 < p)\}
-\end{array}
-$$%Es $pr_p+1$; no $pr_{p+1}$ 
-and then remove these sets from the votes and participation sets: $V:=V\setminus V_{(r,p-1)}$,
-$P = P\setminus P_{(r,p-1)}$.
-
-
-
-% handle proposal con p++
-% checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
-% $\mathsf{IsCommittable}(v^\prime)$ returns {\tt true}), 
-% and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
-% Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
-% to the node, running the sortition algorithm in each case to compute 
-% $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
-% %aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
-% %cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
-% %podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
-% %Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
-% %y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
-% %no es necesario sortition porque es simplemente forwardear.
-% extract $cred_j$ and, if it is nonzero, broadcast the vote:
-% $$
-%     \mathsf{Broadcast}(\mathsf{Vote}(a_I,r,p,cert,v,cred))
-% $$
-% else do nothing.
-% After this, the algorithm finishes and the event handler is called again.
-
-
-
-\end{subsection}
-
 \end{section}
+% ---------------------------------------------------------------------
 % ---------------------------------------------------------------------
 \begin{section}{Strutcture}
 The Algorand protocol is implemented in a network over the Internet, where nodes 
-form a peer-to-peer network. More explicitly, a set of whitelisted relay nodes 
-interact with participation nodes where the latter receive transactions and
-implement the protocol while the former simply relay whatever they receive from
-the nodes.
+implementing a service form a peer-to-peer (p2p) network: they listen to other nodes 
+and to transactions sent by clients.
 
-% Network messages are broadcast through P2P established connections,
-% while transactions are broadcast utilizing a websocket protocol.
-% Both kinds of messages are multiplexed together afterwards.
+% ---------------------------------------------------------------------
+\begin{subsection}{Nodes}
+Actually, the network topology includes two kinds of nodes: a set of whitelisted 
+{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.
+Each participation node may connect to one relay node: their addresses and keys
+are hardcoded into the code of participation nodes.\marginpar{como se identifican?}
+Relay nodes form a p2p network and will send all the messages they receive from
+participation nodes and other relay nodes to the relay nodes connected to them.\marginpar{Y cuando un CLI manda un msj, no recibe response?} 
+Network messages between the nodes are broadcast through P2P connections that are
+established and kept going, while transactions are received utilizing a websocket 
+protocol.
+A node will queue (multiplex) both kinds of messages together.\marginpar{meter grafico generado por Gero}
 
-A participation node includes:
+Relay nodes are not only responsible for relaying messages. They must also keep a complete
+acopy of the ledger. They do not participate in consensus.
+They function as network level facilitators, collecting messages sent by participation
+nodes or other relay nodes and distributing them across the network.
+Currently, any individual or entity is able to run a participation node, 
+but relay nodes are permissioned. They must be {\em whitelisted} by 
+Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
+
+
+A participation node service runs the following.
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
 order. It will record the current time when reset is called (e.g., by querying
 the OS where the node runs) and will report the elapsed time since the last reset
 in the latter case.
     \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
-from applications or attached to smart signatures. %review? etc. etc.
-    \item A p2p network interface.
+from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
+    \item p2p and websocket network interfaces.
     \item An implementation of the consensus algorithm, with a player state machine module and
-an asynchronous cryptographic computation module.
-    % \item A database engine including at least the following tables: ??
+    an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
+    in greater detail.
+    \item Ledger and balances.\marginpar{ver bien donde y como explicamos este componente}
 \end{itemize}
 
+Participation nodes are non-archival in nature, meaning they do not keep\index{archival node}\index{non-archival node}
+the whole ledger in memory at all times. At the time of this writing,
+participation nodes keep the latest 1,000 blocks.
+Any queries that require blocks prior to those, need to be made
+through one of the relay nodes they are connected to.
+These nodes are responsible for running the consensus algorithm that
+will be outlined in this document.
 
-There are currently seven transaction types on Algorand 
- (Payment, 
- Key Registration, 
- Asset Configuration, 
- Asset Freeze, 
- Asset Transfer, 
- Application Call, 
- State Proof).
-A participation node keeps a transaction pool. 
-Whenever a transaction arrives, 
-  its signature is verified (if this is a smart signature, then it is checked against the AVM); those
-    which do not pass are discarded, and the result of computation is cached for those which do pass.
-  It checks that current round is inside the first valid (round) and last valid (round) included in the
-    transaction fields.
-  It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
-    transaction type and go as follows.
-  It checks that the genesis hash included in the transaction is the same as the one configured in the node.
-  If this is a payment transaction, it checks that the sender has sufficient funds for transfer and fee.
-  If this is a key  registration transaction, it checks the current round is inside the first valid (round) 
-    and last valid (round) defined in key registration transaction fields for the validity of the key.
-  If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
-    as the manager for this asset, and that this asset is not frozen among other checks.
-  If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
-    cases which include an opt in, in which a user technically ``transfers an asset'' to themselves and in this
-    case it is only checked that the asset ID exists, 
-    a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
-    receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
-  If this is an application call, it runs the code against the AVM and may either discard the transaction or 
-    accept it (balance or state changes are not applied at this time).
-  If this is a state proof transaction, checks that the last attesting round is bigger than the current 
-    round for the node, and it also checks the structure of the state proof message.
-  Readers interested in more details should check the specifications (\cite{algorand:specs}).
-  Finally, the transaction is stored in the transaction pool. 
-
-Nodes do have a limit, e.g, they will
-keep 1,000 transactions and ignore the rest.\marginpar{is this ok?}
+Participation nodes maintain a transaction pool. Basically, this pool receives transactions\marginpar{Pensemos que parte de esto es AssembleBlock()? Me hace ruido q en assemble block dice que prioriza x fee}
+from clients (see Sect.~\ref{sect:cliandkeys}) and keeps them in the order as they are 
+received, it allows the AVM to poll this pool (e.g., on a first poll the AVM receives 
+the first transaction, then the second one and so on), and to empty this pool. 
+The pool size is limited, e.g, the node will keep the first 1,000 transactions it receives 
+and ignore the rest.
 These transactions are processed by the node as follows.
 \begin{itemize}
     \item The node orders the transactions as they arrive.
@@ -504,34 +188,29 @@ These transactions are processed by the node as follows.
     address as its source, this address also identifies a public key that may be used to 
     verify the signature); if it is a logicsig, it is verified; if it is an app call, then
     the run is simulated.
-    \item At some point, the node starts assembling the node. It will now rerun all transactions
+    \item At some point, the node starts assembling the block. It will now rerun all transactions
     (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
     fail. If it succeeds, it may alter the ledger and balances for the next block. These 
     changes are recorded. Changes to the balances and ledger are temporary recorded and
     checked for inconsistencies (e.g., local to the block creation)
     \item Once a timeout is reached, the node will collect all the changes into a block 
-    proposal. e.
+    proposal. 
 \end{itemize}
 
-During consensus, a node that receives an e it will validate same as above.
+During consensus, a node that receives a block proposal it will validate same as above.
 
-Once consensus accepted a block, e, it needs to run all transactions again
+Once consensus accepted a block proposal, it needs to run all transactions again
 but now modifies the ledger and balances. 
 
 
-{\bf Standards and Conventions:}
-Algorand protocols make use of two hash functions of the SHA-2 family
-as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
-
-    
+\end{subsection}    
 % ---------------------------------------------------------------------    
-\begin{subsection}{Network}
+\begin{subsection}{Network}\label{sect:network}
 A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
 and {\sf participation nodes}\index{participation nodes}. 
 Both nodes operate on servers that are connected to the internet and run publicly
 available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
-Participation nodes can connect only to relay nodes, they run an instance
-of the Algorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar{el voting y demas esta afuera de la avm?}
+Participation nodes can connect only to one relay node at a time.
 
 %el voting y demas esta afuera de la avm? Si, todo el mecanismo de consenso corre completamente independiente de la AVM.
 %La AVM solo ejecuta los smart contracts o logicsigs y esto es a nivel de txn, previo a la ejecucion del algoritmo total
@@ -544,41 +223,31 @@ of the Algorand Virtual Machine (AVM)\index{Algorand Virtual Machine}.\marginpar
 %esta dejado a libre implementacion. En el sim por ahora esoy asumiendo creacion instantanea en cuanto a tiempo de
 %simulacion.
 
-They are non-archival in nature, meaning they don't keep\index{archival node}\index{non-archival node}
-the whole ledger in memory at all times. At the time of this writing,
-participation nodes keep the latest 1000 blocks.
-Any queries that require blocks prior to those, need to be made
-through one of the relay nodes they are connected to.
-These nodes are responsible for running the consensus algorithm that
-will be outlined in this document.
-Relay nodes on the other hand, are archival (meaning they have immediate
-access to the whole ledger), but do not participate in consensus.
-They function as network level facilitators, collecting messages sent by participation
-nodes or other relay nodes and distributing them across the network.
-
-Currently, any individual or entity is able to run a participation node, 
-but relay nodes are permissioned. They must be {\em whitelisted} by 
-Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
-
-When a participation node is booted up, it establishes a peer-to-peer (P2P) 
+When a participation node boots, it establishes a peer-to-peer (P2P) 
 channel with at least one relay (4 on average), using a phone book which is included
-as part of the node's code. 
+as part of the soruce code of the node. 
 Relay nodes manage a significantly higher number of connections, as they 
 are responsible for keeping the network's high throughput.
 
-Accounts are managed by participation nodes. Accounts should be registered in at least one participation
-node only, however this is not enforced.
-In order for an account to participate in consensus, it needs to switch its status to ``online''. 
-That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
-which registers a participation key for the account and creates a two-level ephemeral key tree.
-It is important to note that the registered account will only start participating in consensus
-$\delta_b$ rounds after the key registration transaction is approved.
-Any account participating in consensus does so with their full balance. There is no risk
-associated to participation, nor there are any rewards for running a node.
+Participation nodes also keep a list of online accounts, and while each accounts should
+register in at most one participation node, this is not enforced.
+{\bf Consensus and transactoipns....}
 
 
-\marginpar{TODO: maybe include some voting stats?}
-
+\end{subsection}
+% ------------------------------------------------------------------------
+\begin{subsection}{Accounts}\label{sect:accounts}
+    Accounts are managed by participation nodes. Accounts should be registered in at least one participation
+    node only, however this is not enforced.
+    In order for an account to participate in consensus, it needs to switch its status to ``online''
+    (see Sect.~\ref{sect:cliandkeys}). 
+    That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
+    which registers a participation key for the account.% and creates a two-level ephemeral key tree.
+    %It is important to note that the registered account will only start participating in consensus
+    %$\delta_b$ rounds after the key registration transaction is approved.
+    %Any account participating in consensus does so with their full balance. There is no risk
+    %associated to participation, nor there are any rewards for running a node.
+    
 \end{subsection}
 % ------------------------------------------------------------------------
 \begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
@@ -599,47 +268,104 @@ for the blockchain.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
-\begin{subsection}{Keys}
-    Algorand nodes interact with 3 types of keys:
-    Root or spending keys,
-    Voting or participation keys and
-    VRF selection keys.
+\begin{subsection}{User Interface and Cryptrographic Algorithms}\label{sect:cliandkeys}
+    Algorand distributes a command-line interface (CLI) called GOAL\footnote{https://developer.algorand.org/docs/clis/goal/goal/} 
+    that allows users to interact with the protocol. The CLI supports a series of commands 
+    that allow users to generate  wallets, keys, sing and send transactions to 
+    a node and more.\index{CLI interface}
+    When the CLI command involves the network (e.g., transactions), the CLI
+    sends a message to a relay node over the Internet, and nodes will decide
+    how to process this transaction.
 
-    %comentario general sobre como funciona un esquema de firma publica/privada
-    %podria estar mejor
-    Generally all keys will be in pairs, in a public / private cryptographic scheme.
-    This scheme supports a signing procedure $Sign(.)$, which takes a private key and a packet of data of arbitrary length,
-    and outputs a signature (a bit-string of fixed length).
-    It also supports a verification $Verify(.)$ procedure, which takes a public key, some data of arbitrary length and a signature, 
-    and outputs a boolean value.
-    A true output certifies that the signature was indeed produced by signing the data with the private key of the 
-    claimed address, while a false output ensures the signature is invalid for the data and key provided.
-    We now make a brief description of each of the three key types and their relevance in the protocol.
-    Each of them will have a specific implementation of the signature and verification algorithms.
+    There are currently seven transaction types on Algorand:\marginpar{Hay algun nro de version que podamos usar, o es la fecha ??}
+        Payment, 
+        Key Registration, 
+        Asset Configuration, 
+        Asset Freeze, 
+        Asset Transfer, 
+        Application Call, 
+        State Proof).
+    A participation node keeps a transaction pool. 
+    Whenever a transaction arrives, 
+        its signature is verified (if this is a smart signature, then it is checked against the AVM); those
+        which do not pass are discarded, and the result of computation is cached for those which do pass.
+    It checks that current round is inside the first valid (round) and last valid (round) included in the
+        transaction fields.
+    It also checks if the account holds ALGO to pay fees. Then, there are other checks which depend on the
+        transaction type and go as follows.
+    It checks that the genesis hash included in the transaction is the same as the one configured in the node.
+    If this is a payment transaction, it checks that the sender has sufficient funds for transfer and fee.
+    If this is a key  registration transaction, it checks the current round is inside the first valid (round) 
+        and last valid (round) defined in key registration transaction fields for the validity of the key.
+    If this is an asset configuration or asset freeze transaction, it also checks whether the sender is set 
+        as the manager for this asset, and that this asset is not frozen among other checks.
+    If this is an asset transfer transaction, it depends on several details; we do provide some relevant 
+        cases which include an opt in, in which a user technically ``transfers an asset'' to themselves and in this
+        case it is only checked that the asset ID exists, 
+        a standard asset transfer in which it is checked that the receiver has opted in to this asset ID and the 
+        receiver holds enough ALGOs to receive the asset, that the sender has enough ALGO to pay for the transfer.
+    If this is an application call, it runs the code against the AVM and may either discard the transaction or 
+        accept it (balance or state changes are not applied at this time).
+    If this is a state proof transaction, checks that the last attesting round is bigger than the current 
+        round for the node, and it also checks the structure of the state proof message.
+    Readers interested in more details should check the specifications (\cite{algorand:specs}).
+    Finally, the transaction is stored in the transaction pool. 
 
-    Spending keys are 32 byte strings corresponding to the ed25119 eliptic curve cryptographic standard,
-    used by accounts to sign and verify transactions
-    on their behalf. Nodes interact only with public spending keys, out of which
-    Algorand addresses are derived. Private spending keys are used to sign transactions
-    and should be kept privately by the user managing the relevant account for security
-    concerns. This is, unless the account has undergone a process called ``rekeying'', in which case 
-    the private key of the account designated by the rekeying transaction is the key authorized 
-    to sign transactions on behalf of this account.
+    {\centering * * *\par}
 
-    Participation and VRF keys are generated on demand in the node by issuing a key generation CLI call.
-    This command takes an address, a range of rounds and a 64 bit integer key dillution parameter.
+    Algorand protocols make use of two hash functions of the SHA-2 family
+    as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
+    
+    A cryptographic singing scheme defines a triplet of algorithms $(\mathsf{Generate}(\,),\mathsf{Sign}(\,),\mathsf{Verify}(\,))$. 
+    These include a key-generation algorithm $\mathsf{Generate}(\,)$ that takes a random string and
+    returns a public and secret key; a signing procedure $\mathsf{Sign}(\,)$ which takes a private key 
+    and a packet of data of arbitrary length and outputs a signature (a bit-string of fixed length); and
+    a verification algorithm $\mathsf{Verify}(\,)$ which takes the public key, some data of arbitrary 
+    length and a signature and outputs a boolean value.
+    A {\tt true} output certifies that the signature is valid, and a {\tt false} output implies the 
+    signature is invalid.
+    When using cryptographic signatures, Algorand uses the ED25519 elliptic-curve cryptographic 
+    signatures standard which implements elliptic-curve Diffie-Hellman algorithm over the curve 
+    {\tt Curve25519} (\cite{Bernstein:2006}). It uses 256-bits keys. 
 
-    Participation keys are used to sign all consensus messages, those being messages broadcast or relayed
-    to the network containing votes, proposals or bundles.
+    Similarly, a VRF scheme includes a key generation algorithm that outputs a pair of secret and public keys, 
+    an algorithm that given the secret key and a value produces a pseudorandom output, with a proof. 
+    A verification algorithm which given the output and proof verifies that the result is correct (see 
+    \cite{MicaliRabinVadhan:1999}).
+
+    The Algorand Protocol uses three types of crypto0graphic keys: 
+    root or spending keys,
+    voting or participation keys and
+    selection keys.
+
+    Spending and participation both use ED25519 cryptographic signatures as follows. 
+    Accounts sign their transactions (e.g., via the CLI) before sending them to a node, and 
+    the node will verify the signature before accepting the transaction. 
+    Addresses can be computed out of public keys and viceversa.
+    The Algorand protocol allows for a process called ``rekeying'', in which case 
+    the owner of a private key can authorize a new key to sign transactions on behalf of this account
+    (and disable the older one).
+
+    During the protocol execution, sometimes a lottery needs to select accounts. This selection process
+    is done with the VRF scheme.
+
+    Participation and VRF keys are generated on demand in the node by issuing a key generation command-line
+    interface (CLI) call.
+    Keys are not permanent: the key generation command takes an address, a range of rounds and a 64-bit 
+    integer key-dilution parameter.
+
+    Participation keys are used to sign all {\bf consensus messages} (or messages of the consensours type),
+    which are messages broadcasted (or received from other nodes and relayed) to the other nodes and which 
+    contain votes, proposals or bundles.
     In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
     with a valid participation root public key and at least one valid subkey and one valid ephemeral key.
     %(generated through the goal addpartkey command).
-    They are 32 bytes in length and same as spending keys correspond to the ed25119 eliptic curve cryptographic standard 
-    \marginpar{TODO: CITAR standard}.
-    To greatly reduce chances of breaking forward security, they are organized in a tree scheme, as follows.
+
+    To achieve forward security (\cite{Gunther:1990}), they are organized in a tree scheme, as follows.
     Consider a two level tree structure, with a root node, $n$ nodes in the first level and $n*k$ nodes in the
     second level, where each node holds a 32 byte string representing a type of public participation key. 
-    In the case of first level nodes, they also keep a signature of the public subkey concatenated with a corresponding batch index $0 \leq i \leq n$,
+    In the case of first level nodes, they also keep a signature of the public subkey concatenated with 
+    a corresponding batch index $0 \leq i \leq n$,
     using a $\mathsf{Sign}(.)$ procedure with the private root participation key.
     In the case of leaf nodes, they also keep a signature of the public ephemeral key concatenated with its round of validity,
     using the parent private subkey.
@@ -661,17 +387,19 @@ for the blockchain.
     signature using the root participation key.
     % The participation keys tree is kept up to date by a key deletion thread that runs in parallel constantly.
 
+     GRAFICO ORDENAR PENSandDO EN COMO SE GENERAN LAS KEYS, COMO SE FIRMA Y COMO SE VERIFICA, Y COMO SE DESCARTAN.
+
     The batch size $k$ is passed as a field in the key generation command line interface call named 
-    $keyDillution$, an unsigned 64 bit integer which defaults to the square root of the round range (rounded down to the nearest integer) 
-    when not specified. E.g. for a 3 million round range a $1712$ batch of subkeys is generated,
-    along with a first sub-batch of $1712$ ephemeral keys.
+    $keyDillution$, an unsigned 64-bit integer which defaults to the square root of the round range 
+    (rounded down to the nearest integer) when not specified, e.g. for a 3 million round range a $1712$ 
+    batch of subkeys is generated,  along with a first sub-batch of $1712$ ephemeral keys.
     In order to change an account status from offline to online, a ``keyreg'' transaction needs the 
     root public participation key as a valid field in order to succeed.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
-    Selection or VRF keys are keys used for committee membership selection and verification.
-    Private VRF keys are kept as secrets by the node, while public VRF keys are kept inside 
+    Selection keys used for committee membership selection and verification (see Sections \ref{}).\marginpar{add labels}
+    Private slection keys are kept secret by the node, while public selection keys are kept inside 
     account records (in the $\mathsf{BT}$).
     They are created and registered on a CLI key generation call, after participation key generation.
     VRF keys are needed in order for an account to vote, as they will be
@@ -698,6 +426,9 @@ for the blockchain.
     the keys being retrieved were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
     in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
     \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
+
+
+    Hablar de logicsigs y smart signatures, multisigs etc.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -1036,7 +767,319 @@ of a valid bundle.
 
 \end{section}
 % ------------------------------------------------------------------------
-\begin{section}{Main algorithm}
+% ---------------------------------------------------------------------
+% quizas hay que reubicar esta sect. ver luego
+\begin{section}{Vanilla run}\label{subsect:vanilla-run}
+    Let us assume a genesis block was generated, the blockchain has been running and
+    has already generated blocks, with a set of nodes and accounts. 
+    We are now at round $r-1$ ($r>2$), meaning that $r-1$ blocks have been 
+    generated and confirmed by the blockchain.
+    Moreover, the node has received transactions which have been verified to 
+    be correctly signed by Algorand accounts and validated according to Ledger context, 
+    and has added them to its transaction pool and relayed them to other nodes.
+    For this section, we assume that all nodes behave according to protocol
+    and that they are in sync (e.g., the context $(r,s,p)$ for all nodes is 
+    the same and their internal clocks are synchronized).
+    
+    The node keeps some values in memory or storage. In particular the 
+    timer, which we assume is now at $timer=0$,
+    a round number $r\in\mathbb{Z}_{\ge 0}$, 
+    a step $s:=0\in\mathbb{Z}_{\ge 0}$,
+    a period $p:=0\in\mathbb{Z}_{\ge 0}$, 
+    a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
+    a pinned vote $v:=\bot$.
+    
+    The main algorithm (Algorithm~\ref{algo:main}) for consensus is an event 
+    handler that receives two types of input from the node. 
+    It receives messages, and it is also able to read the timer.
+    % (Ver: https://github.com/algorand/go-algorand/blob/d82691daa34160ddc91f9b590ad16ad5f1d6d026/util/timers/interface.go#L25)
+    % Cabe mencionar que las specs no asumen "sincronizacion" de ningun tipo de los clocks de cada nodo, 
+    % y de hecho puede estar completamente desincronizado (si se asume que todos los relojes se mueven a una velocidad 
+    % "similar" segun los viejos papers).
+    % El 0 es un decir, en realidad hay un tiempo inicial. Seria mas bien time=ZeroedTime() o time=CurrentTime() si queremos ser mas rigurosos, y todo
+    % Son deltas respecto de este, pero me parecio razonable plantearlo asi por una cuestion de legibilidad
+    % En el sim esta implementado asi, como incrementos desde un tiempo inicial medido al principio de proposal
+    %
+    % DUDA:
+    % pero el clock del sistema va en ms! y en algun lugar me parecio ver que miraba milisegundos.
+    % Mi duda es que el event handler labura con = y claro, es raro que justo hagas un query al timer en el momento en 
+    % el que da FilterTimeout(p) o 4\lambda
+    
+    % adp: en realidad el igual es un decir. Esa variabilidad, asi como otras (conexion por ejemplo) estan representadas en un valor aleatorio agregado,
+    %a todos los timeouts, sampleado de una distribucion uniforme (es el ultimo valor) con un rango bastante amplio
+    %igual la logica no es de estar polleando hasta que te de el timeout, es al reves, son interrupciones representadas en mensajes enviados a mi mismo.
+    %La comparacion se hace una vez que me llego un mensaje. Y como es de interrupcion, que tipo de interrupcion es? Entonces ahi miro el timer
+    
+    % aw: calculo e'? BT'? L'?
+    % adp: En este momento BT y L son contextualmente los que hayan resultado del round anterior. Digamos que estan en un estado inicial BT_r, L_r.
+    % Al bloque (e) yo lo modelé como calculado al principio de la proposal, en si se calcula antes del consenso y tiene un tiempo limite
+    % luego del cual deja la propuesta vacia, lo que implica no poder participar de proposal ya que el output del step 0 no puede ser
+    % un bloque vacio.
+    % Estaba pensando por ahi es importante aclarar la diferencia entre un EMPTY_BLOCK, que seria el que corresponde con el EMPTY_PROPOSAL_VALUE, 
+    % y un bloque sin transacciones, que puede pasar si no hay txns en la txn pool, pero no seria igual a EMPTY_BLOCK
+    % porque tendria todo el resto de valores calculados (semilla, hash al anterior, etc.)
+    
+    % $V=\{\,\}$, P=\{\,\}, BT, L, $r_{old}$, $p_{old}$, a pinned value $\bar v:=\bot$.
+    
+    % timer = 0
+    % event handler
+    % As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
+    As the main algorithm starts a round, it receives a self message with $timer=0$.
+    Then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
+    
+    
+    
+    The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the main loop. Said loop
+    iterates over all the accounts that are registered in the node.
+    
+    %adp
+    %Bueno esto es interesante. El bloque define todo lo necesario para un cambio de estado.
+    %En realidad por specs. los cambios de estado de Ledger y BT (o sea, de las cosas que no
+    %son de funcionamiento del consenso en si -p,s,V,P,etc.-) se aplican sobre el nodo al confirmar un bloque.
+    %El nodo puede cachear algunos de estos valores por performance (ej, tener un cache de los cambios de balance
+    %ya que ya los calculo) pero no esta enforceado. 
+    %Un caso especial es la avm. Esta ejecuta codigo en dos momentos distintos potencialmente: 
+    %cuando recibe una txn o cuando recibe un bloque, como parte de la validacion de ambos respectivamente.
+    %
+    %En recepcion de txn:
+    %Cuando recibe una txn, si es una logicsig, ejecuta ese codigo (como parte de la verif. de la firma) y como
+    %las logicsig son stateless, ese nodo ya no va a ejecutar ese codigo mas, la encola en la txn pool y ya esta.
+    %Cabe aclarar aca que toda txn pusheada en la txnPool esta YA validada individualmente (aplica para grupos tambien).
+    %Si la transaccion era una appcall, corre el codigo. Si falla obviamente se descarta, pero si aprueba la txn
+    %esta validada INDIVIDUALMENTE nada mas, pero como depende del contexto, si la txn no entra al proximo bloque
+    %el codigo se tiene que correr de nuevo en el proximo round.
+    %
+    %En recepcion/armado de bloque:
+    %cuando recibe un bloque, valida individualmente todas las txns que no figuren en la txn pool en orden.
+    %Miro el txnPool. Si ya la tengo me ahorro todo chequeo de validacion que no sea contexto-dependiente (verif. de firmas
+    %es uno en particular importante porque es caro). Esto implica que si tiene una logicsig, no la ejecuto.
+    %Ahora si es una appCall, no importa, la tengo que volver a correr, ya que la appCall es dependiente del ctx. y
+    %aca parte de la validacion es que el orden sea coherente. Aplica tambien para los pays, los transfers, en fin,
+    %cualquier cosa contextual.
+    %(Ver: https://forum.algorand.org/t/which-protocol-steps-have-teal-execution/8860/2)
+    %
+    % aw:
+    % no me queda claro si ademas de ejecutar las tranasacciones stateful, tambien aplica cambios. como quien cuando?
+    %
+    % adp: Ah, esto internamente funciona asi. Una proposal es un bloque junto con todo lo necesario para validarlo.
+    % https://github.com/algorand/go-algorand/blob/2670e9493688696b3649dd67ccff5dbb353bf6e8/ledger/ledgercore/validatedBlock.go#L27
+    %Basicamente, adentro de una proposal tenes una unauthenticatedProposal (donde vas a tener el bloque pelado, la VRFProof de la semilla, 
+    %el periodo original y la address del propositor original). Ademas, tenes un validatedBlock, que contiene adentro el delta de estado que resultaria
+    %de aplicar el bloque (logicamente solo los campos relevantes). Igual esto es completamente opcional, y si hubiese en el medio ponele un corte de luz,
+    %eso no queda guardado a long term storage (como si los votos y bloques). Entonces, cuando esto va vacio por h o por b, el fallback es computar
+    %esos cambios on commitment. Pero rigurosamente tiene un cache para acelerar las cosas.
+    
+    %Como este tiene algunos otros truquitos, no se hasta que punto incluirlos y ser riguroso y hasta que punto empantanan el entendimiento del 
+    %protocolo como tal. Deberiamos:
+    %describirlos en detalle igual y considerarlos en todo momento
+    %describirlos brevemente con algun nivel de formalidad/informalidad y despues abstraerlos
+    %obviarlos para este paper (no asi el simulador) porque son opcionales y no afectan la logica per se del sistema
+    %Yo votaria por la segunda pero opinion?
+    
+    %
+    % sortition
+    
+    For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
+    which basically runs a Verifiable Random Function in order to decide whether this account 
+    can vote (by picking a random value) and provide a proof that the random value was generated according
+    to protocol.
+    % j>0
+    If sortition for a particular account returns the zero value, this means the account has
+    not been selected for block proposal. %block creation or voting,
+    If after running sortition for every online account managed by the node, no positive integer value is returned,
+    the algorithm exits and the node will no longer be a proposer in the proposal step.
+    %adp: el nodo sigue participando del round, solo que no propone
+    %aw: pero como? Si no propone ni vota! Qué mas hay para hacer?
+    %adp: en realidad se me habia pasado que decía block creation _or voting_, 
+        %aca estamos corriendo sortition solo para block proposal (el step que estoy corriendo, s=0). 
+        %Sortition es dependiente del contexto r,p,s en el que corremos (eso garantiza 
+        %que no haya previsibilidad, ej. soy un atacante y veo que salieron las cuentas 
+        %A_0...A_t como committee members en el soft vote para el primer periodo. 
+        %Logro forzar un segundo periodo -o espero a que se de "naturalmente"- y despues solo 
+        %necesito comprometer una cantidad muy pequeña de cuentas para controlar el softvote, y ya esta puedo colgar todo para siempre)
+        %Entonces que un nodo no participe de un step no garantiza que no participe de otros steps del mismo periodo (ni de otros periodos, 
+        %pero eso no importa para la vanilla run).
+        %Incluso si no participa *proponiendo* un bloque, e incluso si tampoco sale nadie sorteado para votar soft o cert, 
+        %va a participar en el sentido de que va a recibir proposal votes, va a hacer un filtering, va a recibir soft votes,
+        %va a armar un soft bundle, va a recibir cert votes y va a armar un cert bundle. Cuando reciba la propuesta (bloque completo) ademas,
+        %la va a reenviar ya que esto no depende de la pertenencia al comité.
+    When it is nonzero, the node participates in the proposal voting representing the account.
+    %En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
+    %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
+    %for some number of steps $s\in\Z_{\ge 0}$, then
+    In a vanilla run scenario and at this point, the period is zero ($p=0$). 
+    The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
+    sets $v$ as the proposal value obtained from the vote $e$ and does two separate 
+    broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
+    Also, we enter the ``soft vote'' step setting $s:=1$.
+    
+    
+    % adp:
+    %Cabe aclarar aca que si tenes dos o mas cuentas seleccionadas para participar, queda a discreción de la impl.
+    %si jugar por las dos cuentas, o tratar de optimizar el comportamiento de la red mandando solo la de mejor prioridad
+    %y descartando la/s otra/s (que serian votos por la misma propuesta pero con los valores account dependientes -vrf output,
+    %proposer address- de las otras cuentas)
+    %
+    % aw: interesante. Yo lo omitiria en la vanilla run, y lo aclararia luego
+    
+    %\bar v is the pinned value, which will be the special empty proposal value $\bot$ in a $0$th period, 
+    %or a value for which a soft or recovery ($\mathsf{next}_s$, $late$ or $redo$) bundle has been observed in the previous period.
+    
+    % 0 < timer < FilterTimeout(p)
+    % main algorithm: Handle Proposal
+    Assume that some time has passed and now $0<timer<\mathsf{FilterTimeout}(p)$, and that 
+    the node received a block proposal $e^\prime$ which was broadcasted from another node. 
+    Then, the event handler runs $\mathsf{HandleProposal}(e^\prime)$ (Algorithm~\ref{algo:handle-proposal}).
+    This algorithm receives the proposal $e^\prime$ and unpacks its contents,
+    including the execution state $(r^\prime,p^\prime,s^\prime)$.
+    Per assumptions, we have that $r=r^\prime$ and $p=p^\prime=0$.
+    The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
+    on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details),
+    it also checks if periods differ ($p\neq p^\prime$), exiting if not. However, both checks pass per 
+    the vanilla run assumptions.
+    %Next it returns if any of the following conditions hold:
+    %a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
+    %b) if it agrees with the pinned value proposal, or
+    %c) if the hash underlying proposal $e^prime$ agrees with the lowest hash seen for this
+    %context. (EXPLICAR MEJOR)
+    %Assume that this is the first block received, and hence none of the above conditions are
+    %attained.
+    Next, if $e^\prime\in P$, it returns; else $\mathsf{HandleProposal}$ re-broadcasts $e^\prime$, 
+    adds $e^\prime$ to a set $P$ of stored proposals, and exits.
+    
+    % revisar: porque broadcastea e y recibe vt?
+    
+    % 0 < timer < FilterTimeout(p)
+    % main algorithm: Handle Vote
+    Let us say that the node received a broadcasted vote $vt$ (e.g., as those sent by the $\mathsf{HandleProposal}$ 
+    algorithm) and assume that $0<timer<\mathsf{FilterTimeout}(p)$ still holds.
+    The event handler for the main algorithm thus calls $\mathsf{HandleVote}(vt)$ (Algorithm~\ref{algo:handle-vote}).
+    The algorithm exits on checks --which are passed with the vanilla run assumptions.
+    It also exits if the vote received has already been recorded in the votes set $V$.
+    If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
+    to other nodes.
+    Since nodes are synchronized, it holds that $vt_s=0=proposal$, the algorithm checks if 
+    $\mathsf{RetrieveProposal}(vt_v) \neq \bot$ and broadcasts this proposal if it is available, ignoring if it is not.
+    %aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
+    %adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
+        % solo observa (aka agrega el voto a V) y broadcastea ese voto.
+        %Condicionalmente broadcastea la propuesta completa (el bloque que corresponde al vt.v), si la tiene.
+        %
+        %Aca voy a estar potencialmente recibiendo un monton de propuestas y sus respectivos votos, 
+        %no puedo garantizar el orden de los mensajes (incluso en una vanilla run).
+        %En el handler, quizas se podrian obviar todos los chequeos en un vanilla run, porque:
+            %asumimos honestidad de los nodos (todos los votos son correctos y verifican OK)
+            %asumimos por lo mismo de arriba que no hay equivocations
+            %el step no es mayor que 0 en esta porcion que estamos describiendo(vt.s=0),
+            %asumimos que todos los nodos estan en el mismo round, luego vt.r = r
+            %mismo caso que arriba
+        %Hay complicaciones posibles. Podria ser que mi nodo este desactualizado y reciba votos para steps futuros, que tiene que reconsiderar mas adelante.
+        %Podemos agregar el caveat de que vanilla run asume cierta sincronizacion de los clocks de todos los nodos, para que todos esten
+        %mas o menos en el mismo momento.
+        %TODO: implementar desync en la simulacion! Puede ser un caso interesante para simular.
+    
+    
+    %aca en el medio falta algo. Cuando el event handler recibe un voto, y time < FilterTimeout(p), el handler lo va 
+    %a observar y demas.
+    %Cuando el event handler recibe un timeout event = FilterTimeout(p), filtra (se queda con el proposal value que 
+    %minimice la funcion de prioridad) y emite un soft vote (o sea llama la subrutina softVote()).
+    %Cuando el event handler recive un voto y time > FilterTimeout(p) (o sea, ya filtro), observa el voto. 
+    % Aca va a estar recibiendo soft votes de otros, y step=1 (el step se cambio a 1 dentro de softVote()).
+    %Si ya observo un soft bundle, emite un cert vote y ahi step := 2 (tanto del voto como
+    %en el contexto de ejecucion del nodo). Entre FilterTimeout(p) y el primer timeout de next
+    %2*max(\lambda, \Lambda) + esa pequeña variacion de distr. uniforme, va a observar en el caso vanilla run un cert bundle,
+    %ahi viene eso ultimo
+    
+    Until $timer\ge \mathsf{FilterTimeout}(p)$ the main algorithm will execute the above steps
+    whenever a vote or a proposal are received, always recording new events and this happens.
+    
+    % timer = FilterTimeout(p)
+    % main algorithm: soft vote
+    Eventually, the timer is at $timer=\mathsf{FilterTimeout}(p)$ and the main algorithm calls 
+    $\mathsf{SoftVote()}$ (Algorithm~\ref{algo:soft-vote}).
+    The soft vote is about selecting a priority block and voting it in, and it proceeds as follows.
+    It initializes to an empty vote $v=\bot$ and with the lowest observed hash at infinity ($lowestObservedhash:=\infty$).
+    The node will go through all the votes $vt^\prime\in V$ in its votes set that are in the
+    proposal step ($vt^\prime_s=0$).
+    Given the credentials for the vote $vt^\prime_{credential}=(sh,\pi, j)$, where $sh$ is the hash,
+    $\pi$ is the proof and $j\in\mathbb{Z}_{\geq 0}$, the algorithm computes the priority hash
+    $$
+    priorityHash:=\min\{\mathsf{Hash}(sh\| i): 0\le i<j\},
+    $$
+    and whenever this value (as an integer) is lower than the recorded 
+    $lowestObservedHash$ it sets 
+    $lowestObservedHash:=priorityHash$ and $v:=vt^\prime_v$.
+    Next, if there was at least one vote in $V$, for every registered account $a\in A$
+    it computes \marginpar{fix notation!}
+    $$
+    (sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
+    $$
+    and, if $j>0$ it broadcasts $\mathsf{Vote}(r,p,soft,v,credential^{\prime\prime})$.
+    Moreover, if the proposal $prop:=\mathsf{RetrieveProposal}(v)$ is not $\bot$, it also broadcasts $prop$.
+    
+    % timer > FilterTimeout(p), s=1=proposal. handle-poposal
+    When the main algorithm receives a message of type proposal 
+    $prop$ as above, it will
+    run the handle proposal algorithm as before.
+    
+    % timer > FilterTimeout(p), s=1=proposal. handle-vote
+    When the main algorithm receives a message of type vote 
+    $\mathsf{Vote}(r,p,soft,v,credential)$ as above, it relays the vote, adds it to the
+    votes set (if it is new) and checks whether it can form a bundle from the 
+    votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
+    $vt\in V$ with round $vt_r=r, vt_p=0, vt_s=soft$ that have the same vote $vt.v$ 
+    and such that the sum of its weights ($\sum_{vt\in V} vt_{cred_j}\ge \mathsf{CommitteeThreshold}(soft)$) 
+    is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
+    Imagine that the first time this happens, it cannot form a bundle. 
+    
+    Eventually it basically adds the accepted block to the ledger, modifies the state according
+    to the new block, garbage collects and sets the new round.
+    That is, it will broadcast the proposal if it is not in the proposal set $P$,
+    and then commit $v$, calling $\mathsf{Commit}(v)$, set $r_{old}:=r$,
+    and calls $\mathsf{StartNewRound}(r+1)$ and $\mathsf{GarbageCollect}(r_{old},p)$
+    ending the round.
+    Calling the new round algorithm (Algo.~\ref{algo:start-new-round}) will
+    reset variables as: $\bar s:=s$, $\bar{v}:=\bot$, $r:=r+1$, $p:=0$ and
+    $s:=proposal=0$;
+    and calling the garbage collection algorithm (Algo.~\ref{algo:garbage-collect}) 
+    will compute 
+    $$
+    \begin{array}{rl}
+    V_{(r,p-1)} & :=\{vt\in V : vt_r < r \text{ or } (vt_r = r \text{ and } vt_p + 1 < p)\}\\
+    P_{(r,p-1)} & :=\{pr\in PP: pr_r < r \text{ or } (pr_r = r \text{ and } pr_p + 1 < p)\}
+    \end{array}
+    $$%Es $pr_p+1$; no $pr_{p+1}$ 
+    and then remove these sets from the votes and participation sets: $V:=V\setminus V_{(r,p-1)}$,
+    $P = P\setminus P_{(r,p-1)}$.
+    
+    
+    
+    % handle proposal con p++
+    % checks if $v^\prime$ is committable (i.e., running Algorithm~\ref{algo:is-commitable} 
+    % $\mathsf{IsCommittable}(v^\prime)$ returns {\tt true}), 
+    % and if the step is the certification or smaller (it is, because $s=0$ and $cert=2$, see table (\ref{table:s})). 
+    % Since both checks are true in this run, the algorithm iterates over every account $a$ registered 
+    % to the node, running the sortition algorithm in each case to compute 
+    % $cred:=\mathsf{Sortition}(a, cert)=\mathsf{Sortition}(a, 2)$\marginpar{ver HandleProposal: es cert o s?}
+    % %aca es cert pero porque esta linea se ejecutaria recien en el hipotetico caso de que estes parado con un 
+    % %cert bundle esperando que te llegue la propuesta completa correspondiente para commitear el bloque, cosa que
+    % %podriamos asumir no deberia pasar en el vanilla run (esta linea se ejecuta solo si IsCommitable(...))
+    % %Para la vanilla run, lo unico que va a hacer este handler es observar (agregar a P) la proposal recibida,
+    % %y enviarla a los peers (excluyendo al que la propuso, por eso el relay en vez de broadcast). Para esto
+    % %no es necesario sortition porque es simplemente forwardear.
+    % extract $cred_j$ and, if it is nonzero, broadcast the vote:
+    % $$
+    %     \mathsf{Broadcast}(\mathsf{Vote}(a_I,r,p,cert,v,cred))
+    % $$
+    % else do nothing.
+    % After this, the algorithm finishes and the event handler is called again.
+    
+    
+    
+    \end{section}
+
+% ------------------------------------------------------------------------
+\begin{section}{Main algorithm}\ref{sect:main}
 % Broadcast(e) = Event(type=proposal-payload, data=e, sign=Signature(pk_sender, e))
 % Broadcast(\mathsf{Vote}(....)) = Event(type=vote, data=\mathsf{Vote}(....), sign=Signature(pk_sender, \mathsf{Vote}(....)))
 %
