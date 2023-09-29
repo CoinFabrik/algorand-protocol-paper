@@ -959,7 +959,7 @@ on block creation, $p_{orig}$ is the period in which the block was created,
 and $I_{orig}$ is the address of the block creator, the sole account that
 computed the sortition seed and proof.
 
-A proposal-value is a tuple $v = (I, p, \mathsf{H}(prop), \mathsf{H}(Encoding(prop)))$ where 
+A proposal-value is a tuple $v = (I, p, \mathsf{H}(prop), \mathsf{H}(\mathsf{Encoding}(prop)))$ where 
 $I$ is an address (the ``original proposer''), 
 $p$ is a period (the ``original period''), 
 and
@@ -969,7 +969,7 @@ proposal $\bot$.
 It also includes the authentication information for the original proposer, that is, 
 a signature and VRF proof of the proposal-value.
 
-$\mathsf{Proposal_{value}}(I, p, prop) := (I, p, \mathsf{H}(prop), \mathsf{H}(Encoding(prop))$ is the function used
+$\mathsf{Proposal_{value}}(I, p, prop) := (I, p, \mathsf{H}(prop), \mathsf{H}(\mathsf{Encoding}(prop))$ is the function used
 by a block proposer to create a proposal-value.
 % Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
 % in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
@@ -1278,7 +1278,7 @@ output in its filtering step.
             %relays proposal if its for a future round (but does not process it)
             \If{$\exists \mathsf{Bundle}(r+1,0,soft,v) \in B$}
                 \State $\mathsf{Relay}(prop)$  %relay broadcasts to everyone except proposal sender
-                \Return //do not observe, as it's for a future round (we're behind)
+                \State \Return //do not observe, as it's for a future round (we're behind)
             \EndIf
 
             %ignores proposal if it's invalid or if it has already been observed
@@ -1354,7 +1354,7 @@ For each selected member, a corresponding ``certify vote'' for the current propo
         \caption{\underline{Handle Vote}}
         \label{algo:handle-vote}
         \begin{algorithmic}[1]
-        \Function{$\mathsf{HandleVote}$}{$Vote \ vt$}
+        \Function{$\mathsf{HandleVote}$}{$\mathsf{Vote} \ vt$}
 
             % //P*? como funciona la penalizacion del jugador en este caso (funcion PenalizePeer())?
             
@@ -1591,7 +1591,7 @@ from equivocating in $next$ votes.
         \caption{\underline{FastRecovery}}
         \label{algo:fast-recovery}
         \begin{algorithmic}[1]
-        \Function{$FastRecovery$}{\;}
+        \Function{$\mathsf{FastRecovery}$}{\;}
 
         %P*? Como se maneja el step number aca? y el bar_step?
 
@@ -1604,10 +1604,10 @@ from equivocating in $next$ votes.
                     \State $\mathsf{Broadcast}(\mathsf{Vote}(r, p, late, v, cred))$
                 \EndIf
 
-            \ElsIf{$\nexists s_0 > cert | Bundle(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
-                ${}$ ${\hskip 2.1cm} \exists s_1 > cert | Bundle(r, p - 1, s_1, \bar{v}) \subseteq V$}
+            \ElsIf{$\nexists s_0 > cert | \mathsf{Bundle}(r, p - 1, s_0, \bot) \subseteq V \wedge$ \newline 
+                ${}$ ${\hskip 2.1cm} \exists s_1 > cert | \mathsf{Bundle}(r, p - 1, s_1, \bar{v}) \subseteq V$}
                     \State $cred := 
-                    \mathsf{Sortition}(a_{I}, redo)$
+                    \mathsf{Sortition}(a_{I},r,p, redo)$
                     \If{$cred_j > 0$}
                         \State $\mathsf{Broadcast}(\mathsf{Vote}(r,p,redo,\bar{v}, cred))$
                     \EndIf
@@ -1624,6 +1624,8 @@ from equivocating in $next$ votes.
         \EndFunction
         \end{algorithmic}
     \end{algorithm}
+
+    \marginpar{ACA FALTA agregar al final un broadcast plano (sin sortition) de todos los fast recovery votes observed}
     
     
     \noindent \textbf{Description:}\\
@@ -1651,9 +1653,9 @@ from equivocating in $next$ votes.
     \begin{algorithmic}[1]
     \Function{$\mathsf{FilterTimeout}$}{$uint64 \ p$}
         \If{$p = 0$}
-            \Return $2\lambda_0$
+            \State \Return $2\lambda_0$
         \Else 
-            \Return $2\lambda$
+            \State \Return $2\lambda$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -1681,9 +1683,9 @@ The time constant used to trigger the filtering stage (according to whether the 
     \begin{algorithmic}[1]
     \Function{$\mathsf{H}$}{$Hashable \ in$}
         \If{$SHA512/256 \ is \ supported$}
-            \Return $\mathsf{SHA512/256}(in)$
+            \State \Return $\mathsf{SHA512/256}(in)$
         \Else
-            \Return $\mathsf{SHA256}(in)$
+            \State \Return $\mathsf{SHA256}(in)$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -1745,7 +1747,7 @@ Otherwise, it falls back to $SHA256$.\\
 
     \State $b_{txnCommitment} := \mathsf{root}(\mathsf{MerkleTree}(b_{payset}))$
 
-    \Return $(b, \pi_{seed})$
+    \State \Return $(b, \pi_{seed})$
 
     \EndFunction
     \end{algorithmic}
@@ -1805,7 +1807,7 @@ Then, assembles a full ledger entry, setting all the appropriate fields in a blo
     \begin{algorithmic}[1]
     \Function{$\mathsf{IsCommitable}$}{$Proposal_{value} \ v$}
 
-    \Return $(\mathsf{RetrieveProposal}(v) \neq \bot) \land (\mathsf{Bundle}(r,p,soft,v) \subset V$)
+    \State \Return $(\mathsf{RetrieveProposal}(v) \neq \bot) \land (\mathsf{Bundle}(r,p,soft,v) \subset V$)
 
     \EndFunction
     \end{algorithmic}
@@ -1884,7 +1886,7 @@ outlined by transactions in the block body (we defer to the specifications for f
         \State $valid := valid \land \mathsf{VerifyPartSignature}(vt)$
         \State $valid := valid \land \mathsf{VerifyVRF}(vt_{\pi}, vt_I, vt_r, vt_p, vt_s)$
 
-        \Return $valid$
+        \State \Return $valid$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{VerifyVote}}
@@ -1928,9 +1930,9 @@ is called to check the signature itself against the provided key and the vote se
     \Function{$\mathsf{RetrieveProposal}$}{$Proposal_{value} \ v$}
 
     \If{$\exists prop \in P \ | \ Proposal_{value}(prop) = v$}
-        \Return $prop$
+        \State \Return $prop$
     \Else
-        \Return $\bot$
+        \State \Return $\bot$
     \EndIf
 
     \EndFunction
@@ -2027,7 +2029,7 @@ and the hash of the msgpack encoding of the block.
     //summation of weights should surpass the relevant threshold
     \State $valid := valid \land  \sum_{vt \in b}(vt_j) \geq \mathsf{CommitteeThreshold}(b_s)$
 
-    \Return $valid$
+    \State \Return $valid$
 
     \EndFunction
     \end{algorithmic}
@@ -2372,7 +2374,7 @@ Refer to the aformentioned library for details on implementation of these crypto
             \State $Q := \mathsf{H}(\alpha)$
         \EndIf
 
-         \Return $(Q, y)$
+         \State \Return $(Q, y)$
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
@@ -2414,9 +2416,9 @@ and used by nodes receiving the proposal as part of the proposal validation proc
 
 
         \If{$r \equiv (r \mod \delta_s) \mod \delta_s\delta_r$}
-            \Return $Q = \mathsf{H}(q_1||\mathsf{H}(\mathsf{L}[r-\delta_s\delta_b]))$
+            \State \Return $Q = \mathsf{H}(q_1||\mathsf{H}(\mathsf{L}[r-\delta_s\delta_b]))$
         \Else
-            \Return $Q = q_1$
+            \State \Return $Q = q_1$
         \EndIf
     \EndFunction
     \end{algorithmic}
@@ -2450,7 +2452,7 @@ and used by nodes receiving the proposal as part of the proposal validation proc
             \EndIf
         \EndFor
 
-        \Return $sum$
+        \State \Return $sum$
 
         \EndFunction
     \end{algorithmic}
@@ -2494,7 +2496,7 @@ the total stake at play in the relevant round $r^\prime$.
         \While{$\frac{sh}{2^{\mathsf{log_2}(sh)}}\notin [ \sum_{k=0}^j\mathsf{B}(k;w,t), \sum_{k=0}^{j+1}\mathsf{B}(k;w,t))$}
             \State $j := j+1$
         \EndWhile
-        \Return $\mathsf{credentials}(sh, \pi, j)$
+        \State \Return $\mathsf{credentials}(sh, \pi, j)$
     \EndFunction
     \end{algorithmic}
     \caption{\underline{Sortition}}
@@ -2503,9 +2505,9 @@ the total stake at play in the relevant round $r^\prime$.
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $Address \ I$, an online account's address. Their keys are used for computation of VRFs.
-    \item $uint64 \ round$, a round ($round \leq r$).
-    \item $uint64 \ period$, a period ($period \leq p$).
+    \item $Address \ I$, the address of an online account. Their keys are used for computation of VRFs.
+    \item $uint64 \ round$, a round that is valid according to node context ($round \leq r$).
+    \item $uint64 \ period$, a period that is valid according to node context ($period \leq p$).
     \item $uint8 \ step$, a step to run sortition. Used to get specific step-dependant committee size and threshold.
 \end{itemize}
 
@@ -2565,7 +2567,6 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $I$, a user's address
-    \item $Q$, the 32 byte sortition seed to be used
     \item $\pi$, an 80 byte VRF proof
     \item $round$, the round number to be used inside the VRF function
     \item $period$, the period to be used inside the VRF function
