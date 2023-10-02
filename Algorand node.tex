@@ -132,26 +132,26 @@ and to transactions sent by clients.
 
 % ---------------------------------------------------------------------
 \begin{subsection}{Nodes}
-Actually, the network topology includes two kinds of nodes: a set of whitelisted 
-{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.
-Each participation node may connect to one relay node: their addresses and keys
-are hardcoded into the code of participation nodes.\marginpar{como se identifican?}
-Relay nodes form a p2p network and will send all the messages they receive from
-participation nodes and other relay nodes to the relay nodes connected to them.\marginpar{Y cuando un CLI manda un msj, no recibe response?} 
-Network messages between the nodes are broadcast through P2P connections that are
-established and kept going, while transactions are received utilizing a websocket 
-protocol.
-A node will queue (multiplex) both kinds of messages together.\marginpar{meter grafico generado por Gero}
+Actually, Algorand protocol establishes two kinds of nodes: 
+{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.\marginpar{NOT PERMISSIONED}
 
-Relay nodes are not only responsible for relaying messages. They must also keep a complete
-acopy of the ledger. They do not participate in consensus.
+Relay nodes are responsible for relaying messages comming from other relay nodes
+and the messages they receive from participation nodes. 
+They must also keep a complete copy of the ledger. 
+They do not participate in consensus.
 They function as network level facilitators, collecting messages sent by participation
 nodes or other relay nodes and distributing them across the network.
 Currently, any individual or entity is able to run a participation node, 
 but relay nodes are permissioned. They must be {\em whitelisted} by 
-Algorand Foundation.\marginpar{validar que es AF quien whitelistea}
+Algorand Foundation and this whitelist is hardcoded into the source 
+code of participation and relay nodes.
+Network messages between the nodes are broadcast through P2P connections that are
+established and kept going, while transactions are received utilizing a websocket 
+protocol.
+A relay node will queue (multiplex) both kinds of messages together.\marginpar{meter grafico generado por Gero}
 
-
+Each participation node may connect to one relay node: their addresses and keys
+are hardcoded into the code of participation nodes.\marginpar{como se autentican?}
 A participation node service runs the following.
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
