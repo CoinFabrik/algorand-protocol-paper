@@ -1667,7 +1667,7 @@ from equivocating in $next$ votes.
         \EndFunction
         \end{algorithmic}
     \end{algorithm}
-
+    
     \marginpar{ACA FALTA agregar al final un broadcast plano (sin sortition) de todos los fast recovery votes observed}
     
     
@@ -2610,6 +2610,7 @@ belongs to the interval, that's the amount of chosen sub-users for the subroutin
 \noindent \textbf{Arguments:}
 \begin{itemize}
     \item $I$, a user's address
+    \item $Q$, the 32 byte sortition seed to be used
     \item $\pi$, an 80 byte VRF proof
     \item $round$, the round number to be used inside the VRF function
     \item $period$, the period to be used inside the VRF function
