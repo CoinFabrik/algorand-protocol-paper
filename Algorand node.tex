@@ -151,7 +151,8 @@ protocol.
 A relay node will queue (multiplex) both kinds of messages.\marginpar{meter grafico generado por Gero}
 
 Each participation node may connect to one relay node: their addresses and keys
-are hardcoded into the code of participation nodes.\marginpar{como se autentican?}
+are hardcoded into the code of participation nodes (a list of the public key's 
+hashes is included in the code).
 A participation node service runs the following.
 \begin{itemize}
     \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
