@@ -469,7 +469,7 @@ where
     \item 
     $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step} within the round\index{step} 
     and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$), 
-    and it is increased by the main algorithm (see \ref{algo:main}) and 
+    and it is increased by the main algorithm (see Algo. \ref{algo:main}) and 
     labeled according to table (see (\ref{table:s})).
     
     \item
@@ -485,7 +485,7 @@ where
     $\bar{v}$ is the {\sf pinned proposal value}.\index{pinned proposal value}
     
     \item
-    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}.\index{last finished step}.
+    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}.\index{last finished step}
     
     \item
     $\mathsf{L}$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
@@ -516,8 +516,10 @@ where
         existing accounts is available by traversing the ledger in reverse order and undoing all changes outlined 
         in the last $k$ blocks.
         For completeness, given an address $I$ for an account that does not exist as of round $r$,
-        $\mathsf{BT}[r][I] = (0,\emptyset,\emptyset,\emptyset,0,...)$ a valid empty record for account $I$ created ad-hoc,
-        while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
+        $\mathsf{BT}[r][I] = \bot$.
+        % (0,\emptyset,\emptyset,\emptyset,0,...)$, 
+        % a valid empty record for account $I$. 
+        % created ad-hoc, while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
 
     \item
     $\mathsf{TP}$ is the node's transaction pool, represented as a priority queue, supporting
@@ -525,7 +527,7 @@ where
     helper function to construct and return an iterator into the queue and be able to retrieve all
     queued elements in priority order.
     It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset from a block $e$
-    and correctly unqueues all transactions included in the intersection $e_{payset} \int TP$, and then
+    and correctly unqueues all transactions included in the intersection $e_{payset} \cap TP$, and then
     drops all elements that have been invalidated by round advancement.
 
     \item 
@@ -570,22 +572,24 @@ a Ledger's state is defined by the following components:
 \end{itemize}
 
 % balance
-A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to 
-account records where an {\sf account record}\index{account record} comprises 
- a 64-bits unsigned integer raw balance, 
- a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
- its registered voting keys (more info on subsection~\ref{sect:Keys}, keys) and 
- two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
-   validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
-   for the participation key (which acts as the root voting key for the Merkle 
-   tree).\marginpar{Cu\'al merkle t. no se definio!}
+%Redefinicion de lo de arriba. TODO: doble-check de que no falte nada arriba que se menciona aca
 
-A node may query the current state of a particular account by indexing the balance 
-table by address, or it might query a previous round's account state by adding a 
-round indexing. 
-Note that past account states are always computable by iterating over the Ledger
-sequence of blocks and reverting transaction updates. Internally however, certain
-past records might be cached and maintained to improve performance.
+% A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to 
+% account records where an {\sf account record}\index{account record} comprises 
+%  a 64-bits unsigned integer raw balance, 
+%  a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
+%  its registered voting keys (more info on subsection~\ref{sect:Keys}, keys) and 
+%  two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
+%    validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
+%    for the participation key (which acts as the root voting key for the Merkle 
+%    tree).\marginpar{Cu\'al merkle t. no se definio!}
+
+% A node may query the current state of a particular account by indexing the balance 
+% table by address, or it might query a previous round's account state by adding a 
+% round indexing. 
+% Note that past account states are always computable by iterating over the Ledger
+% sequence of blocks and reverting transaction updates. Internally however, certain
+% past records might be cached and maintained to improve performance.
 
 For convenience, we assume that each node maintains an account list that provide 
 easy iteration access to all updated balance records for the accounts it manages 
@@ -1547,7 +1551,7 @@ then a new period is started and the currently executing period-specific data ga
 
             \If{$\neg \mathsf{VerifyBundle}(b)$}
                 \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(b))$ \ //optional
-                \Return
+                \State \Return
             \EndIf
 
             \If{$b_r = r \land b_p + 1 \geq p$}
@@ -1664,21 +1668,24 @@ from equivocating in $next$ votes.
             \EndIf
         \EndFor
 
+        \For{$vt \in \mathsf{V} | vt_s \geq 253$}
+            \State $\mathsf{Broadcast}(vt)$
+        \EndFor
+
         \EndFunction
         \end{algorithmic}
     \end{algorithm}
-    
-    \marginpar{ACA FALTA agregar al final un broadcast plano (sin sortition) de todos los fast recovery votes observed}
-    
     
     \noindent \textbf{Description:}\\
     The fast recovery algorithm is executed periodically every integer multiple of $\lambda_f$
     seconds (plus variance).
     Functionally, it's very close to the regular recovery algorithm (outlined in the previous section), 
-    performing the same checks and similar outputs. The sole difference is that it emits votes 
+    performing the same checks and similar outputs. The main difference is that it emits votes 
     for any of three different steps ($late$, $redo$ and $down$) according to sortition 
     results for every account.
-    It's also important to point out that nodes are forbidden to equivocate for $late$, $redo$ and $down$ votes.
+    % It's also important to point out that nodes are forbidden to equivocate for $late$, $redo$ and $down$ votes.
+    Finally, the algorithm broadcasts all fast recovery votes observed. That is, all votes $vt \in \mathsf{V}$ for which
+    $vt_s$ is a fast recovery step ($late$, $redo$ or $down$).
 \end{subsection}
 
 
@@ -2020,7 +2027,7 @@ with everything needed to validate it, into a $proposal$ structure.
 
     \State $proposal_{value} \ v := (pp_{I_{orig}}, pp_{p_{orig}}, \mathsf{H}(pp_e), \mathsf{H}(\mathsf{Encoding}(pp)))$
 
-    \Return $v$
+    \State \Return $v$
 
     \EndFunction
     \end{algorithmic}
