@@ -153,14 +153,10 @@ Algorand Foundation and this whitelist is hardcoded into the source
 code of participation and relay nodes.
 We shall not go in further detail about relay nodes.
 
-Participation nodes receive transactions from clients and may participate in the voting
-and block generation process.
-Participation nodes are permisionless. Yet, they may connect to one relay node at most, 
-and relay node addresses are hardcoded into the code of the participation node (in a list 
-which includes public key's hashes paired with IP addresses).
-
-Participation nodes have run more and more complex protocol functionality. 
-Basically, they run the following services.
+Each participation node may connect to one relay node: their addresses and keys
+are hardcoded into the code of participation nodes (a list of the public key's 
+hashes is included in the code).
+A participation node service runs the following.
 \begin{itemize}
     \item A timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
         order. It will record the current time when reset is called (e.g., by querying
