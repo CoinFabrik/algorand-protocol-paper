@@ -68,7 +68,8 @@ this document is based on the code running in Algorand's mainnet, and the refere
 implementation maintained by Algorand inc. To this end, we relied in the sourcecode
 for the node in the \href{https://github.com/algorand/go-algorand/}{reference implementation}
 and probed the network when information was unclear or unavailable.
-At the time of this writing the protocol is at {\tt ConsensusV38} (version 38)
+At the time of this writing the protocol is at {\tt ConsensusV38} 
+(protocol version 38)\index{protocol version}
 which is specified in the file {\tt go-algorand/protocol/consensus.go} by the
 constant {\tt ConsensusCurrentVersion}. 
 
@@ -130,7 +131,7 @@ currently in development.
 \end{section}
 % ---------------------------------------------------------------------
 % ---------------------------------------------------------------------
-\begin{section}{Strutcture}
+\begin{section}{Preliminaires}
 The Algorand protocol is implemented in a network over the Internet, where nodes 
 implementing a service form a peer-to-peer (p2p) network: they listen to other nodes 
 and to transactions sent by clients, generate blocks, vote and continue to 
@@ -170,7 +171,7 @@ Basically, they run the following services.
     \item An Algorand Virtual Machine (AVM for short), which can process TEAL bytecode
         from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
     \item A p2p and a websocket network interface.
-    \item Ledger and balances.\marginpar{ver bien donde y como explicamos este componente}
+    \item Ledger and balances (see Sect.~\ref{}).\marginpar{ver bien donde y como explicamos este componente}
     \item An implementation of the consensus algorithm, with a player state machine module and
         an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
         in greater detail.
@@ -237,8 +238,9 @@ register in at most one participation node, this is not enforced.
 % ------------------------------------------------------------------------
 \begin{subsection}{Accounts}\label{sect:accounts}
 An Algorand account is a protocol entity represented by a 58-bytes address
-associated to an ED25519 public key (see Section~\ref{sect:cliandkeys}).
-For example, a user may generate an ED25519 key pair and derive the address
+associated to a signing public key (see Section~\ref{sect:cliandkeys} for
+details with cryptographic algorithms and keys).
+For example, a user may generate a signing key pair and derive the address
 from the public key. On the other hand, when a contact is deployed, it is
 deployed in an address for which the private key is not known.
 There is a bijection between addresses and public keys: the address is 
@@ -258,28 +260,17 @@ which registers a participation key for the account.% and creates a two-level ep
 %$\delta_b$ rounds after the key registration transaction is approved.
 %Any account participating in consensus does so with their full balance. There is no risk
 %associated to participation, nor there are any rewards for running a node.
-    
+
+For convenience, we assume that each participation node maintains a list 
+of the registered accounts, plus access to all updated balance records for 
+the accounts it manages which are flagged as online and have a valid 
+participation key and VRF key registered on this node (see Sect.~\ref{sect:cliandkeys}
+for more details).
+This array is named $A$ from now on, and each entry $a\in A$ has an account address 
+$a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
+
 \end{subsection}
 % ------------------------------------------------------------------------
-\begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
-    
-    \begin{quote} 
-        {\em``The Algorand virtual machine (AVM) runs on every node in the Algorand blockchain. 
-    This virtual machine contains a stack engine that evaluates smart contracts and smart 
-    signatures against the transactions they're called with. These programs either fail 
-    and reject the transaction or succeed and apply changes according to the logic and 
-    contents of the transactions.''} From \href{https://developer.algorand.org/docs/get-details/dapps/avm/}{Algorand.org}
-    \end{quote}
-    
-The AVM receives signed transactions that may or may not alter the 
-state of the blockchain and interprets TEAL, or the Transaction Execution 
-Approval Language, an assembly-like language designed by Algorand 
-for the blockchain.
-
-It is a stack based machine and constitutes a safe isolated environment.
-
-\end{subsection}
-% --------------------------------------------------------------------------------------
 \begin{subsection}{User Interface and Cryptrographic Algorithms}\label{sect:cliandkeys}
     Algorand distributes a command-line interface (CLI) called GOAL\footnote{https://developer.algorand.org/docs/clis/goal/goal/} 
     that allows users to interact with the protocol. The CLI supports a series of commands 
@@ -358,24 +349,25 @@ It is a stack based machine and constitutes a safe isolated environment.
     address, the node does not need to hold the public keys in advance). 
 
     The Algorand protocol allows for a process called ``rekeying'', in which case 
-    the owner of a private key can authorize a new key to sign transactions on behalf of this account
-    (and disable the older one).
+    the owner of a private key can authorize a new key to sign transactions on behalf 
+    of this account (and disable the older one).
 
-    At different points in the protocol a provably random account selection needs to happen. 
-    This selection process is done with the VRF scheme. Basically, all accounts may generate one
-    random number per stake they have and only those accounts generating a random number 
-    smaller than a threshold are selected. The selected accounts will provide the random number
-    and proof generated by the VRF scheme to others, who can verify the validity of the random
-    number and check it is below the threshold in order to allow the selection. This threshold
-    is a constant defined in the protocol and has been tuned in order for the number of accounts
-    selected fall close to a target.
+    At different points in the protocol provably-random accounts selection needs to happen. 
+    Basically, all accounts may generate one random number per stake using the VRF scheme.
+    Only those accounts generating a random number smaller than a threshold are selected. 
+    The selected accounts must provide the random number and proof generated by the VRF 
+    scheme in order to participate, other parties can verify this to accept the selection. 
+    This threshold is a constant (that could change from protocol version to protocol version) 
+    that been tuned so that the number of accounts selected fall close to a target value.
 
-    Participation and VRF keys are generated on demand in the node by issuing a key generation command-line
-    interface (CLI) call.
-    Keys are not permanent: the key generation command takes an address, a range of rounds and a 64-bit 
-    integer key-dilution parameter.
+    Participation and VRF keys are generated on demand in the node by issuing a key generation 
+    CLI call.
+    Keys are not permanent, so that users may need to call the key generation algorithms
+    periodically to continue their participation.
+    %the key generation command takes an address, a range of rounds and a 64-bit 
+    %integer key-dilution parameter.
 
-    Participation keys are used to sign all {\bf consensus messages} (or messages of the consensus type),
+    Participation keys are used to sign all {\bf consensus messages} (or messages of the consensus type),\index{consensus messages}
     which are messages broadcasted (or received from other nodes and relayed) to the other nodes, and which 
     contain votes, proposals or bundles.
     In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
@@ -383,25 +375,30 @@ It is a stack based machine and constitutes a safe isolated environment.
     %(generated through the goal addpartkey command).
 
     To achieve forward security (\cite{Gunther:1990}), they are organized in a tree scheme, as follows.
-    Consider a two level tree structure, with a root node, $n$ nodes in the first level and $n*k$ nodes in the
-    second level, where each node holds a 32 byte string representing a type of public participation key. 
+    Consider a two level tree structure, with a root node, 
+      $n$ tree nodes in the first level and 
+      $n*k$ tree nodes in the second level, 
+      where each node holds a 32 byte string representing a type of public participation key. 
     In the case of first level nodes, they also keep a signature of the public subkey concatenated with 
-    a corresponding batch index $0 \leq i \leq n$,
-    using a $\mathsf{Sign}(.)$ procedure with the private root participation key.
-    In the case of leaf nodes, they also keep a signature of the public ephemeral key concatenated with its round of validity,
-    using the parent private subkey.
-    Previous to online account registration, a user issues a command to the node prompting generation of a root 
-    participation key, a batch of subkeys of size $n$, and a sub-batch of ephemeral participation keys of size $k$.
+      a corresponding batch index $0 \leq i \leq n$,
+      using a $\mathsf{Sign}(.)$ procedure with the private root participation key.
+    In the case of leaf nodes, they also keep a signature of the public ephemeral key concatenated 
+      with its round of validity, using the parent private subkey.
+    Previous to online account registration, a user issues a command to the participation node prompting 
+      generation of a root participation key, a batch of subkeys of size $n$, and a sub-batch of ephemeral 
+      participation keys of size $k$.
     Then, the root node of the tree holds the root participation key, the first level nodes hold the $n$ sub-keys
-    (signed by the root key), and the first node in the first level is the parent branch of $k$ nodes holding
-    ephemeral participation keys, signed by the parent branch sub-key, as leaves.
-    These leaf key pairs are considered ephemeral because they are by design valid for one round only and are deleted when their
-    one round validity interval has passed.
+      (signed by the root key), and the first node in the first level is the parent branch of $k$ nodes holding
+      ephemeral participation keys, signed by the parent branch sub-key, as leaves.
+    These leaf key pairs are considered ephemeral because they are by design valid for one round only and are 
+      deleted when their one round validity interval has passed.
     The private root participation key is deleted after signing all sub-batches during key generation,
-    and each one of the sub-keys private counterparts will be deleted after computation and signature of each ephemeral batch.
-    Once a batch has run out (when reaching round $r^\prime$, where the round of validity for the last key in the batch
-    is $r^\prime - 1$), the tree is pruned; their parent branch is deleted, and a new batch of $k$ ephemerals
-    is generated for the next subkey in the tree.
+      and each one of the sub-keys private counterparts will be deleted after computation and signature of 
+      each ephemeral batch.
+    Once a batch has run out (when reaching round $r^\prime$, where the round of validity for the last key in 
+      the batch is $r^\prime - 1$), the tree is pruned; their parent branch is deleted, and a new batch of $k$
+      ephemerals is generated for the next subkey in the tree.
+    
     When signing messages for consensus in round $r$, the next available computed ephemeral leaf key is used.
     When verifying this signature, a node will verify the signature of the message against the public ephemeral key, 
     then verify the signature of the ephemeral key itself by the master sub-key, and finally verify this sub-key's
@@ -453,27 +450,39 @@ key generation functions.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
+\begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
+    
+    \begin{quote} 
+        {\em``The Algorand virtual machine (AVM) runs on every node in the Algorand blockchain. 
+    This virtual machine contains a stack engine that evaluates smart contracts and smart 
+    signatures against the transactions they're called with. These programs either fail 
+    and reject the transaction or succeed and apply changes according to the logic and 
+    contents of the transactions.''} From \href{https://developer.algorand.org/docs/get-details/dapps/avm/}{Algorand.org}
+    \end{quote}
+    
+The AVM receives signed transactions that may or may not alter the 
+state of the blockchain and interprets TEAL, or the Transaction Execution 
+Approval Language, an assembly-like language designed by Algorand 
+for the blockchain.
+
+It is a stack based machine and constitutes a safe isolated environment.
+
+\end{subsection}
+% --------------------------------------------------------------------------------------
 \begin{subsection}{Node as a State Machine}
-A network participation node can be modeled as a state machine.
+A participation node can be modeled as a state machine in its involvement in the consensus 
+protocol.
 In this section we will define all primitives and data structures necessary to define the state
 of a node; the rest of the work will be spent on describing the rules and interrelations that
 make nodes transition from and into different states.
 
-Online accounts are registered to a node. This node takes care of voting for these accounts.
-Hence, the state for these accounts, is the state of the node. As many accounts may be 
-registered in one node, the node will manage the participation for all of these accounts 
-concurrently.
+In order to participate in the consensus, an account needs to be online and this requires
+registering to a participation node. 
+A participation node takes care of voting for all the online accounts registered to it.
 
-The {\sf state of a node} \index{node's state}\index{state of a node}
-is given by the {\sf execution state} which is defined as the 3-tuple of nonnegative integers $(r, p, s)$, 
-a set of observed proposals, $P$, 
-a set of observed votes, $V$, 
-a Ledger $\mathsf{L}$ and 
-a balance table $\mathsf{BT}$.
-% falta el pinned vote, el tiempo, el ultimo estado...
-Explicitly, we define the state of a node, $S$, as a tuple of values, 
+The {\sf state of a node}\index{state of a node} is defined as follows. 
 $$
-S = (r, p, s, V, P, \bar{v}, \bar{s}, \mathsf{L}, \mathsf{BT})
+(r, p, s, V, P, \bar{v}, \bar{s}, \mathsf{L}, \mathsf{BT})
 $$ 
 where
 \begin{itemize}
@@ -493,26 +502,25 @@ where
     We often use the labels of Table \ref{table:s} to identify step numbers.
     
     \item
-    $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed votes} and 
-    {\sf equivocation votes}\index{equivocation votes} in the current execution state
-    $(r,p,s)$. It is initialized as the empty set $V=\emptyset$.
+    $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed vote} and 
+    {\sf equivocation votes}\index{equivocation vote} in the current execution state
+    $(r,p,s)$. It is initialized as the empty set $V=\emptyset$; during execution 
+    votes may be added and it may be emptied.
     
     \item
     $\mathsf{P}$ is the set of all valid {\sf observed proposals}\index{observed proposals}
-    in the current execution state $(r,p,s)$ and it is also initialized as the empty set.
+    in the current execution state $(r,p,s)$, and it is also initialized as the empty set.
     
     \item
-    $\bar{v}$ is the {\sf pinned proposal value} and it is initialized to $\bar{v}=\bot$.\index{pinned proposal value}
+    $\bar{v}$ is the {\sf pinned proposal value}, and it is initialized to $\bar{v}=\bot$.\index{pinned proposal value}
     
     \item
     $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}
     and it is initialized to $\bar{s}=0$.\index{last finished step}
     
     \item
-    $\mathsf{L}$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
-    information established by the current instantiation of the Algorand protocol.\marginpar{Revisar abajo y mejorar}
-    \footnote{Note that, thanks to the genesis hash and previous 
-    hash components, a ledger state unambiguously defines the whole history of state changes.}. 
+    $\mathsf{L}$ is the {\sf ledger}, a structure that holds a sequence of states which
+    record some round parameters as described below.
     
     \item
     $\mathsf{BT}$ is the current balance table \index{balance table} that includes 
@@ -543,10 +551,14 @@ where
         % created ad-hoc, while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
 
     \item
-    $\mathsf{TP}$ is the node's transaction pool, represented as a priority queue, supporting
-    a $\mathsf{head(.)}$ function to get the next element to unqueue, an $\mathsf{iterator}(.)$
-    helper function to construct and return an iterator into the queue and be able to retrieve all
-    queued elements in priority order.
+    $\mathsf{TP}$ is the transaction pool for the node, represented as a priority queue of unconfirmed
+    transactions $(txn_k)$ (indexed by the signing account's key $k$), either
+    sent by accounts that are managed by the node itself or obtained from the network 
+    (broadcast by other nodes).
+    It supports \marginpar{Esto no se entiende bien}
+      a $\mathsf{head(.)}$ function to get the next element to unqueue, 
+      an $\mathsf{iterator}(.)$ helper function to construct, return an iterator into the queue, and 
+      be able to retrieve all queued elements in priority order.
     It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset from a block $e$
     and correctly unqueues all transactions included in the intersection $e_{payset} \cap TP$, and then
     drops all elements that have been invalidated by round advancement.\marginpar{No lo entiendo bien}
@@ -555,11 +567,10 @@ where
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
     time reset was called.
 \end{itemize}
-The first 7 values are the {\sf consensus state parameters},\index{consensus state parameters}
-whereas $\mathsf{L}$ and $\mathsf{BT}$ are {\sf ledger state parameters}.\index{ledger state parameters}
-
-Let $r$ and $p$ be unsigned 64-bits integers representing the round and period number respectively, and 
-let $s$  be an unsigned 8 bits integer representing the step number.
+The 3-tuple of nonnegative integers $(r, p, s)$ are referred to as the {\sf execution state}\index{execution state},
+the first 7 values $(r, p, s, V, P, \bar{v}, \bar{s})$ are the 
+{\sf consensus state parameters},\index{consensus state parameters},
+and $\mathsf{L}$ and $\mathsf{BT}$ are referred to as the {\sf ledger state parameters}.\index{ledger state parameters}
 For convenience and readability, we define the following step name - step enumeration assignment:
 \begin{equation}\label{table:s}
 \left\{    
@@ -576,20 +587,21 @@ For convenience and readability, we define the following step name - step enumer
 \end{equation}
 
 % ledger
-A Ledger is identified by a string called the genesis identifier, as well as a genesis hash that cryptographically 
-commits to the starting state of the ledger.
-Besides the already defined round number $r$, which indexes into the Ledger's sequence of states,
-a Ledger's state is defined by the following components:
+A Ledger$\mathsf{L}$  is identified by a string called the genesis identifier and 
+the hash of the genesis string --that cryptographically commits to the starting state of the ledger--,
+and a sequence of ledger states, which are defined as follows. With each round, a new 
+state is represented by the following items.
 \begin{itemize}
-    \item Genesis identifier and genesis hash, unambiguously defining the ledger 
-    to which the state belongs.
-    \item Protocol version and update state.
-    \item Timestamp (in milliseconds since genesis block), identifying when the state was first proposed.
-    \item A 64-byte seed, source of randomness for the consensus algorithm.
+    \item A genesis identifier and genesis hash, unambiguously defining the ledger 
+        to which the state belongs.
+    \item A protocol version\index{protocol version} and update state.\marginpar{What do you mean by update state?}
+    \item A timestamp (in milliseconds), identifying the time elapsed between the genesis block proposal 
+        and the block for round $r$ proposal.
+    \item A 64-byte seed, source of randomness for the consensus algorithm.\marginpar{Esto es $\pi_\mathrm{seed}$}
     \item The current reward state, which describes the policy at which incentives
-    are distributed to participants.
+        are distributed to participants.
     \item The current box state, which holds mappings from (app id, name) tuples
-    to box contents of arbitrary bytes.
+        to box contents of arbitrary bytes.
 \end{itemize}
 
 % balance
@@ -612,85 +624,66 @@ a Ledger's state is defined by the following components:
 % sequence of blocks and reverting transaction updates. Internally however, certain
 % past records might be cached and maintained to improve performance.
 
-For convenience, we assume that each node maintains an account list that provide 
-easy iteration access to all updated balance records for the accounts it manages 
-which are flagged as online and have a valid participation key and VRF key
-registered on this node.
-This array is named $A$ from now on, and each entry $a\in A$ has an account address 
-$a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
-
-% transaction pool
-The Transaction pool, $TP$, which is a set of live unconfirmed transactions, $txn_k$, (where 
-$k$ is an account's address, the creator and sender of the transaction), either
-sent by accounts that are managed by the node itself or obtained from the network 
-(broadcast by other nodes).
-For the purpose of this article, transactions are an otherwise opaque object, with the 
-attribution of modifying account records.
-
 % block
-A {\sf block} $e$ is a data structure which specifies the transition between states.
-The data in a block is divided between the block header and its block body.
-A block header holds the following data:
+A {\sf block} $e$ is associated to each state and represented by a 
+header and a body. The block header holds the following data.
 \begin{itemize}
     \item
-    The block's round, which matches the round of the state it is transitioning
-    into. (The block with round 0 is special in that this block specifies not
-    a transition but rather the entire initial state, which is called the genesis
-    state. This block is correspondingly called the genesis block).
+    A round $r$, which matches the round of the state it is associated to. 
+    (The block with round 0 is special as it contains the entire initial state
+    and is correspondingly called the genesis block).
     
     \item
-    The block's genesis identifier and genesis hash, constant and decided on
-    Ledger creation.
+    The genesis identifier and genesis hash for the block.
     
     \item
-    The block's upgrade vote, which results in the new upgrade state. The
-    block also duplicates the upgrade state of the state it transitions into.
+    The upgrade vote, which results in the new upgrade state.\index{upgrade state}\marginpar{que es esto} 
+    The block also duplicates the upgrade state of the state it transitions into.
     
     \item
-    The block's timestamp, which matches the timestamp of the state it transitions into. 
-    The timestamp is decided by the proposer of the block using their own internal clock. 
-    To be valid, a timestamp must be greater than the last committed block's timestamp 
-    and must not be more than 25 seconds away from said time.
+    A timestamp defined by the proposer of the block (e.g., from the node's clock). 
+    To be valid, a timestamp must be greater than the timestamp of the last block and 
+    must not be more than 25 seconds away from said time.\marginpar{que pasa si t1>t0+25 ?}
     
     \item
-    The block's seed, which matches the seed of the state it transitions into.
+    A seed.
     
     \item
     The block's reward updates, which results in the new reward state. The
-    block also duplicates the reward state of the state it transitions into.
+    block also duplicates the reward state of the state it transitions into.\marginpar{que es esto?}
     
     \item
-    A cryptographic vector commitment, using SHA512/256 hash function,
-    to the block's transaction sequence.
+    A pair of cryptographic vector commitments to the block's transaction sequence,\marginpar{como se calcula esto?}
+    one computed using SHA512/256 hash function and a second one using (the older) 
+    SHA256 hash function. This may be useful for compatibility with systems where SHA512/256 
+    is not supported.
     
     \item
-    A cryptographic vector commitment, using SHA256 hash function, to the block's
-    transaction sequence (useful for compatibility with systems where SHA512/256 
-    is not supported).
+    A hash for the previous block (either SHA512/256 or SHA256), which is the cryptographic. 
+    In the case of the genesis block, this is set to 0.
     
     \item
-    The block's previous hash, which is the cryptographic hash of the previous
-    block in the sequence. (The previous hash of the genesis block is 0).\marginpar{cual de los dos hashes? sha256 o sha512/256?}
-    
-    \item
-    The block's transaction counter, which is the total number of transactions
+    An integer, the transaction counter, representing the number of transactions
     issued prior to this block. This count starts from the first block with a
     protocol version that supported the transaction counter.
     
     \item
-    The block's expired participation accounts, which contains an optional slice
-    of public keys of accounts. These accounts are expected to have their
-    participation key expire by the end of the round (or was expired before
-    the current round).
+    A list of expired participation accounts, which contains an optional slice
+    of public keys of accounts. 
+    This list is computed by the block proposer and includes the accounts whose 
+    keys expired in the current or earlier rounds in the proposal node generating the block.
     The block's expired participation accounts slice is valid as long as the participation keys 
     of all the accounts in the slice are expired by the end of the round or
     were expired before, the accounts themselves would have been online at the end
     of the round if they were not included in the slice, and the number of elements
-    in the slice is less or equal to 32. A block proposer may not include all such
-    accounts in the slice and may even omit the slice completely
+    in the slice is less or equal to 32. 
+    A block proposer may not include all such accounts in the slice and may even omit
+    the slice.
 \end{itemize}
-While a body of a block is the block's transaction sequence, which describes the sequence
-of updates to the account state and box state. %\marginpar{los account records no tienen states!}
+
+The body of a block contains a transaction sequence, which describes the sequence
+of updates to each of the account states and box states. 
+%\marginpar{los account records no tienen states!}
 %adp: tecnicamente los local y global states son account updates, 
 %los local states viven en en el account record y tenes uno por cada app 
 %a la que estes opted in, los global funcionan similar para la cuenta del contrato
@@ -706,88 +699,89 @@ of updates to the account state and box state. %\marginpar{los account records n
 % apps IDs a las que estes optineado y los local states,
 % ) en el caso de que sea un smart contract es el globarl state y los boxes
 
-Applying a valid block to a state produces a new state by updating each of its components.
-A Ledger's evolution in time can then be specified as an ordered sequence of blocks.
-
-A Proposal is a tuple $prop = (e, \pi_{seed}, p_{orig}, I_{orig})$, where
-e is a full block, $\pi_{seed}$ is a VRF proof of the seed computed
+\end{subsection}
+% ------------------------------------------------------------------------
+\begin{subsection}{Proposal, Vote and Bundle}\label{sect:proposal-vote-bundle}
+A Proposal is a tuple $prop = (e, \pi_{seed}, p_{orig}, I_{orig})$, where\index{proposal}
+$e$ is a full block, $\pi_{seed}$ is a VRF proof of the seed computed
 on block creation, $p_{orig}$ is the period in which the block was created,
-and $I_{orig}$ is the address of the block creator, the sole account that
-computed the sortition seed and proof.
+and $I_{orig}$ is the address of the account propsing the block.
 
 A proposal-value is a tuple $v = (I, p, \mathsf{H}(prop), \mathsf{H}(\mathsf{Encoding}(prop)))$ where 
-$I$ is an address (the ``original proposer''), 
+$I$ is an address (the ``original proposer''), \index{proposal value}
 $p$ is a period (the ``original period''), 
-and
-$H(\,)$ is a cryptographic hash function (implemented as SHA512/256). 
-The special proposal where all fields are the zero-string is called the bottom 
-proposal $\bot$. 
-It also includes the authentication information for the original proposer, that is, 
-a signature and VRF proof of the proposal-value.
+and 
+$\mathsf{H}(\cdot)$ and $\mathsf{Encoding}(\cdot)$ are a hash and an encoding 
+function specified elsewhere. 
+A proposal value also includes a signature and VRF proof of the proposal-value 
+  which are used to validate the proposer, but are omitted in the notation for
+  the sake of brevity.
+There is a special proposal where all fields are the zero-string is called the {\bf bottom 
+proposal} and is denoted as $\bot$.\index{bottom proposal}
 
-$\mathsf{Proposal_{value}}(I, p, prop) := (I, p, \mathsf{H}(prop), \mathsf{H}(\mathsf{Encoding}(prop))$ is the function used
-by a block proposer to create a proposal-value.
+We denote by $\mathsf{Proposal_{value}}:(I, p, prop)\mapsto(I, p, \mathsf{H}(prop), \mathsf{H}(\mathsf{Encoding}(prop))$ 
+the function used by a block proposer to create a proposal-value.
 % Every time the function $\mathsf{Proposal}()$ is called, both input and output are stored
 % in a table. When the inverse, $Proposal_{value}()$ is called, it is implemented
 % by a table lookup--and no inconsistencies on bijectivity happen by construction.
+For convenience, we define the function $\mathsf{RetrieveProposal}:v\mapsto{\mathsf{RetrieveProposal}}(v)$ 
+which is an inverse for $\mathsf{Proposal_{value}}$ and is implemented by having
+the first function store input and output on each call.
 
-For convenience, we define the function $\mathsf{RetrieveProposal}:v\mapsto{\mathsf{RetrieveProposal}}(v)$ for a given proposal value 
-$v$,  such that $\mathsf{RetrieveProposal}(v) = prop$ if, and only if, $prop$ is the proposal that, when hashed, corresponds 
-to the proposal hash $\mathsf{H}(prop)$ of the proposal value $v$.
-
-We define an auxiliary structure, $credentials$, useful in voting, with the following fields:
+We define an auxiliary structure, $credentials$, useful in voting, with the following fields:\index{credential}
 \begin{itemize}
     \item $sh$ is the sortition hash (64-byte string).
     \item $\pi$ is the sortition proof (32-byte string).
-    \item $j$ is a 64-bit unsigned integer that represents the vote's weight.
+    \item $j$ is a 64-bit unsigned integer that represents the weight of the vote.
 \end{itemize}
-An object of this type is output by the $\mathsf{Sortition}(.)$ procedure.
+An object of this type is output by the $\mathsf{Sortition}(.)$ procedure (Algo.~\ref{algo:sortition}).
 
 A vote $vt$, constructed as $\mathsf{Vote}(I,r,p,s,v,cred)$ is a tuple with the following members:
 \begin{itemize}
     \item $I$ is a valid Algorand address (in 32-byte format).
-    \item $r$ is the vote's round (64-bit integer).
-    \item $p$ is the vote's period (64-bit integer).
-    \item $s$ is the vote's step (8-bit integer).
-    \item $v$ is the vote's proposal value.
+    \item $r$ a round (64-bit integer).
+    \item $p$ a period (64-bit integer).
+    \item $s$ a step (8-bit integer).
+    \item $v$ a proposal value.
     \item $cred$, of type $credentials$, the committee credentials of the voter.
 \end{itemize}
 
-In practice, votes are broadcast wrapped in a structure called ``Unauthenticated Vote'', 
-where the $credentials$ field is added, containing only the voter's sortition proof and 
-address.
-The rest of relevant data, sortition hash $sh$ and vote weight $j$, are reconstructed as part 
-of the verification process, 
-where a node authenticates the received vote and re-computes them.
-For the sake of simplicity we abstract away this step and assume immediate availability of all 
-$credentials$ fields.
-
+%In the implementation, votes are broadcast wrapped in a structure called ``Unauthenticated Vote'', 
+%where the $credentials$ field is added, containing only the voter's sortition proof and 
+%address.
+%The rest of relevant data, sortition hash $sh$ and vote weight $j$, are reconstructed as part 
+%of the verification process, 
+%where a node authenticates the received vote and re-computes them.
+%For the sake of simplicity we abstract away this step and assume immediate availability of all 
+%$credentials$ fields.
 
 % equivocation vote
-Let $I$ be an address, $r, s, p\in\mathbb{Z}_{\ge 0}$, $cred$ a credential, and $v_0,v_1$ different
-vote proposals.
-An {\sf equivocation vote}\index{equivocation vote} happens when a pair of votes
-$vt_0 = \mathsf{Vote}(I, r, p, s, v_0, cred)$ and $vt_1 = \mathsf{Vote}(I, r, p, s, v_1, cred)$.
+Let 
+  $vt=\mathsf{Vote}(I, r, p, s, v, cred)$ and 
+  $vt^\prime=\mathsf{Vote}(I^\prime, r^\prime, p^\prime, s^\prime, v^\prime, cred^\prime)$ be a pair of votes.
+An {\sf equivocation vote}\index{equivocation vote} happens 
+if all but the proposal values agree, i.e., $I=I^\prime$, $r=r^\prime$, $p=p^\prime$,
+$s=s^\prime$, $v\neq v^\prime$ and $cred=cred^\prime$.\marginpar{Tiene sentido que coincidan los I y los cred??}
 An equivocation vote is valid if both of its constituent votes are valid.
 It is important to keep in mind that nodes are forbidden from equivocating 
 on any steps $s \neq soft$.\marginpar{What does this mean? How do nodes enforce this?}
 
 % bundle
-A {\sf bundle}\index{bundle} is a set $b = \mathsf{Bundle}(r,p,s,v)$ such that for any pair of distinct values 
-$vt_0, vt_1 \in b$ the following conditions hold: 
-a) $vt_{0_r} = vt_{1_r} $, 
-b) $vt_{0_p} = vt_{1_p}$,
-c) $vt_{0_s} = vt_{1_s}$,
-d) for each pair of distinct elements, either $(vt_0)_I \neq (vt_1)_I \land vt_0.v = vt_1.v$ or the pair $vt_0$, $vt_1$ 
-is an equivocation vote, and
-e) the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
-committee threshold of the votes in the set.
+A {\sf bundle}\index{bundle} is a set of votes $\mathsf{Bundle}(r,p,s,v)$ such that for any pair of distinct values 
+$vt=\mathsf{Vote}(I, r, p, s, v, cred)$,
+$vt^\prime=\mathsf{Vote}(I^\prime, r^\prime, p^\prime, s^\prime, v^\prime, cred^\prime)$ in $b$ 
+the following conditions hold: 
+a) they have the same execution state (i.e., $r = r^\prime$, $p=p\prime$,
+and $s=s^\prime$)
+b) for each pair of distinct elements, either $I\neq I^\prime$ and $v=v^\prime$ 
+  or the pair $vt$, $vt^\prime$ is an equivocation vote, and
+c) the number of votes in $b$ is such that the sum of weights for each vote in $b$ is greater or equal to the
+committee threshold of the votes in the set. (This is a protocol constant.)
 
-For convenience, we define the {\sf observed bundles}\index{B} for the current execution state, $B$, 
-as the set of all of the bundles
-observed by the node in the current execution state. Said set is always consistent with an in-place
-reconstruction by grouping elements of $V$ in all possible subsets with the required properties
-of a valid bundle.
+For convenience, we define the {\sf observed bundles}\index{observed bundles} for the current execution state, 
+$B$\index{B}, as the set of all of the bundles observed by a node in the current execution state. 
+Said set is always consistent with an in-place reconstruction by grouping elements of $V$ in all 
+possible subsets with the required properties of a valid bundle.
 \end{subsection}
 
 \end{section}
