@@ -61,11 +61,16 @@ today.
 To our knowledge, there is no accurate and up-to-date technical description 
 of the protocol. 
 
-We relied on Algorand's documents (\cite{DBLP:conf/sosp/GiladHMVZ17},
-\cite{DBLP:journals/corr/Micali16} and
+While we are aquainted with Algorand's seminal papers and documentation 
+(\cite{DBLP:conf/sosp/GiladHMVZ17}, \cite{DBLP:journals/corr/Micali16} and
 \href{https://github.com/algorandfoundation/specs}{Algorand's official specifications})
-but mostly we consulted the code for the node (in the official repository) and probed 
-the network when information was unclear or unavailable.
+this document is based on the code running in Algorand's mainnet, and the reference
+implementation maintained by Algorand inc. To this end, we relied in the sourcecode
+for the node in the \href{https://github.com/algorand/go-algorand/}{reference implementation}
+and probed the network when information was unclear or unavailable.
+At the time of this writing the protocol is at {\tt ConsensusV38} (version 38)
+which is specified in the file {\tt go-algorand/protocol/consensus.go} by the
+constant {\tt ConsensusCurrentVersion}. 
 
 Algorand is a proof-of-stake blockchain cryptocurrency protocol 
 using a decentralized By\-zan\-tine Agreement protocol that leverages 
@@ -128,82 +133,81 @@ currently in development.
 \begin{section}{Strutcture}
 The Algorand protocol is implemented in a network over the Internet, where nodes 
 implementing a service form a peer-to-peer (p2p) network: they listen to other nodes 
-and to transactions sent by clients.
+and to transactions sent by clients, generate blocks, vote and continue to 
+write and maintain the blockchain.
 
 % ---------------------------------------------------------------------
 \begin{subsection}{Nodes}
 Actually, Algorand protocol establishes two kinds of nodes: 
-{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.\marginpar{NOT PERMISSIONED}
+{\bf relay nodes}\index{relay nodes} and {\bf participation nodes}\index{participation nodes}.
 
-Relay nodes are responsible for relaying messages comming from other relay nodes
+Relay nodes are responsible for relaying messages coming from other relay nodes
 and the messages they receive from participation nodes. 
-They must also keep a complete copy of the ledger. 
-They do not participate in consensus.
-They function as network level facilitators, collecting messages sent by participation
-nodes or other relay nodes and distributing them across the network.
-Currently, any individual or entity is able to run a participation node, 
-but relay nodes are permissioned. They must be {\em whitelisted} by 
+A relay node will queue (multiplex) both kinds of messages.\marginpar{meter grafico generado por Gero}
+Relay nodes also keep a complete copy of the ledger and 
+do not participate in consensus; they also run a service 
+answering to participation nodes about this data and 
+updating this data on block confirmation.\marginpar{sabemos algo de como funciona esto??}
+Relay nodes are permissioned. They must be {\em whitelisted} by 
 Algorand Foundation and this whitelist is hardcoded into the source 
 code of participation and relay nodes.
-Network messages between the nodes are broadcast through P2P connections that are
-established and kept going, while transactions are received utilizing a websocket 
-protocol.
-A relay node will queue (multiplex) both kinds of messages.\marginpar{meter grafico generado por Gero}
+We shall not go in further detail about relay nodes.
 
 Each participation node may connect to one relay node: their addresses and keys
 are hardcoded into the code of participation nodes (a list of the public key's 
 hashes is included in the code).
 A participation node service runs the following.
 \begin{itemize}
-    \item a timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
-order. It will record the current time when reset is called (e.g., by querying
-the OS where the node runs) and will report the elapsed time since the last reset
-in the latter case.
-    \item A virtual machine, the Algorand Virtual Machine, which can process TEAL bytecode
-from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
-    \item p2p and websocket network interfaces.
-    \item An implementation of the consensus algorithm, with a player state machine module and
-    an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
-    in greater detail.
+    \item A timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
+        order. It will record the current time when reset is called (e.g., by querying
+        the OS where the node runs) and will report the elapsed time since the last reset
+        in the latter case.
+    \item A transaction pool that receive signed transactions from Algorand addresses.
+    \item An Algorand Virtual Machine (AVM for short), which can process TEAL bytecode
+        from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
+    \item A p2p and a websocket network interface.
     \item Ledger and balances.\marginpar{ver bien donde y como explicamos este componente}
+    \item An implementation of the consensus algorithm, with a player state machine module and
+        an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
+        in greater detail.
 \end{itemize}
 
 Participation nodes are non-archival in nature, meaning they do not keep\index{archival node}\index{non-archival node}
-the whole ledger in memory at all times. At the time of this writing,
-participation nodes keep the latest 1,000 blocks.
-Any queries that require blocks prior to those, need to be made
-through one of the relay nodes they are connected to.
-These nodes are responsible for running the consensus algorithm that
-will be outlined in this document.
+the whole ledger in memory at all times. 
+At the time of this writing, participation nodes keep the latest 1,000 blocks.
+Any queries that require nonavailable data are made through the relay node 
+they are connected to.
 
-Participation nodes maintain a transaction pool. Basically, this pool receives transactions\marginpar{Pensemos que parte de esto es AssembleBlock()? Me hace ruido q en assemble block dice que prioriza x fee}
+Basically, the transaction pool receives transactions\marginpar{Pensemos 
+que parte de esto es AssembleBlock()? Me hace ruido q en assemble block dice que prioriza x fee}
 from clients (see Sect.~\ref{sect:cliandkeys}) and keeps them in the order as they are 
-received, it allows the AVM to poll this pool (e.g., on a first poll the AVM receives 
-the first transaction, then the second one and so on), and to empty this pool. 
+received, it allows the AVM to poll this pool, receiving one transaction at a time in
+the order they are received. 
 The pool size is limited, e.g, the node will keep the first 1,000 transactions it receives 
 and ignore the rest.
 These transactions are processed by the node as follows.
 \begin{itemize}
-    \item The node orders the transactions as they arrive.
+    \item The node records the transactions as they arrive in an ordered list\footnote{Note
+        however that this is how the reference implementation works, however neither the implementation
+        nor the protocol will enforce an order, so that a node could order transactions arbitrarily 
+        into a new block and the block would not be rejected during voting.}.
     \item The node verifies the signature of the transaction (i.e., the transaction has an 
-    address as its source, this address also identifies a public key that may be used to 
-    verify the signature); if it is a logicsig, it is verified; if it is an app call, then
-    the run is simulated.
+        address as its source, this address also identifies a public key that may be used to 
+        verify the signature); if it is a logicsig, it is verified; if it is an app call, then
+        the run is simulated.
     \item At some point, the node starts assembling the block. It will now rerun all transactions
-    (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
-    fail. If it succeeds, it may alter the ledger and balances for the next block. These 
-    changes are recorded. Changes to the balances and ledger are temporary recorded and
-    checked for inconsistencies (e.g., local to the block creation)
+        (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
+        fail. If it succeeds, it may alter the ledger and balances for the next block. These 
+        changes are recorded. Changes to the balances and ledger are temporary recorded and
+        checked for inconsistencies (e.g., local to the block creation)
     \item Once a timeout is reached, the node will collect all the changes into a block 
-    proposal. 
+        proposal. 
 \end{itemize}
 
 During consensus, a node that receives a block proposal it will validate same as above.
 
 Once consensus accepted a block proposal, it needs to run all transactions again
-but now modifies the ledger and balances. 
-
-
+but now modifies the ledger and balances. \marginpar{lo deberiamos bajar a la sect MAIN}
 \end{subsection}    
 % ---------------------------------------------------------------------    
 \begin{subsection}{Network}\label{sect:network}
@@ -211,43 +215,45 @@ A network is formed of two kinds of nodes: {\sf relay nodes}\index{relay nodes}
 and {\sf participation nodes}\index{participation nodes}. 
 Both nodes operate on servers that are connected to the internet and run publicly
 available code from \href{https://github.com/algorand/go-algorand}{Algorand's code repository}.
-Participation nodes can connect only to one relay node at a time.
-
-%el voting y demas esta afuera de la avm? Si, todo el mecanismo de consenso corre completamente independiente de la AVM.
-%La AVM solo ejecuta los smart contracts o logicsigs y esto es a nivel de txn, previo a la ejecucion del algoritmo total
-%o sea, es en la validacion de txns (y txn groups), que se da Antes del block assembly.
-%Las txns llegan y las encola un handler, y por lo que entendi del codigo se pasan a la txn pool ya validadas.
-%La txn pool tiene un limite tambien, despues del cual empieza a droppear. Esto parece ser implementativo, en el sim
-%es un parametro y estoy usando 1000 (lo saque del unit test del txn pool).
-%Cuando se ensambla el bloque tambien se valida, pero ya no las txns individuales sino que tenga coherencia el orden.
-%La creacion de bloque tambien tiene un tiempo maximo pero ese parametro no esta especificado en ningun lado, creo que
-%esta dejado a libre implementacion. En el sim por ahora esoy asumiendo creacion instantanea en cuanto a tiempo de
-%simulacion.
 
 When a participation node boots, it establishes a peer-to-peer (P2P) 
 channel with at least one relay (4 on average), using a phone book which is included
-as part of the soruce code of the node. 
+as part of the source code of the node. 
 Relay nodes manage a significantly higher number of connections, as they 
-are responsible for keeping the network's high throughput.
+are responsible for keeping a high throughput.
 
-Participation nodes also keep a list of online accounts, and while each accounts should
+Network messages between the nodes are broadcast through P2P connections that are
+established and kept going, while transactions are received utilizing a websocket 
+protocol.
+Each account may register to a participation node, e.g., in order to vote.
+Participation nodes keep a list of online accounts, and while each account should
 register in at most one participation node, this is not enforced.
-{\bf Consensus and transactoipns....}
-
 
 \end{subsection}
 % ------------------------------------------------------------------------
 \begin{subsection}{Accounts}\label{sect:accounts}
-    Accounts are managed by participation nodes. Accounts should be registered in at least one participation
-    node only, however this is not enforced.
-    In order for an account to participate in consensus, it needs to switch its status to ``online''
-    (see Sect.~\ref{sect:cliandkeys}). 
-    That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
-    which registers a participation key for the account.% and creates a two-level ephemeral key tree.
-    %It is important to note that the registered account will only start participating in consensus
-    %$\delta_b$ rounds after the key registration transaction is approved.
-    %Any account participating in consensus does so with their full balance. There is no risk
-    %associated to participation, nor there are any rewards for running a node.
+An Algorand account is a protocol entity represented by a 58-bytes address
+associated to an ED25519 public key (see Section~\ref{sect:cliandkeys}).
+For example, a user may generate an ED25519 key pair and derive the address
+from the public key. On the other hand, when a contact is deployed, it is
+deployed in an address for which the private key is not known.
+There is a bijection between addresses and public keys: the address is 
+derived from the public key by adding a 4-bytes checksum and encoding the result
+in base32; the inverse is computed by simply decoding and dropping the last 4 
+bytes.
+
+An account need not register to a node in order to send transactions.
+
+Accounts are managed by participation nodes. Accounts should be registered in at least one participation
+node only, however this is not enforced.
+In order for an account to participate in consensus, it needs to switch its status to ``online''
+(see Sect.~\ref{sect:cliandkeys}). 
+That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
+which registers a participation key for the account.% and creates a two-level ephemeral key tree.
+%It is important to note that the registered account will only start participating in consensus
+%$\delta_b$ rounds after the key registration transaction is approved.
+%Any account participating in consensus does so with their full balance. There is no risk
+%associated to participation, nor there are any rewards for running a node.
     
 \end{subsection}
 % ------------------------------------------------------------------------
@@ -265,7 +271,8 @@ The AVM receives signed transactions that may or may not alter the
 state of the blockchain and interprets TEAL, or the Transaction Execution 
 Approval Language, an assembly-like language designed by Algorand 
 for the blockchain.
-% It is a stack based machine and constitutes a safe isolated environment
+
+It is a stack based machine and constitutes a safe isolated environment.
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -278,7 +285,7 @@ for the blockchain.
     sends a message to a relay node over the Internet, and nodes will decide
     how to process this transaction.
 
-    There are currently seven transaction types on Algorand:\marginpar{Hay algun nro de version que podamos usar, o es la fecha ??}
+    There are currently seven transaction types on Algorand:
         Payment, 
         Key Registration, 
         Asset Configuration, 
@@ -329,34 +336,43 @@ for the blockchain.
     signatures standard which implements elliptic-curve Diffie-Hellman algorithm over the curve 
     {\tt Curve25519} (\cite{Bernstein:2006}). It uses 256-bits keys. 
 
-    Similarly, a VRF scheme includes a key generation algorithm that outputs a pair of secret and public keys, 
-    an algorithm that given the secret key and a value produces a pseudorandom output, with a proof. 
-    A verification algorithm which given the output and proof verifies that the result is correct (see 
+    A verifiable random function (VRF for short) scheme includes a key generation algorithm
+    that outputs a pair of secret and public keys, an algorithm that given the secret key and 
+    a value produces a pseudorandom output and a {\em proof} (object), and 
+    a verification algorithm, which given the output and proof, verifies that the result is correct (see 
     \cite{MicaliRabinVadhan:1999}).
 
-    The Algorand Protocol uses three types of crypto0graphic keys: 
+    The Algorand Protocol uses three types of cryptographic keys: 
     root or spending keys,
     voting or participation keys and
     selection keys.
 
     Spending and participation both use ED25519 cryptographic signatures as follows. 
     Accounts sign their transactions (e.g., via the CLI) before sending them to a node, and 
-    the node will verify the signature before accepting the transaction. 
-    Addresses can be computed out of public keys and viceversa.
+    the node will verify the signature before accepting the transaction (since the transaction
+    must include the address it is destined to, and the public key can be derived from the
+    address, the node does not need to hold the public keys in advance). 
+
     The Algorand protocol allows for a process called ``rekeying'', in which case 
     the owner of a private key can authorize a new key to sign transactions on behalf of this account
     (and disable the older one).
 
-    During the protocol execution, sometimes a lottery needs to select accounts. This selection process
-    is done with the VRF scheme.
+    At different points in the protocol a provably random account selection needs to happen. 
+    This selection process is done with the VRF scheme. Basically, all accounts may generate one
+    random number per stake they have and only those accounts generating a random number 
+    smaller than a threshold are selected. The selected accounts will provide the random number
+    and proof generated by the VRF scheme to others, who can verify the validity of the random
+    number and check it is below the threshold in order to allow the selection. This threshold
+    is a constant defined in the protocol and has been tuned in order for the number of accounts
+    selected fall close to a target.
 
     Participation and VRF keys are generated on demand in the node by issuing a key generation command-line
     interface (CLI) call.
     Keys are not permanent: the key generation command takes an address, a range of rounds and a 64-bit 
     integer key-dilution parameter.
 
-    Participation keys are used to sign all {\bf consensus messages} (or messages of the consensours type),
-    which are messages broadcasted (or received from other nodes and relayed) to the other nodes and which 
+    Participation keys are used to sign all {\bf consensus messages} (or messages of the consensus type),
+    which are messages broadcasted (or received from other nodes and relayed) to the other nodes, and which 
     contain votes, proposals or bundles.
     In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
     with a valid participation root public key and at least one valid subkey and one valid ephemeral key.
@@ -399,16 +415,16 @@ for the blockchain.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
-    Selection keys used for committee membership selection and verification (see Sections \ref{}).\marginpar{add labels}
-    Private slection keys are kept secret by the node, while public selection keys are kept inside 
-    account records (in the $\mathsf{BT}$).
-    They are created and registered on a CLI key generation call, after participation key generation.
-    VRF keys are needed in order for an account to vote, as they will be
-    used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
-    More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
-    with valid VRF public keys for the lookback round $r-\delta_s(1+\delta_r)$.
-    They make use of an Algorand fork of the Sodium C library \marginpar{citar libsodium y el fork}, implementing VRF signing, verification and
-    key generation functions.
+Selection keys used for committee membership selection and verification (see Sections \ref{}).\marginpar{add labels}
+Private selection keys are kept secret by the node, while public selection keys are kept inside 
+account records (in the $\mathsf{BT}$).
+They are created and registered on a CLI key generation call, after participation key generation.
+VRF keys are needed in order for an account to vote, as they will be
+used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
+More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
+with valid VRF public keys for the lookback round $r-\delta_s(1+\delta_r)$.
+They make use of an Algorand fork of the Sodium C library \marginpar{citar libsodium y el fork}, implementing VRF signing, verification and
+key generation functions.
     In the following work, these cryptographic functions are abstracted as $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$, $\mathsf{VRF_{generate}}(.)$
     and the helper function $\mathsf{VRF_{proofToHash}}(.)$.
     Refer to the provided repository for implementation details.
@@ -459,38 +475,38 @@ where
 \begin{itemize}
     \item 
     $r\in\mathbb{Z}_{\ge 0}$ is the current {\sf round} and recorded as a 64-bits integer. \index{round}
-    The round variable start as $r=0$, when the genesis block is generated, and increases
-    by one after each block is accepted.\marginpar{revisar wording}
+    The round variable start as $r=0$, when the genesis block is generated. The round and other
+    execution state parameters (p and s) change during protocol execution, they are either increased
+    or reset, by the Algorithms \ref{algo:main}, \ref{algo:start-new-round} and \ref{algo:start-new-period}.
     
     \item 
     $p\in\mathbb{Z}_{\ge 0}$ is the current {\sf period} within the round and recorded as \index{period}
-    a 64-bits integer. When the round starts, $p$ is set to 0 ($p=0$), and it is 
-    increased via the function $\mathcal(F)$ (see \ref{fun:compute-p}).
+    a 64-bits integer. When the round starts, $p$ is set to 0 ($p=0$).
     
     \item 
     $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step} within the round\index{step} 
-    and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$), 
-    and it is increased by the main algorithm (see \ref{algo:main}) and 
-    labeled according to table (see (\ref{table:s})).
+    and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$). 
+    We often use the labels of Table \ref{table:s} to identify step numbers.
     
     \item
     $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed votes} and 
     {\sf equivocation votes}\index{equivocation votes} in the current execution state
-    ($(r,p,s)$).
+    $(r,p,s)$. It is initialized as the empty set $V=\emptyset$.
     
     \item
     $\mathsf{P}$ is the set of all valid {\sf observed proposals}\index{observed proposals}
-    in the current execution state ($(r,p,s)$).
+    in the current execution state $(r,p,s)$ and it is also initialized as the empty set.
     
     \item
-    $\bar{v}$ is the {\sf pinned proposal value}.\index{pinned proposal value}
+    $\bar{v}$ is the {\sf pinned proposal value} and it is initialized to $\bar{v}=\bot$.\index{pinned proposal value}
     
     \item
-    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}.\index{last finished step}.
+    $\bar{s}\in\mathbb{Z}_{\ge 0}$, a 64-bits integer, is the {\sf last finished step}
+    and it is initialized to $\bar{s}=0$.\index{last finished step}
     
     \item
     $\mathsf{L}$ is the {\sf ledger}, a structure that holds a sequence of states comprising the common
-    information established by the current instantiation of the Algorand protocol.
+    information established by the current instantiation of the Algorand protocol.\marginpar{Revisar abajo y mejorar}
     \footnote{Note that, thanks to the genesis hash and previous 
     hash components, a ledger state unambiguously defines the whole history of state changes.}. 
     
@@ -508,7 +524,7 @@ where
         a public participation key, 
         a set of public batch participation keys, 
         and a set of public sub-batch ephemeral keys.
-        In the rest of this work, we represent the balance table as a two dimensional mapping where the
+        In the rest of this work, we represent the balance table as a two-dimensional mapping where the
         first coordinate is the round for which we want account data (excluding rounds in the future; that
         is for all $0 \leq r\prime \leq r$ at any given moment)
         and the second coordinate is the address of the specific account.
@@ -517,8 +533,10 @@ where
         existing accounts is available by traversing the ledger in reverse order and undoing all changes outlined 
         in the last $k$ blocks.
         For completeness, given an address $I$ for an account that does not exist as of round $r$,
-        $\mathsf{BT}[r][I] = (0,\emptyset,\emptyset,\emptyset,0,...)$ a valid empty record for account $I$ created ad-hoc,
-        while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
+        $\mathsf{BT}[r][I] = \bot$.
+        % (0,\emptyset,\emptyset,\emptyset,0,...)$, 
+        % a valid empty record for account $I$. 
+        % created ad-hoc, while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
 
     \item
     $\mathsf{TP}$ is the node's transaction pool, represented as a priority queue, supporting
@@ -526,8 +544,8 @@ where
     helper function to construct and return an iterator into the queue and be able to retrieve all
     queued elements in priority order.
     It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset from a block $e$
-    and correctly unqueues all transactions included in the intersection $e_{payset} \int TP$, and then
-    drops all elements that have been invalidated by round advancement.
+    and correctly unqueues all transactions included in the intersection $e_{payset} \cap TP$, and then
+    drops all elements that have been invalidated by round advancement.\marginpar{No lo entiendo bien}
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -571,22 +589,24 @@ a Ledger's state is defined by the following components:
 \end{itemize}
 
 % balance
-A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to 
-account records where an {\sf account record}\index{account record} comprises 
- a 64-bits unsigned integer raw balance, 
- a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
- its registered voting keys (more info on subsection~\ref{sect:Keys}, keys) and 
- two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
-   validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
-   for the participation key (which acts as the root voting key for the Merkle 
-   tree).\marginpar{Cu\'al merkle t. no se definio!}
+%Redefinicion de lo de arriba. TODO: doble-check de que no falte nada arriba que se menciona aca
 
-A node may query the current state of a particular account by indexing the balance 
-table by address, or it might query a previous round's account state by adding a 
-round indexing. 
-Note that past account states are always computable by iterating over the Ledger
-sequence of blocks and reverting transaction updates. Internally however, certain
-past records might be cached and maintained to improve performance.
+% A {\sf balance table}\index{balance table}, $BT$, is a mapping of addresses to 
+% account records where an {\sf account record}\index{account record} comprises 
+%  a 64-bits unsigned integer raw balance, 
+%  a 3-state flag status (can be ``online'', ``offline'', or ``non-participating''),
+%  its registered voting keys (more info on subsection~\ref{sect:Keys}, keys) and 
+%  two 64-bits unsigned integers $r_{start}$ and $r_{last}$, which represent the 
+%    validity interval (in rounds)\marginpar{Pero la part key donde esta guardada?}
+%    for the participation key (which acts as the root voting key for the Merkle 
+%    tree).\marginpar{Cu\'al merkle t. no se definio!}
+
+% A node may query the current state of a particular account by indexing the balance 
+% table by address, or it might query a previous round's account state by adding a 
+% round indexing. 
+% Note that past account states are always computable by iterating over the Ledger
+% sequence of blocks and reverting transaction updates. Internally however, certain
+% past records might be cached and maintained to improve performance.
 
 For convenience, we assume that each node maintains an account list that provide 
 easy iteration access to all updated balance records for the accounts it manages 
@@ -1548,7 +1568,7 @@ then a new period is started and the currently executing period-specific data ga
 
             \If{$\neg \mathsf{VerifyBundle}(b)$}
                 \State $\mathsf{DisconnectFromPeer}(\mathsf{SENDER\_PEER}(b))$ \ //optional
-                \Return
+                \State \Return
             \EndIf
 
             \If{$b_r = r \land b_p + 1 \geq p$}
@@ -1665,21 +1685,24 @@ from equivocating in $next$ votes.
             \EndIf
         \EndFor
 
+        \For{$vt \in \mathsf{V} | vt_s \geq 253$}
+            \State $\mathsf{Broadcast}(vt)$
+        \EndFor
+
         \EndFunction
         \end{algorithmic}
     \end{algorithm}
-    
-    \marginpar{ACA FALTA agregar al final un broadcast plano (sin sortition) de todos los fast recovery votes observed}
-    
     
     \noindent \textbf{Description:}\\
     The fast recovery algorithm is executed periodically every integer multiple of $\lambda_f$
     seconds (plus variance).
     Functionally, it's very close to the regular recovery algorithm (outlined in the previous section), 
-    performing the same checks and similar outputs. The sole difference is that it emits votes 
+    performing the same checks and similar outputs. The main difference is that it emits votes 
     for any of three different steps ($late$, $redo$ and $down$) according to sortition 
     results for every account.
-    It's also important to point out that nodes are forbidden to equivocate for $late$, $redo$ and $down$ votes.
+    % It's also important to point out that nodes are forbidden to equivocate for $late$, $redo$ and $down$ votes.
+    Finally, the algorithm broadcasts all fast recovery votes observed. That is, all votes $vt \in \mathsf{V}$ for which
+    $vt_s$ is a fast recovery step ($late$, $redo$ or $down$).
 \end{subsection}
 
 
@@ -2021,7 +2044,7 @@ with everything needed to validate it, into a $proposal$ structure.
 
     \State $proposal_{value} \ v := (pp_{I_{orig}}, pp_{p_{orig}}, \mathsf{H}(pp_e), \mathsf{H}(\mathsf{Encoding}(pp)))$
 
-    \Return $v$
+    \State \Return $v$
 
     \EndFunction
     \end{algorithmic}
