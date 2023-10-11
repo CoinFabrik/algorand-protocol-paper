@@ -90,7 +90,8 @@ capabilities.
 %XXX.
 
 %no siempre se validan en la AVM, solo cuando hay codigo asociado (smart signatures, smart contracts)
-Basically, the node receives transactions in its transaction pool,
+Basically, the node receives transactions and puts them in a list called 
+the {\sf transaction pool},\index{transaction pool}
 validates their signature and processes them (in no protocol-imposed order), leveraging the
 AVM if there was bytecode associated to them, with the goal of an eventual commitment of the transactions
 to a block in the Ledger and the subsequent observation of their consequences in the state of the network.
@@ -185,7 +186,9 @@ from clients (see Sect.~\ref{sect:cliandkeys}) and keeps them in the order as th
 received, it allows the AVM to poll this pool, receiving one transaction at a time in
 the order they are received. 
 The pool size is limited, e.g, the node will keep the first 1,000 transactions it receives 
-and ignore the rest.
+and ignore the rest\footnote{Actually, if this limit is reached, then the node will prioritize
+transactions according to the fees they pay and may thus allow to newer transactions and 
+drop some of the older ones.}.
 These transactions are processed by the node as follows.
 \begin{itemize}
     \item The node records the transactions as they arrive in an ordered list\footnote{Note
@@ -310,6 +313,8 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     Readers interested in more details should check the specifications (\cite{algorand:specs}).
     Finally, the transaction is stored in the transaction pool. 
 
+    The CLI also has a minimum fee function, that when queried returns a suggested fee 
+    to pay. This is basically constant, and only grows in the case of congestion.
     {\centering * * *\par}
 
     Algorand protocols make use of two hash functions of the SHA-2 family
@@ -360,55 +365,85 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     CLI call.
     Keys are not permanent, so that users may need to call the key generation algorithms
     periodically to continue their participation.
-    %the key generation command takes an address, a range of rounds and a 64-bit 
-    %integer key-dilution parameter.
+    the key generation command takes an address, a range of rounds and a 64-bit 
+    integer key-dilution parameter ($k$). In the reference implementation, $k$ 
+    defaults to the square root of the round range  (rounded down to the nearest integer) 
+    when not specified, e.g. for a 3 million round range a $1712$ batch of subkeys is 
+    generated.
 
+    Let $n:=\lceil\frac{\mathrm{last}-\mathrm{first}}{k}\rceil$. 
+    When initialized, the key generation algorithm will do as follows:
+    \begin{itemize}
+        \item Generate a root key pair $(pub_r,priv_)$. 
+        \item Generate $n$ batch key pairs $(pub^{(b_1)},priv^{(b_1)}),\ldots, (pub^{(b_n)},priv^{(b_n)})$ signing 
+            the public each of the batch keys with the root key $priv_r$.
+        \item Generate $n\cdot k$ ephemeral key pairs $(pub^{(b_i)}_{e_j},priv^{(b_i)}_{e_j})$ for $1\le i\le n$, 
+            $1\le j\le k$, each public ephemeral key $pub^{(b_i)}_{e_j}$ signed with the appropriate batch 
+            key $priv^{(b_i)}$.
+        \item Issue a key registration command with the node that includes $pub_r$ in
+            the balance for the issuing account. (This transaction is signed, as all transactions,
+            with the account's spending key.)
+    \end{itemize}
+    (Actually, the keys are generated as they are needed $k$ at a time. Only the root public key is
+    needed for verification.)
+
+    When signing, the signature algorithm will use the ephemeral keys one at a time, in lexicographical 
+    order starting with $priv_1^{(1)}$, continuing with the first batch of $k$ ephemeral keys, and 
+    moving to the next one. After using an ephemeral key, it is deleted and never reused. 
+    Say, the signature of a first message $m$ will include the signed
+    message and the required signature trail:
+    $$ 
+        \left(\mathsf{Sign}(priv^{(1)}_1,m)\right);\quad
+        \left(pub_{b_1}^{(1)}, \mathsf{Sign}(priv_{b_1},pub_{e_1}^{(1)})\right);\quad 
+        \left(pub_{b_1},\mathsf{Sign}(priv_r,pub_{b_1})\right)
+    $$
+
+    Verification goes in the opposite way: given a signed message 
+        $$
+            (m,s);\quad
+            (m^\prime, s^\prime);\quad 
+            (m^{\prime\prime},s^{\prime\prime})
+        $$
+    (here $m^\prime$ is the batch public key and $m^\prime$ is the ephemeral public key), 
+    the algorithm 
+    \begin{itemize}
+        \item uses the root public key $pub_r$ which can be retrieved from the account's balance to 
+    validate the last signature
+        $$\mathsf{Verify}(
+            pub_r,
+            m^{\prime\prime},
+            s^{\prime\prime}
+            ).
+        $$
+    \item If the validation passes, $m^{\prime\prime}$ is assumed to be a batch public key and used
+        to validate an ephemeral key:
+        $$\mathsf{Verify}(
+            m^{\prime\prime},
+            m^\prime,
+            s^\prime 
+        ).
+        $$
+        \item If the validation passes, $m^\prime$ is assumed to be an ephemeral public key and used
+        to validate the message:
+        $$\mathsf{Verify}(
+            m^{\prime\prime},
+            m,
+            s 
+        ).
+        $$
+        \item Once this happens, the ephemeral key is recorded as used and cannot be reused.
+    \end{itemize}
+    
+    
     Participation keys are used to sign all {\bf consensus messages} (or messages of the consensus type),\index{consensus messages}
     which are messages broadcasted (or received from other nodes and relayed) to the other nodes, and which 
     contain votes, proposals or bundles.
+    In particular, private participation and VRF keys are stored in the node (not their spending keys).
+    
     In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
     with a valid participation root public key and at least one valid subkey and one valid ephemeral key.
     %(generated through the goal addpartkey command).
 
-    To achieve forward security (\cite{Gunther:1990}), they are organized in a tree scheme, as follows.
-    Consider a two level tree structure, with a root node, 
-      $n$ tree nodes in the first level and 
-      $n*k$ tree nodes in the second level, 
-      where each node holds a 32 byte string representing a type of public participation key. 
-    In the case of first level nodes, they also keep a signature of the public subkey concatenated with 
-      a corresponding batch index $0 \leq i \leq n$,
-      using a $\mathsf{Sign}(.)$ procedure with the private root participation key.
-    In the case of leaf nodes, they also keep a signature of the public ephemeral key concatenated 
-      with its round of validity, using the parent private subkey.
-    Previous to online account registration, a user issues a command to the participation node prompting 
-      generation of a root participation key, a batch of subkeys of size $n$, and a sub-batch of ephemeral 
-      participation keys of size $k$.
-    Then, the root node of the tree holds the root participation key, the first level nodes hold the $n$ sub-keys
-      (signed by the root key), and the first node in the first level is the parent branch of $k$ nodes holding
-      ephemeral participation keys, signed by the parent branch sub-key, as leaves.
-    These leaf key pairs are considered ephemeral because they are by design valid for one round only and are 
-      deleted when their one round validity interval has passed.
-    The private root participation key is deleted after signing all sub-batches during key generation,
-      and each one of the sub-keys private counterparts will be deleted after computation and signature of 
-      each ephemeral batch.
-    Once a batch has run out (when reaching round $r^\prime$, where the round of validity for the last key in 
-      the batch is $r^\prime - 1$), the tree is pruned; their parent branch is deleted, and a new batch of $k$
-      ephemerals is generated for the next subkey in the tree.
-    
-    When signing messages for consensus in round $r$, the next available computed ephemeral leaf key is used.
-    When verifying this signature, a node will verify the signature of the message against the public ephemeral key, 
-    then verify the signature of the ephemeral key itself by the master sub-key, and finally verify this sub-key's
-    signature using the root participation key.
-    % The participation keys tree is kept up to date by a key deletion thread that runs in parallel constantly.
-
-     GRAFICO ORDENAR PENSandDO EN COMO SE GENERAN LAS KEYS, COMO SE FIRMA Y COMO SE VERIFICA, Y COMO SE DESCARTAN.
-
-    The batch size $k$ is passed as a field in the key generation command line interface call named 
-    $keyDillution$, an unsigned 64-bit integer which defaults to the square root of the round range 
-    (rounded down to the nearest integer) when not specified, e.g. for a 3 million round range a $1712$ 
-    batch of subkeys is generated,  along with a first sub-batch of $1712$ ephemeral keys.
-    In order to change an account status from offline to online, a ``keyreg'' transaction needs the 
-    root public participation key as a valid field in order to succeed.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
@@ -501,7 +536,7 @@ where
     $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed vote} and 
     {\sf equivocation votes}\index{equivocation vote} in the current execution state
     $(r,p,s)$. It is initialized as the empty set $V=\emptyset$; during execution 
-    votes may be added and it may be emptied.
+    votes may be added, and the set emptied.
     
     \item
     $\mathsf{P}$ is the set of all valid {\sf observed proposals}\index{observed proposals}
@@ -531,12 +566,12 @@ where
         the public VRF key (selection key),
         a public participation key, 
         a set of public batch participation keys, 
-        and a set of public sub-batch ephemeral keys.
+        and a set of public sub-batch ephemeral keys (and the first and last valid round for each key).
         In the rest of this work, we represent the balance table as a two-dimensional mapping where the
         first coordinate is the round for which we want account data (excluding rounds in the future; that
         is for all $0 \leq r\prime \leq r$ at any given moment)
         and the second coordinate is the address of the specific account.
-        This mapping makes all historical information accesible. Implementations usually cache certain past
+        This mapping makes all historical information accessible. Implementations usually cache certain past
         values for performance, but in general historical data for a round $r\prime = r-k$ with $k>0$ and all 
         existing accounts is available by traversing the ledger in reverse order and undoing all changes outlined 
         in the last $k$ blocks.
@@ -551,13 +586,14 @@ where
     transactions $(txn_k)$ (indexed by the signing account's key $k$), either
     sent by accounts that are managed by the node itself or obtained from the network 
     (broadcast by other nodes).
-    It supports \marginpar{Esto no se entiende bien}
-      a $\mathsf{head(.)}$ function to get the next element to unqueue, 
-      an $\mathsf{iterator}(.)$ helper function to construct, return an iterator into the queue, and 
+    It supports
+      a $\mathsf{head(\cdot)}$ function to get the next element to unqueue, 
+      an $\mathsf{iterator}(\cdot)$ helper function to construct, return an iterator into the queue, and 
       be able to retrieve all queued elements in priority order.
-    It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset from a block $e$
-    and correctly unqueues all transactions included in the intersection $e_{payset} \cap TP$, and then
-    drops all elements that have been invalidated by round advancement.\marginpar{No lo entiendo bien}
+    It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset\index{payset}
+    (i.e., the list of all transactions) from a block $e$ and correctly unqueues all transactions 
+    included in the intersection $e_{payset} \cap TP$, and then drops all elements that have been 
+    invalidated by round advancement.
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -633,24 +669,25 @@ header and a body. The block header holds the following data.
     The genesis identifier and genesis hash for the block.
     
     \item
-    The upgrade vote, which results in the new upgrade state.\index{upgrade state}\marginpar{que es esto} 
-    The block also duplicates the upgrade state of the state it transitions into.
+    The upgrade vote. This is a placeholder that may be used to upgrade
+    protocol versions. Its use is not implemented nor described in the
+    literature.
     
     \item
     A timestamp defined by the proposer of the block (e.g., from the node's clock). 
     To be valid, a timestamp must be greater than the timestamp of the last block and 
-    must not be more than 25 seconds away from said time.\marginpar{que pasa si t1>t0+25 ?}
+    cannot be more than 25 seconds away from said time.
     
     \item
     A seed.
     
     \item
-    The block's reward updates, which results in the new reward state. The
-    block also duplicates the reward state of the state it transitions into.\marginpar{que es esto?}
-    
+    The reward updates for the current block. This has been discontinued.
+
     \item
-    A pair of cryptographic vector commitments to the block's transaction sequence,\marginpar{como se calcula esto?}
-    one computed using SHA512/256 hash function and a second one using (the older) 
+    A pair of cryptographic vector commitments to the block's transaction sequence,
+    i.e., this is a hash for the root of the Merkle tree that encodes all the 
+    tranasctions, one computed using SHA512/256 hash function and a second one using (the older) 
     SHA256 hash function. This may be useful for compatibility with systems where SHA512/256 
     is not supported.
     
@@ -757,10 +794,10 @@ Let
   $vt^\prime=\mathsf{Vote}(I^\prime, r^\prime, p^\prime, s^\prime, v^\prime, cred^\prime)$ be a pair of votes.
 An {\sf equivocation vote}\index{equivocation vote} happens 
 if all but the proposal values agree, i.e., $I=I^\prime$, $r=r^\prime$, $p=p^\prime$,
-$s=s^\prime$, $v\neq v^\prime$ and $cred=cred^\prime$.\marginpar{Tiene sentido que coincidan los I y los cred??}
+$s=s^\prime$, $v\neq v^\prime$ and $cred=cred^\prime$.
 An equivocation vote is valid if both of its constituent votes are valid.
-It is important to keep in mind that nodes are forbidden from equivocating 
-on any steps $s \neq soft$.\marginpar{What does this mean? How do nodes enforce this?}
+According to engineering specifications, nodes cannot equivocate on any steps $s \neq soft$
+(although this is may not be enforced by the reference implementation).
 
 % bundle
 A {\sf bundle}\index{bundle} is a set of votes $\mathsf{Bundle}(r,p,s,v)$ such that for any pair of distinct values 
