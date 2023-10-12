@@ -146,27 +146,31 @@ Actually, Algorand protocol establishes two kinds of nodes:
 Relay nodes are responsible for relaying messages coming from other relay nodes
 and the messages they receive from participation nodes. 
 A relay node will queue (multiplex) both kinds of messages.\marginpar{meter grafico generado por Gero}
-Relay nodes also keep a complete copy of the ledger and 
-do not participate in consensus; they also run a service 
-answering to participation nodes about this data and 
-updating this data on block confirmation.\marginpar{sabemos algo de como funciona esto??}
-Relay nodes are permissioned. They must be {\em whitelisted} by 
-Algorand Foundation and this whitelist is hardcoded into the source 
-code of participation and relay nodes.
+Relay nodes also keep a complete copy of the ledger, updating it
+on block confirmation, and run a service answering to participation 
+queries about the ledger.\marginpar{sabemos algo de como funciona esto??}
+They are permissioned: they are {\em whitelisted} by Algorand Inc.
+and this whitelist is hardcoded into the source code of both kinds
+of nodes.
+Relay nodes do not participate in consensus.
 We shall not go in further detail about relay nodes.
 
-Each participation node may connect to one relay node: their addresses and keys
-are hardcoded into the code of participation nodes (a list of the public key's 
-hashes is included in the code).
-A participation node service runs the following.
+Participation nodes receive transactions from clients, generate and vote for blocks, and when these
+blocks are accepted, they record the changes.
+Each participation node may connect to one or more relay nodes: 
+their addresses and keys are hardcoded into the code of participation 
+nodes (a list of the public key's hashes is included in the code).
+
+A participation node runs the following services.
 \begin{itemize}
     \item A timer which may receive a $\mathsf{reset()}$ order or a $\mathsf{time()}$
         order. It will record the current time when reset is called (e.g., by querying
         the OS where the node runs) and will report the elapsed time since the last reset
         in the latter case.
-    \item A transaction pool that receive signed transactions from Algorand addresses.
-    \item An Algorand Virtual Machine (AVM for short), which can process TEAL bytecode
-        from applications or attached to smart signatures (see \ref{sect:avm} for more details). 
+    \item A transaction pool service (described below).
+    \item An Algorand Virtual Machine (AVM for short), which can process bytecode
+        from applications or attached to smart signatures upon receiving transactions
+        (see \ref{sect:avm} for more details). 
     \item A p2p and a websocket network interface.
     \item Ledger and balances (see Sect.~\ref{}).\marginpar{ver bien donde y como explicamos este componente}
     \item An implementation of the consensus algorithm, with a player state machine module and
@@ -176,42 +180,47 @@ A participation node service runs the following.
 
 Participation nodes are non-archival in nature, meaning they do not keep\index{archival node}\index{non-archival node}
 the whole ledger in memory at all times. 
-At the time of this writing, participation nodes keep the latest 1,000 blocks.
+At the time of this writing, participation nodes keep data for the latest 1,000 blocks.
 Any queries that require nonavailable data are made through the relay node 
 they are connected to.
 
-Basically, the transaction pool receives transactions\marginpar{Pensemos 
-que parte de esto es AssembleBlock()? Me hace ruido q en assemble block dice que prioriza x fee}
-from clients (see Sect.~\ref{sect:cliandkeys}) and keeps them in the order as they are 
-received, it allows the AVM to poll this pool, receiving one transaction at a time in
-the order they are received. 
-The pool size is limited, e.g, the node will keep the first 1,000 transactions it receives 
+%once consensus accepted a block proposal, it needs to run all transactions again
+%but now modifies the ledger and balances. \marginpar{lo deberiamos bajar a la sect MAIN}
+% ----------------------------------------------------------------------------------------------
+\begin{subsubsection}{The Transaction Pool}\label{sect:transaction-pool}
+The node actually implements two queues for the transaction pool service. 
+At the start of a round, the node receives unconfirmed transactions (see Sect.~\ref{sect:cli}) 
+from relay nodes or via the node's websocket from accounts managed by this node
+and sends them to a priority queue.
+The queue size is limited, e.g, the node will keep the first 1,000 transactions it receives 
 and ignore the rest\footnote{Actually, if this limit is reached, then the node will prioritize
 transactions according to the fees they pay and may thus allow to newer transactions and 
-drop some of the older ones.}.
-These transactions are processed by the node as follows.
-\begin{itemize}
-    \item The node records the transactions as they arrive in an ordered list\footnote{Note
-        however that this is how the reference implementation works, however neither the implementation
-        nor the protocol will enforce an order, so that a node could order transactions arbitrarily 
-        into a new block and the block would not be rejected during voting.}.
-    \item The node verifies the signature of the transaction (i.e., the transaction has an 
-        address as its source, this address also identifies a public key that may be used to 
-        verify the signature); if it is a logicsig, it is verified; if it is an app call, then
-        the run is simulated.
-    \item At some point, the node starts assembling the block. It will now rerun all transactions
-        (but no logicsigs) the transaction is interpreted by the AVM. It will either succeed or
-        fail. If it succeeds, it may alter the ledger and balances for the next block. These 
-        changes are recorded. Changes to the balances and ledger are temporary recorded and
-        checked for inconsistencies (e.g., local to the block creation)
-    \item Once a timeout is reached, the node will collect all the changes into a block 
-        proposal. 
-\end{itemize}
+drop some of the older ones. Note  however that this is how the reference implementation 
+works, however neither the implementation nor the protocol will enforce an order, so that 
+a node could order transactions arbitrarily into a new block and the block would not be 
+rejected during voting.} 
 
-During consensus, a node that receives a block proposal it will validate same as above.
+As transactions are put into this priority queue, they are checked, and they are either 
+rejected or enqueued into the transaction pool. The check includes 
+validating if the distance between the round the node is in and the round included in 
+the transaction are not further than a threshold, 
+verifying their signature (if the transaction is signed by a single account),
+asking the AVM to verify a smart signature/logicsig if that is the case,
+and if this were an application call, then asking the AVM to simulate the
+transaction. Any transaction not passing this check is marked as invalidated.
+    
+The transaction pool is now ready to be called by the block assembly procedure. 
+It supports the following functions.
+  a $\mathsf{head(\cdot)}$ function to get the next element to unqueue, 
+  an $\mathsf{iterator}(\cdot)$ helper function which returns an iterator into the queue, and 
+  is able to retrieve all queued elements in priority order.
+It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset\index{payset}
+(i.e., the list of all transactions) from a block $e$ and correctly unqueues all transactions 
+included in the intersection $e_{payset} \cap TP$, and then drops all elements that have been 
+invalidated by round advancement (e.g., transactions have a validity range).
 
-Once consensus accepted a block proposal, it needs to run all transactions again
-but now modifies the ledger and balances. \marginpar{lo deberiamos bajar a la sect MAIN}
+\end{subsubsection}
+
 \end{subsection}    
 % ---------------------------------------------------------------------    
 \begin{subsection}{Network}\label{sect:network}
@@ -237,7 +246,7 @@ register in at most one participation node, this is not enforced.
 % ------------------------------------------------------------------------
 \begin{subsection}{Accounts}\label{sect:accounts}
 An Algorand account is a protocol entity represented by a 58-bytes address
-associated to a signing public key (see Section~\ref{sect:cliandkeys} for
+associated to a signing public key (see Section~\ref{sect:keys} for
 details with cryptographic algorithms and keys).
 For example, a user may generate a signing key pair and derive the address
 from the public key. On the other hand, when a contact is deployed, it is
@@ -252,7 +261,7 @@ An account need not register to a node in order to send transactions.
 Accounts are managed by participation nodes. Accounts should be registered in at least one participation
 node only, however this is not enforced.
 In order for an account to participate in consensus, it needs to switch its status to ``online''
-(see Sect.~\ref{sect:cliandkeys}). 
+(see Sect.~\ref{sect:cli}). 
 That is achieved by sending a special {\tt keyreg} transaction,\index{{\tt keyreg} transaction}
 which registers a participation key for the account.% and creates a two-level ephemeral key tree.
 %It is important to note that the registered account will only start participating in consensus
@@ -263,14 +272,14 @@ which registers a participation key for the account.% and creates a two-level ep
 For convenience, we assume that each participation node maintains a list 
 of the registered accounts, plus access to all updated balance records for 
 the accounts it manages which are flagged as online and have a valid 
-participation key and VRF key registered on this node (see Sect.~\ref{sect:cliandkeys}
+participation key and VRF key registered on this node (see Sect.~\ref{sect:cli}
 for more details).
 This array is named $A$ from now on, and each entry $a\in A$ has an account address 
 $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
 
 \end{subsection}
 % ------------------------------------------------------------------------
-\begin{subsection}{User Interface and Cryptrographic Algorithms}\label{sect:cliandkeys}
+\begin{subsection}{Client API and Interface}\label{sect:cli}
     Algorand distributes a command-line interface (CLI) called GOAL\footnote{https://developer.algorand.org/docs/clis/goal/goal/} 
     that allows users to interact with the protocol. The CLI supports a series of commands 
     that allow users to generate  wallets, keys, sing and send transactions to 
@@ -315,7 +324,12 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
 
     The CLI also has a minimum fee function, that when queried returns a suggested fee 
     to pay. This is basically constant, and only grows in the case of congestion.
-    {\centering * * *\par}
+
+
+
+\end{subsection}
+% ------------------------------------------------------------------------
+\begin{subsection}{Cryptrographic Algorithms}\label{sect:keys}
 
     Algorand protocols make use of two hash functions of the SHA-2 family
     as defined in \cite{NIST.FIPS.180-4}: SHA256 and SHA512/256.
@@ -409,28 +423,28 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     \begin{itemize}
         \item uses the root public key $pub_r$ which can be retrieved from the account's balance to 
     validate the last signature
-        $$\mathsf{Verify}(
+        $\mathsf{Verify}(
             pub_r,
             m^{\prime\prime},
             s^{\prime\prime}
             ).
-        $$
+        $
     \item If the validation passes, $m^{\prime\prime}$ is assumed to be a batch public key and used
         to validate an ephemeral key:
-        $$\mathsf{Verify}(
+        $\mathsf{Verify}(
             m^{\prime\prime},
             m^\prime,
             s^\prime 
         ).
-        $$
+        $
         \item If the validation passes, $m^\prime$ is assumed to be an ephemeral public key and used
         to validate the message:
-        $$\mathsf{Verify}(
+        $\mathsf{Verify}(
             m^{\prime\prime},
             m,
             s 
         ).
-        $$
+        $
         \item Once this happens, the ephemeral key is recorded as used and cannot be reused.
     \end{itemize}
     
@@ -440,17 +454,9 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     contain votes, proposals or bundles.
     In particular, private participation and VRF keys are stored in the node (not their spending keys).
     
-    In order to participate in consensus on round $r$, an account needs to have an entry in the $\mathsf{BT}$ 
-    with a valid participation root public key and at least one valid subkey and one valid ephemeral key.
-    %(generated through the goal addpartkey command).
-
-
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
 Selection keys used for committee membership selection and verification (see Sections \ref{}).\marginpar{add labels}
-Private selection keys are kept secret by the node, while public selection keys are kept inside 
-account records (in the $\mathsf{BT}$).
-They are created and registered on a CLI key generation call, after participation key generation.
 VRF keys are needed in order for an account to vote, as they will be
 used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
 More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
@@ -460,9 +466,6 @@ key generation functions.
     In the following work, these cryptographic functions are abstracted as $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$, $\mathsf{VRF_{generate}}(.)$
     and the helper function $\mathsf{VRF_{proofToHash}}(.)$.
     Refer to the provided repository for implementation details.
-
-    Participation (root, subkey and ephemeral) private keys and VRF private keys for a given account are kept as secrets by the node
-    in which the account registered to participate in consensus.
 
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/vrf.go
 
@@ -476,9 +479,6 @@ key generation functions.
     in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
     \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
 
-
-    Hablar de logicsigs y smart signatures, multisigs etc.
-
 \end{subsection}
 % --------------------------------------------------------------------------------------
 \begin{subsection}{The Algorand Virtual Machine}\label{sect:avm}
@@ -491,25 +491,38 @@ key generation functions.
     contents of the transactions.''} From \href{https://developer.algorand.org/docs/get-details/dapps/avm/}{Algorand.org}
     \end{quote}
     
-The AVM receives signed transactions that may or may not alter the 
-state of the blockchain and interprets TEAL, or the Transaction Execution 
+The AVM receives transactions that may or may not alter the state of the blockchain 
+and interprets TEAL, or the Transaction Execution\index{TEAL} 
 Approval Language, an assembly-like language designed by Algorand 
-for the blockchain.
+for the blockchain. Currently, TEAL is at version 10; opcodes are
+published \href{https://developer.algorand.org/docs/get-details/dapps/avm/teal/opcodes/}{here}. 
 
-It is a stack based machine and constitutes a safe isolated environment.
+The AVM may verify what Algorand calls stateless contracts, smart signatures or 
+logicsigs, which includes code which does not change the state and evaluates to 
+true or false.
+These stateless contracts will typically require 2 or more accounts to sign,
+or may be valid only in a given timeframe, or even evaluate more complicated
+predicates.
+
+The AVM may be called through the transaction pool to evaluate a smart signature, in
+which case it evaluates the code returning True or False.
+It may also be called to simulate an application call, in which case it simply executes
+the instructions but without altering the state (ledger, balances, etc).
+
+If it is called through the block assembly algorithm, then it executes the code
+and records changes to ledger and balances, which will be made only after block
+confirmation.
+
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
-\begin{subsection}{Node as a State Machine}
+\begin{subsection}{Node as a State Machine}\label{sect:state-machine}
 A participation node can be modeled as a state machine in its involvement in the consensus 
-protocol.
+protocol, i.e., each time Algorithm~\ref{algo:main} is called, either becasue of a time
+event or a message event, a procedure is called and this causes the state of the node
+to change.
 In this section we will define all primitives and data structures necessary to define the state
-of a node; the rest of the work will be spent on describing the rules and interrelations that
-make nodes transition from and into different states.
-
-In order to participate in the consensus, an account needs to be online and this requires
-registering to a participation node. 
-A participation node takes care of voting for all the online accounts registered to it.
+of a node.
 
 The {\sf state of a node}\index{state of a node} is defined as follows. 
 $$
@@ -519,9 +532,7 @@ where
 \begin{itemize}
     \item 
     $r\in\mathbb{Z}_{\ge 0}$ is the current {\sf round} and recorded as a 64-bits integer. \index{round}
-    The round variable start as $r=0$, when the genesis block is generated. The round and other
-    execution state parameters (p and s) change during protocol execution, they are either increased
-    or reset, by the Algorithms \ref{algo:main}, \ref{algo:start-new-round} and \ref{algo:start-new-period}.
+    The round variable start as $r=0$, when the genesis block is generated. 
     
     \item 
     $p\in\mathbb{Z}_{\ge 0}$ is the current {\sf period} within the round and recorded as \index{period}
@@ -531,12 +542,15 @@ where
     $s\in\mathbb{Z}, 0\le s\le 256$ is the current {\sf step} within the round\index{step} 
     and recorded as a 64-bits integer. When the round starts, $s$ is set to 0 ($s=0$). 
     We often use the labels of Table \ref{table:s} to identify step numbers.
+    The round, period and step parameters change during protocol execution, they are 
+    either increased by one or reset, by the Algorithms \ref{algo:main}, \ref{algo:start-new-round} 
+    and \ref{algo:start-new-period}.
     
     \item
     $\mathsf{V}$ is the set of all valid {\sf observed votes}\index{observed vote} and 
     {\sf equivocation votes}\index{equivocation vote} in the current execution state
-    $(r,p,s)$. It is initialized as the empty set $V=\emptyset$; during execution 
-    votes may be added, and the set emptied.
+    $(r,p,s)$. It is initialized as the empty set $V=\emptyset$, and during execution
+    either votes are added or the set is reemptied.
     
     \item
     $\mathsf{P}$ is the set of all valid {\sf observed proposals}\index{observed proposals}
@@ -554,46 +568,10 @@ where
     record some round parameters as described below.
     
     \item
-    $\mathsf{BT}$ is the current balance table \index{balance table} that includes 
-      the ALGO owned by each account, 
-      the ASA owned by each account (when an account opts-in to an ASA, an entry is created within his records for
-        this ASA--and he must have a minimum balance for this to happen),
-      the local storage for all the applications that the account has opted in (same as above, he needs a minumum
-        ALGO balance for this),
-      the global storage for this account--in case it belongs to a smart contract,
-      the consensus participation status of this account (e.g., if this account is online and voting or not),
-      in case the account is online and voting, it also includes
-        the public VRF key (selection key),
-        a public participation key, 
-        a set of public batch participation keys, 
-        and a set of public sub-batch ephemeral keys (and the first and last valid round for each key).
-        In the rest of this work, we represent the balance table as a two-dimensional mapping where the
-        first coordinate is the round for which we want account data (excluding rounds in the future; that
-        is for all $0 \leq r\prime \leq r$ at any given moment)
-        and the second coordinate is the address of the specific account.
-        This mapping makes all historical information accessible. Implementations usually cache certain past
-        values for performance, but in general historical data for a round $r\prime = r-k$ with $k>0$ and all 
-        existing accounts is available by traversing the ledger in reverse order and undoing all changes outlined 
-        in the last $k$ blocks.
-        For completeness, given an address $I$ for an account that does not exist as of round $r$,
-        $\mathsf{BT}[r][I] = \bot$.
-        % (0,\emptyset,\emptyset,\emptyset,0,...)$, 
-        % a valid empty record for account $I$. 
-        % created ad-hoc, while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
+    $\mathsf{BT}$ is the current balance table \index{balance table} described below.
 
     \item
-    $\mathsf{TP}$ is the transaction pool for the node, represented as a priority queue of unconfirmed
-    transactions $(txn_k)$ (indexed by the signing account's key $k$), either
-    sent by accounts that are managed by the node itself or obtained from the network 
-    (broadcast by other nodes).
-    It supports
-      a $\mathsf{head(\cdot)}$ function to get the next element to unqueue, 
-      an $\mathsf{iterator}(\cdot)$ helper function to construct, return an iterator into the queue, and 
-      be able to retrieve all queued elements in priority order.
-    It also supports an $\mathsf{UpdateTP}(TP,e)$ procedure, which takes a valid payset\index{payset}
-    (i.e., the list of all transactions) from a block $e$ and correctly unqueues all transactions 
-    included in the intersection $e_{payset} \cap TP$, and then drops all elements that have been 
-    invalidated by round advancement.
+    $\mathsf{TP}$ is the transaction pool for the node (see~\ref{}).
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -618,23 +596,25 @@ For convenience and readability, we define the following step name - step enumer
 \right.
 \end{equation}
 
-% ledger
-A Ledger$\mathsf{L}$  is identified by a string called the genesis identifier and 
-the hash of the genesis string --that cryptographically commits to the starting state of the ledger--,
-and a sequence of ledger states, which are defined as follows. With each round, a new 
-state is represented by the following items.
-\begin{itemize}
-    \item A genesis identifier and genesis hash, unambiguously defining the ledger 
-        to which the state belongs.
-    \item A protocol version\index{protocol version} and update state.\marginpar{What do you mean by update state?}
-    \item A timestamp (in milliseconds), identifying the time elapsed between the genesis block proposal 
-        and the block for round $r$ proposal.
-    \item A 64-byte seed, source of randomness for the consensus algorithm.\marginpar{Esto es $\pi_\mathrm{seed}$}
-    \item The current reward state, which describes the policy at which incentives
-        are distributed to participants.
-    \item The current box state, which holds mappings from (app id, name) tuples
-        to box contents of arbitrary bytes.
-\end{itemize}
+%balance table
+The balance table $BT$ allows the node to query and insert values into a set of maps representing
+      the ALGO owned by each account, 
+      the ASA owned by each account (when an account opts-in to an ASA, an entry is created within his records for
+        this ASA--and he must have a minimum balance for this to happen),
+      the local storage for all the applications that the account has opted in (same as above, he needs a minimum
+        ALGO balance for this),
+      the global storage for this account--in case it belongs to an application,
+      the consensus participation status of this account (if this is a user account, e.g., if this account 
+        is online and voting or not),
+      in case the account is online and voting, it also includes the selection and participation keys for
+        the account (see Sect.~\ref{sect:keys}).
+        For completeness, given an address $I$ for an account that does not exist as of round $r$,
+        $\mathsf{BT}[r][I] = \bot$.
+        % (0,\emptyset,\emptyset,\emptyset,0,...)$, 
+        % a valid empty record for account $I$. 
+        % created ad-hoc, while $\mathsf{BT}[r-k][I] = \bot, \forall k>0$.
+Once a block is accepted, the node will update the balance table according to block instructions.
+
 
 % balance
 %Redefinicion de lo de arriba. TODO: doble-check de que no falte nada arriba que se menciona aca
@@ -655,6 +635,27 @@ state is represented by the following items.
 % Note that past account states are always computable by iterating over the Ledger
 % sequence of blocks and reverting transaction updates. Internally however, certain
 % past records might be cached and maintained to improve performance.
+
+
+% ledger
+The Ledger$\mathsf{L}$, identified by a string called the genesis identifier and 
+the hash of the genesis string, keeps record of the ledger states.
+It records and allows querying a sequence of ledger states on each round
+including the following items.
+\begin{itemize}
+    \item A genesis identifier and genesis hash, unambiguously defining the ledger 
+        to which the state belongs.
+    \item A protocol version\index{protocol version} and update state.\marginpar{What do you mean by update state?}
+    \item A timestamp (in milliseconds), identifying the time elapsed between the genesis block proposal 
+        and the block for round $r$ proposal.
+    \item A 64-byte seed, source of randomness for the consensus algorithm.\marginpar{Esto es $\pi_\mathrm{seed}$}
+    \item The current reward state, which describes the policy at which incentives
+        are distributed to participants.
+    \item The current box state, which holds mappings from (app id, name) tuples
+        to box contents of arbitrary bytes.
+\end{itemize}
+Once a block is accepted, the node will record a new ledger state.
+
 
 % block
 A {\sf block} $e$ is associated to each state and represented by a 
@@ -836,7 +837,8 @@ possible subsets with the required properties of a valid bundle.
     The node keeps some values in memory or storage. In particular the 
     timer, which we assume is now at $timer=0$,
     a round number $r\in\mathbb{Z}_{\ge 0}$, 
-    a step $s:=0\in\mathbb{Z}_{\ge 0}$,
+    a step $s:=
+    Table~\ref{table:s}=0\in\mathbb{Z}_{\ge 0}$ (see Table~\ref{table:s}),
     a period $p:=0\in\mathbb{Z}_{\ge 0}$, 
     a last finished step $\bar{s}:=0\in\mathbb{Z}_{\ge 0}$, and 
     a pinned vote $v:=\bot$.
@@ -876,12 +878,9 @@ possible subsets with the required properties of a valid bundle.
     % timer = 0
     % event handler
     % As the main algorithm runs, it checks the timer and since the condition $timer=0$ holds,
-    As the main algorithm starts a round, it receives a self message with $timer=0$.
-    Then the algorithm calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
-    
-    
-    
-    The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to the main loop. Said loop
+    As the main algorithm starts a round, it is called with the event $timer=0$ and
+    calls the Block Proposal Algorithm (Algorithm~\ref{algo:block-proposal}).
+    The $\mathsf{BlockProposal}()$ algorithm runs, moving directly to a loop in which it
     iterates over all the accounts that are registered in the node.
     
     %adp
@@ -930,16 +929,14 @@ possible subsets with the required properties of a valid bundle.
     
     %
     % sortition
-    
-    For each account $a$, the node runs $\mathsf{Sortition}(a, proposal)$ (Algo.~\ref{algo:sortition}) 
-    which basically runs a Verifiable Random Function in order to decide whether this account 
-    can vote (by picking a random value) and provide a proof that the random value was generated according
-    to protocol.
+    For each account $a$, the node runs $\mathsf{Sortition}(a, \mathsf{proposal})$ (Algo.~\ref{algo:sortition}) 
+    which basically runs a Verifiable Random Function in order to decide whether 
+    this account is selected into the voting process (by picking a random value).
     % j>0
-    If sortition for a particular account returns the zero value, this means the account has
-    not been selected for block proposal. %block creation or voting,
-    If after running sortition for every online account managed by the node, no positive integer value is returned,
-    the algorithm exits and the node will no longer be a proposer in the proposal step.
+    If sortition returns the zero value, this means the account has not been selected for block proposal. 
+    If no account is selected, the algorithm exits and the node will no longer be a proposer in the proposal 
+    step.
+    %block creation or voting,
     %adp: el nodo sigue participando del round, solo que no propone
     %aw: pero como? Si no propone ni vota! Qué mas hay para hacer?
     %adp: en realidad se me habia pasado que decía block creation _or voting_, 
@@ -955,15 +952,15 @@ possible subsets with the required properties of a valid bundle.
         %va a participar en el sentido de que va a recibir proposal votes, va a hacer un filtering, va a recibir soft votes,
         %va a armar un soft bundle, va a recibir cert votes y va a armar un cert bundle. Cuando reciba la propuesta (bloque completo) ademas,
         %la va a reenviar ya que esto no depende de la pertenencia al comité.
-    When it is nonzero, the node participates in the proposal voting representing the account.
-    %En esta vanilla run, el period es siempre 0, asi que modifico la primera partecita para reflejar eso.
-    %If either the period is zero ($p=0$) or the node received a bundle $\mathsf{Bundle}(r,p-1,s,\bot)$
-    %for some number of steps $s\in\Z_{\ge 0}$, then
-    In a vanilla run scenario and at this point, the period is zero ($p=0$). 
-    The algorithm performs a block assembly (Algorithm \ref{algo:assemble-block}), 
-    sets $v$ as the proposal value obtained from the vote $e$ and does two separate 
-    broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ and $e$.
-    Also, we enter the ``soft vote'' step setting $s:=1$.
+    When at least one account gets selected, the node participates in the proposal voting representing 
+    the account and starts with block assembly (Algorithm \ref{algo:assemble-block}).
+    This procedure will traverse the transaction pool, calling the AVM and executing 
+    transactions one at a time, obtaining as a result a new block $e$. 
+    It will assemble a proposal $prop$ a vote proposal $v$,
+    set $v$ as the proposal value obtained from the vote $e$, 
+    and make two separate broadcasts for $\mathsf{Vote}(a_I, r,p, proposal, v, cred)$ 
+    and $e$.
+    Then, the main algorithm enters the ``soft vote'' step setting $s:=1$.
     
     
     % adp:
@@ -984,10 +981,10 @@ possible subsets with the required properties of a valid bundle.
     Then, the event handler runs $\mathsf{HandleProposal}(e^\prime)$ (Algorithm~\ref{algo:handle-proposal}).
     This algorithm receives the proposal $e^\prime$ and unpacks its contents,
     including the execution state $(r^\prime,p^\prime,s^\prime)$.
-    Per assumptions, we have that $r=r^\prime$ and $p=p^\prime=0$.
+    By assumption, we have that $r=r^\prime$ and $p=p^\prime=0$.
     The algorithm checks if the proposal is valid, calling $\mathsf{VerifyProposal}(v^\prime)$ 
     on $v^\prime=Proposal_{value}(e^\prime)$ (see Algorithm~\ref{algo:verify-proposal} for more details),
-    it also checks if periods differ ($p\neq p^\prime$), exiting if not. However, both checks pass per 
+    it also checks if periods differ ($p\neq p^\prime$), exiting if not. However, both checks pass by 
     the vanilla run assumptions.
     %Next it returns if any of the following conditions hold:
     %a) $v^\prime$ was observed in a soft bundle for the current context $(r,p)$ (EXPLICAR MEJOR),
@@ -1010,7 +1007,7 @@ possible subsets with the required properties of a valid bundle.
     It also exits if the vote received has already been recorded in the votes set $V$.
     If it is new, the node adds the vote to the votes set $V$ and broadcasts the vote 
     to other nodes.
-    Since nodes are synchronized, it holds that $vt_s=0=proposal$, the algorithm checks if 
+    Since nodes are synchronized, it holds that $vt_s=0=\mathsf{proposal}$, the algorithm checks if 
     $\mathsf{RetrieveProposal}(vt_v) \neq \bot$ and broadcasts this proposal if it is available, ignoring if it is not.
     %aw: a ver, entendamos que pasa aca: si estamos en el ppio, solo deberia agregar el voto a V y broadcastear. No?
     %adp: claro, si estamos en un vanilla run y estamos llamando al vote handler con un proposal vote (s=0), 
@@ -1043,7 +1040,7 @@ possible subsets with the required properties of a valid bundle.
     %ahi viene eso ultimo
     
     Until $timer\ge \mathsf{FilterTimeout}(p)$ the main algorithm will execute the above steps
-    whenever a vote or a proposal are received, always recording new events and this happens.
+    whenever a vote or a proposal are received.
     
     % timer = FilterTimeout(p)
     % main algorithm: soft vote
@@ -1137,9 +1134,8 @@ possible subsets with the required properties of a valid bundle.
 %
 % Broadcast(Bundle) = Event(type=bundle, data={v for v in Bundle}, sign=Signature(pk_sender, {v for v in Bundle}))
 
-The node is reactive. The main algorithm for the node, thus, starts when it receives 
-any input, it makes computations --probably modifying the state of the node-- and 
-may end by broadcasting data to other nodes.
+The consensus algorithm implements a service which can spawn processes depending on the 
+timer and on messages received.
 
 \begin{algorithm}[H]
     \caption{\underline{Main node algorithm}}
@@ -1809,7 +1805,7 @@ Otherwise, it falls back to $SHA256$.\\
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{$Address \ I$}
 
-    \State $Block \ b$ \\ \\
+    \State $Block \ e$ \\ \\
 
     //define block body, ordered set of signed transactions
     \State $it_{TP} := \mathsf{iterator}(TP_{head})$
@@ -1817,22 +1813,22 @@ Otherwise, it falls back to $SHA256$.\\
     %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
         \State $txn := \mathsf{next}(it_{TP})$
         \If{$\mathsf{TxnSetValid}(b_{payset}||txn)$}
-            \State $b_{payset} :=  b_{payset}||txn$ \\
+            \State $e_{payset} :=  e_{payset}||txn$ \\
         \EndIf
     \EndWhile
 
     //define block header
-    \State $b_{r} := r$
-    \State $b_{prevHash} := \mathsf{H}(\mathsf{L}[r-1])$
+    \State $e_{r} := r$
+    \State $e_{prevHash} := \mathsf{H}(\mathsf{L}[r-1])$
     
     \State $(Q, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
-    \State $b_{Q} := Q$
+    \State $e_{Q} := Q$
 
-    \State $b_{timestamp} := \mathsf{SYSTEM\_TIME}$ //timestamp in seconds since epoch
+    \State $e_{timestamp} := \mathsf{time}()$ //timestamp in seconds since epoch
 
-    \State $b_{GenesisID} := \mathsf{L}_{genesisID}$
+    \State $e_{GenesisID} := \mathsf{L}_{genesisID}$
 
-    \State $b_{GenesisHash} := \mathsf{H}(\mathsf{L}[0])$
+    \State $e_{GenesisHash} := \mathsf{H}(\mathsf{L}[0])$
 
     % //should we include reward state, update vote and update state?
 
@@ -1843,17 +1839,19 @@ Otherwise, it falls back to $SHA256$.\\
 
     % \State $b_{partUpdates} := \{a \in G \int G'\}$
 
-    \State $b_{txnCommitment} := \mathsf{root}(\mathsf{MerkleTree}(b_{payset}))$
+    \State $e_{txnCommitment} := \mathsf{root}(\mathsf{MerkleTree}(e_{payset}))$
 
-    \State \Return $(b, \pi_{seed})$
+    \State \Return $(e, \pi_{seed})$
 
     \EndFunction
     \end{algorithmic}
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
-Gets a set of transactions out of the transaction pool (prioritizing the highest transaction fee if there were any).
-Then, assembles a full ledger entry, setting all the appropriate fields in a block.
+This function will run until it times out or there are no more transactions to 
+process in the transaction pool. It will call the AVM to process them all, 
+record the changes that need to happen, assemble the block as described in
+Section~\ref{sect:state-machine} and exits.
 
 % ----------------------------------------------------------------------------------------------
 
