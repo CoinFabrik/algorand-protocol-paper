@@ -194,8 +194,8 @@ from relay nodes or via the node's websocket from accounts managed by this node
 and sends them to a priority queue.
 The queue size is limited, e.g, the node will keep the first 1,000 transactions it receives 
 and ignore the rest\footnote{Actually, if this limit is reached, then the node will prioritize
-transactions according to the fees they pay and may thus allow to newer transactions and 
-drop some of the older ones. Note  however that this is how the reference implementation 
+transactions according to the fees they pay and may thus allow for newer transactions and 
+drop some of the older ones. Note that this is how the reference implementation 
 works, however neither the implementation nor the protocol will enforce an order, so that 
 a node could order transactions arbitrarily into a new block and the block would not be 
 rejected during voting.} 
@@ -1745,8 +1745,8 @@ from equivocating in $next$ votes.
     \caption{\underline{FilterTimeout}}
     \label{algo:filter-timeout}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{FilterTimeout}$}{$uint64 \ p$}
-        \If{$p = 0$}
+    \Function{$\mathsf{FilterTimeout}$}{$uint64 \ p^\prime$}
+        \If{$p^\prime = 0$}
             \State \Return $2\lambda_0$
         \Else 
             \State \Return $2\lambda$
@@ -1757,18 +1757,18 @@ from equivocating in $next$ votes.
 
 \noindent \textbf{Arguments:}
 \begin{itemize}
-    \item $uint64 \ p$ is a period number.
+    \item $uint64 \ p^\prime$ is a period number.
   \end{itemize}
 
 \noindent \textbf{Description:}\\
-The function $\mathsf{FilterTimeout}(\;)$\index{$\mathsf{FilterTimeout}(\;)$} provides the timeout 
+The function $\mathsf{FilterTimeout}(.)$\index{$\mathsf{FilterTimeout}(\;)$} provides the timeout 
 constant for the filtering (i.e., ``soft'' or ``soft vote'') stage.
 This timeout depends on the period value; the first period has a special, faster timeout.
 If no consensus was achieved, this timeout constant is relaxed in all subsequent periods.\\ 
 
 \noindent \textbf{Returns:}\\
 The time constant used to trigger the filtering stage (according to whether the given
-    period $p$ is the first period of the current round or not).
+    period $p^\prime$ is the first period of the current round or not).
 
 % ----------------------------------------------------------------------------------------------
 
@@ -1805,9 +1805,9 @@ Otherwise, it falls back to $SHA256$.\\
     \begin{algorithmic}[1]
     \Function{$\mathsf{AssembleBlock}$}{$Address \ I$}
 
-    \State $Block \ e$ \\ \\
+    \State $Block \ e$
 
-    //define block body, ordered set of signed transactions
+    \State //define block body, ordered set of signed transactions
     \State $it_{TP} := \mathsf{iterator}(TP_{head})$
     \While{$\mathsf{Time}() < \mathsf{Deadline} \land \mathsf{hasNext}(it_{TP})$}
     %https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/pools/transactionPool.go#L820
@@ -1819,16 +1819,16 @@ Otherwise, it falls back to $SHA256$.\\
 
     //define block header
     \State $e_{r} := r$
-    \State $e_{prevHash} := \mathsf{H}(\mathsf{L}[r-1])$
+    \State $e_{prevHash} := \mathsf{H(PrevBlock())}$
     
     \State $(Q, \pi_{seed}) := \mathsf{ComputeSeedAndProof}(I)$
     \State $e_{Q} := Q$
 
     \State $e_{timestamp} := \mathsf{time}()$ //timestamp in seconds since epoch
 
-    \State $e_{GenesisID} := \mathsf{L}_{genesisID}$
+    \State $e_{GenesisID} := \mathsf{PrevBlock()_{GenesisID}}$%\mathsf{L}_{genesisID}$
 
-    \State $e_{GenesisHash} := \mathsf{H}(\mathsf{L}[0])$
+    \State $e_{GenesisHash} := \mathsf{PrevBlock()_{GenesisHash}}$ %\mathsf{H}(\mathsf{L}[0])$
 
     % //should we include reward state, update vote and update state?
 
@@ -1848,6 +1848,10 @@ Otherwise, it falls back to $SHA256$.\\
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+The $\mathsf{PrevBlock()}$ function used in block assembly is a helper function that,
+accesses the Ledger $L$ of the node, and returns the last block committed. That is, 
+$\mathsf{PrevBlock()} \equiv L[r-1]$
+
 This function will run until it times out or there are no more transactions to 
 process in the transaction pool. It will call the AVM to process them all, 
 record the changes that need to happen, assemble the block as described in
@@ -1860,6 +1864,10 @@ Section~\ref{sect:state-machine} and exits.
     \label{algo:verify-block}
     \begin{algorithmic}[1]
     \Function{$\mathsf{VerifyBlock}$}{$Block \ b, \pi_{seed}, p_{orig}, I_{orig}$}
+
+    \State //Header pre-validation
+    \If{$b_r \neq \mathsf{PrevBlock()}_r+1$} \Return $\mathsf{False}$
+    \EndIf \\
 
     % //define block body
     % \State $b.body := TP[-s]$ \\ \\
@@ -2357,7 +2365,7 @@ its entry off of the available peer list, and the content of the message is igno
     \caption{\underline{Resynchronization Attempt}}
     \label{algo:resynchronization-attempt}
     \begin{algorithmic}[1]
-    \Function{$\mathsf{ResynchronizationAttempt}$}{\; }
+    \Function{$\mathsf{ResynchronizationAttempt}$}{\;}
 
     \State $Val = \bot$
 
