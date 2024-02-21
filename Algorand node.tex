@@ -147,10 +147,10 @@ Actually, Algorand protocol establishes two kinds of nodes:
 
 Relay nodes are responsible for relaying messages coming from other relay nodes
 and the messages they receive from participation nodes. 
-A relay node will queue (multiplex) both kinds of messages.\marginpar{meter grafico generado por Gero}
+A relay node will queue (multiplex) both kinds of messages.
 Relay nodes also keep a complete copy of the ledger, updating it
 on block confirmation, and run a service answering to participation 
-queries about the ledger.\marginpar{sabemos algo de como funciona esto??}
+queries about the ledger.
 They are permissioned: they are {\em whitelisted} by Algorand Inc.
 and this whitelist is hardcoded into the source code of both kinds
 of nodes.
@@ -174,7 +174,7 @@ A participation node runs the following services.
         from applications or attached to smart signatures upon receiving transactions
         (see \ref{sect:avm} for more details). 
     \item A p2p and a websocket network interface.
-    \item Ledger and balances (see Sect.~\ref{}).\marginpar{ver bien donde y como explicamos este componente}
+    \item Ledger and balances (see Sect.~\ref{}).
     \item An implementation of the consensus algorithm, with a player state machine module and
         an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
         in greater detail.
@@ -458,12 +458,12 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
-Selection keys used for committee membership selection and verification (see Sections \ref{}).\marginpar{add labels}
+Selection keys used for committee membership selection and verification (see Sections \ref{}).
 VRF keys are needed in order for an account to vote, as they will be
 used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
 More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
 with valid VRF public keys for the lookback round $r-\delta_s(1+\delta_r)$.
-They make use of an Algorand fork of the Sodium C library \marginpar{citar libsodium y el fork}, implementing VRF signing, verification and
+They make use of an Algorand fork of the Sodium C library, implementing VRF signing, verification and
 key generation functions.
     In the following work, these cryptographic functions are abstracted as $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$, $\mathsf{VRF_{generate}}(.)$
     and the helper function $\mathsf{VRF_{proofToHash}}(.)$.
@@ -479,7 +479,7 @@ key generation functions.
     As a precondition it is assumed that in any call to $\mathsf{secrets(.)}$,
     the keys being retrieved were registered and valid for $I$ in the round $r^\prime$, and $I$ generated them
     in the node making the call (the user with address $I$ has an entry in the local $\mathsf{Accounts}$ array).
-    \marginpar{Ver si no conviene directamente borrar el Accounts array, aclarar esto mas arriba y simplificar notacion}
+    
 
 \end{subsection}
 % --------------------------------------------------------------------------------------
@@ -647,10 +647,10 @@ including the following items.
 \begin{itemize}
     \item A genesis identifier and genesis hash, unambiguously defining the ledger 
         to which the state belongs.
-    \item A protocol version\index{protocol version} and update state.\marginpar{What do you mean by update state?}
+    \item A protocol version\index{protocol version} and update state.
     \item A timestamp (in milliseconds), identifying the time elapsed between the genesis block proposal 
         and the block for round $r$ proposal.
-    \item A 64-byte seed, source of randomness for the consensus algorithm.\marginpar{Esto es $\pi_\mathrm{seed}$}
+    \item A 64-byte seed, source of randomness for the consensus algorithm.
     \item The current reward state, which describes the policy at which incentives
         are distributed to participants.
     \item The current box state, which holds mappings from (app id, name) tuples
@@ -1061,7 +1061,7 @@ possible subsets with the required properties of a valid bundle.
     $lowestObservedHash$ it sets 
     $lowestObservedHash:=priorityHash$ and $v:=vt^\prime_v$.
     Next, if there was at least one vote in $V$, for every registered account $a\in A$
-    it computes \marginpar{fix notation!}
+    it computes 
     $$
     (sh,\pi,j):=credential^{\prime\prime}:=\mathsf{Sortition}(a,soft)=\mathsf{Sortition}(a,1)
     $$
@@ -1080,7 +1080,7 @@ possible subsets with the required properties of a valid bundle.
     votes in V, i.e., it checks if there is a vote $v$ such that for all the votes 
     $vt\in V$ with round $vt_r=r, vt_p=0, vt_s=soft$ that have the same vote $vt.v$ 
     and such that the sum of its weights ($\sum_{vt\in V} vt_{cred_j}\ge \mathsf{CommitteeThreshold}(soft)$) 
-    is bigger than the committee threshold. \marginpar{Revisar que este definido y apuntar a esa seccion.}
+    is bigger than the committee threshold. 
     Imagine that the first time this happens, it cannot form a bundle. 
     
     Eventually it basically adds the accepted block to the ledger, modifies the state according
@@ -2448,7 +2448,6 @@ that may congest the network.
 In the next set of functions, we make use of special cryptographic computation 
 functions $\mathsf{VRF_{prove}}(.)$, $\mathsf{VRF_{verify}}(.)$ and $\mathsf{VRF_{proofToHash}}(.)$.
 Implementation-wise, the node makes use of an Algorand specific fork of the sodium library.
-\marginpar{CITAR?. Tambien ver si esto va aca, o lo dejamos como subsection o que}. 
 Conceptually, the prove algorithm is used to execute a VRF for some given input
 data and a given secret VRF key, outputing an 80 byte string which we refer to as sortition proof $\pi$. 
 The proof to hash algorithm is a helper function to obtain the sortition hash $sh$ out of the proof
@@ -2617,7 +2616,7 @@ the total stake at play in the relevant round $r^\prime$.
     \item $uint8 \ step$, a step to run sortition. Used to get specific step-dependant committee size and threshold.
 \end{itemize}
 
-\noindent \textbf{Description:}\marginpar{A lot of notation to describe. Review.}
+\noindent \textbf{Description:}
 
 The Sortition procedure is one of the most important subroutines in the main algorithm, as it is 
 used in multiple stages and contexts.
