@@ -35,7 +35,7 @@
 
 
 % ---------------------------------------------------------------------------------------
-\author{Argimiro del Pozzo\and Ariel Waissbein}
+\author{Argimiro del Pozo\and Ariel Waissbein}
 \date{CoinFabrik\\
 \today}
 \title{Algorand Protocol Description}
@@ -43,6 +43,7 @@
 \maketitle
 \tableofcontents
 
+\pagebreak
 
 \begin{abstract}
     Algorand is a pure proof-of-stake blockchain protocol, designed by Silvio Micali,
@@ -134,7 +135,7 @@ currently in development.
 \end{section}
 % ---------------------------------------------------------------------
 % ---------------------------------------------------------------------
-\begin{section}{Preliminaires}
+\begin{section}{Preliminaries}
 The Algorand protocol is implemented in a network over the Internet, where nodes 
 implementing a service form a peer-to-peer (p2p) network: they listen to other nodes 
 and to transactions sent by clients, generate blocks, vote and continue to 
@@ -151,9 +152,6 @@ A relay node will queue (multiplex) both kinds of messages.
 Relay nodes also keep a complete copy of the ledger, updating it
 on block confirmation, and run a service answering to participation 
 queries about the ledger.
-They are permissioned: they are {\em whitelisted} by Algorand Inc.
-and this whitelist is hardcoded into the source code of both kinds
-of nodes.
 Relay nodes do not participate in consensus.
 We shall not go in further detail about relay nodes.
 
@@ -174,10 +172,9 @@ A participation node runs the following services.
         from applications or attached to smart signatures upon receiving transactions
         (see \ref{sect:avm} for more details). 
     \item A p2p and a websocket network interface.
-    \item Ledger and balances (see Sect.~\ref{}).
+    \item Ledger and balances.
     \item An implementation of the consensus algorithm, with a player state machine module and
-        an asynchronous cryptographic computation module. This is explained in Section~\ref{sect:main}
-        in greater detail.
+        an asynchronous cryptographic computation module.
 \end{itemize}
 
 Participation nodes are non-archival in nature, meaning they do not keep\index{archival node}\index{non-archival node}
@@ -458,7 +455,7 @@ $a_I$. %, and all the information in its mapped balance record, $BT[a_I]$.
     
     %https://github.com/algorand/go-algorand/blob/9af066b4e9fc43329d23faa5735f16f2543c4687/crypto/onetimesig.go
 
-Selection keys used for committee membership selection and verification (see Sections \ref{}).
+Selection keys used for committee membership selection and verification.
 VRF keys are needed in order for an account to vote, as they will be
 used to compute committee membership credentials, and to verify said credentials by nodes receiving consensus messages.
 More specifically, in order to participate in consensus on round $r$, an account needs to have an entry in $\mathsf{BT}$
@@ -573,7 +570,7 @@ where
     $\mathsf{BT}$ is the current balance table \index{balance table} described below.
 
     \item
-    $\mathsf{TP}$ is the transaction pool for the node (see~\ref{}).
+    $\mathsf{TP}$ is the transaction pool for the node.
 
     \item 
     The current time $\mathtt{time}$ in seconds, and the elapsed time since the last
@@ -640,7 +637,7 @@ Once a block is accepted, the node will update the balance table according to bl
 
 
 % ledger
-The Ledger$\mathsf{L}$, identified by a string called the genesis identifier and 
+The Ledger $\mathsf{L}$, identified by a string called the genesis identifier and 
 the hash of the genesis string, keeps record of the ledger states.
 It records and allows querying a sequence of ledger states on each round
 including the following items.
@@ -1130,7 +1127,8 @@ possible subsets with the required properties of a valid bundle.
     \end{section}
 
 % ------------------------------------------------------------------------
-\begin{section}{Main algorithm}\ref{sect:main}
+\begin{section}{Main algorithm}
+%\ref{sect:main}
 % Broadcast(e) = Event(type=proposal-payload, data=e, sign=Signature(pk_sender, e))
 % Broadcast(\mathsf{Vote}(....)) = Event(type=vote, data=\mathsf{Vote}(....), sign=Signature(pk_sender, \mathsf{Vote}(....)))
 %
@@ -1884,9 +1882,8 @@ Section~\ref{sect:state-machine} and exits.
     % \State $b_{txnCommitment} := \mathsf{MerkleTree}(TP[-s])_{root}$
 
     % https://github.com/algorand/go-algorand/blob/02b99bb25e2df8ca8c46f0caa8de2947121b4367/data/bookkeeping/block.go#L607
-    \If {$L[r-1]_{timestamp} > 0$}
-    //TODO: translate this code to algorithm
-    \EndIf
+    % \If {$L[r-1]_{timestamp} > 0$}
+    % \EndIf
 
     % \State $b_{GenesisID} := L_{genesisID}$
 
@@ -1904,6 +1901,7 @@ Section~\ref{sect:state-machine} and exits.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+Block verification algorithm (field by field validation).
 
 % ----------------------------------------------------------------------------------------------
 
@@ -2112,6 +2110,10 @@ and the hash of the msgpack encoding of the block.
 \end{algorithm}
 
 \noindent \textbf{Description:}\\
+Verifies validity of a proposal payload. The function validates the block itself,
+field by field (including the seed with the seed cryptographic proof), for a given
+ledger context $L$. Lastly, it performs a cryptographic signature verification for
+the sent message itself.
 
 % ----------------------------------------------------------------------------------------------
 
